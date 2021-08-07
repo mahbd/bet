@@ -1,28 +1,33 @@
-from django.db import models
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.utils import timezone
 
-from users.models import User as MainUser
+from users.models import User, Club
 
-User: MainUser = get_user_model()
-
-TYPE_DEPOSIT = 'D'
-TYPE_WITHDRAW = 'W'
-METHOD_BKASH = 'B'
-METHOD_ROCKET = 'R'
-METHOD_NAGAD = 'N'
-METHOD_UPAY = 'U'
-METHOD_TRANSFER = 'T'
+TYPE_DEPOSIT = 'deposit'
+TYPE_WITHDRAW = 'withdraw'
+METHOD_TRANSFER = 'transfer'
 CHOICE_FIRST = 'F'
 CHOICE_SECOND = 'S'
 CHOICE_DRAW = 'D'
 
 
 def validate_receiver(sender: User, t_type, method, receiver: User):
-    if t_type == 'W' and method == 'USER':
-        if sender.user_club.admin != receiver and receiver.user_club.admin != sender:
+    if t_type == TYPE_WITHDRAW and method == METHOD_TRANSFER:
+        if sender.user_club != receiver.user_club:
             raise ValidationError("Transaction outside club is not allowed")
+
+        try:
+            sender_admin = bool(sender.club)
+        except Club.DoesNotExist:
+            sender_admin = False
+        try:
+            receiver_admin = bool(receiver.club)
+        except Club.DoesNotExist:
+            receiver_admin = False
+
+        if not sender_admin and not receiver_admin:
+            raise ValidationError("Transaction can not be done between regular users")
         if not receiver:
             raise ValidationError("Recipients is not selected")
 
@@ -32,20 +37,14 @@ class Transaction(models.Model):
         (TYPE_DEPOSIT, 'Deposit'),
         (TYPE_WITHDRAW, 'Withdrawal')
     )
-    METHOD_CHOICES = (
-        (METHOD_BKASH, 'BKash'),
-        (METHOD_NAGAD, 'Nagad'),
-        (METHOD_ROCKET, 'Rocket'),
-        (METHOD_TRANSFER, 'Transfer')
-    )
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    type = models.CharField(max_length=1, choices=TYPE_CHOICES)
-    method = models.CharField(max_length=255, choices=METHOD_CHOICES)
+    type = models.CharField(max_length=50, choices=TYPE_CHOICES)
+    method = models.CharField(max_length=50)
     to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recipients')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
     account = models.CharField(max_length=255, blank=True, null=True)
-    pending = models.BooleanField(default=True)
+    verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):

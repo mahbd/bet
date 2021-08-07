@@ -32,15 +32,19 @@ class IsOwnerOrAdminOrReadOnly(IsAdminOrReadOnly):
 
 class IsOwnerOrAdminOrCreateOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(
-            request.method != 'GET' or
+        response = bool(
+            request.method not in ['GET', 'PUT'] or
             request.user and
             request.user.is_superuser
         )
+        print("Permission response", response)
+        return response
 
     def has_object_permission(self, request, view, obj):
-        return bool(
+        response = bool(
             request.user and
             request.user.is_authenticated and
             (request.user.is_superuser or obj.admin_id == request.user.id)
         )
+        print("Permission response objects", response)
+        return response
