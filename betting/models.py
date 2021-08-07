@@ -6,10 +6,11 @@ from users.models import User, Club
 
 TYPE_DEPOSIT = 'deposit'
 TYPE_WITHDRAW = 'withdraw'
+METHOD_BET = 'bet'
 METHOD_TRANSFER = 'transfer'
-CHOICE_FIRST = 'F'
-CHOICE_SECOND = 'S'
-CHOICE_DRAW = 'D'
+CHOICE_FIRST = 'first'
+CHOICE_SECOND = 'second'
+CHOICE_DRAW = 'draw'
 
 
 def validate_receiver(sender: User, t_type, method, receiver: User):
@@ -32,6 +33,12 @@ def validate_receiver(sender: User, t_type, method, receiver: User):
             raise ValidationError("Recipients is not selected")
 
 
+def validate_amount(user: User, amount, t_type):
+    if t_type == TYPE_WITHDRAW:
+        if user.balance < amount:
+            raise ValidationError('User does not have enough balance.')
+
+
 class Transaction(models.Model):
     TYPE_CHOICES = (
         (TYPE_DEPOSIT, 'Deposit'),
@@ -45,10 +52,12 @@ class Transaction(models.Model):
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
     account = models.CharField(max_length=255, blank=True, null=True)
     verified = models.BooleanField(default=False)
+    processed_internally = models.BooleanField(default=False, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
         validate_receiver(self.user, self.type, self.method, self.to)
+        validate_amount(self.user, self.amount, TYPE_WITHDRAW)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -64,14 +73,22 @@ class Transaction(models.Model):
 
 
 class Game(models.Model):
+    GAME_CHOICES = (
+        (CHOICE_FIRST, 'First'),
+        (CHOICE_DRAW, 'Draw'),
+        (CHOICE_SECOND, 'Second'),
+    )
+    name = models.CharField(max_length=255)
     first = models.CharField(max_length=255)
     second = models.CharField(max_length=255)
     start = models.DateTimeField()
     end = models.DateTimeField()
+    winner = models.CharField(max_length=10, choices=GAME_CHOICES, blank=True, null=True)
     locked = models.BooleanField(default=False)
+    processed_internally = models.BooleanField(default=False, editable=False)
 
     def time_locked(self):
-        return self.end <= timezone.now()
+        return self.winner or self.end <= timezone.now()
 
 
 def validate_game(game: Game):
@@ -85,7 +102,12 @@ class Bet(models.Model):
         (CHOICE_DRAW, 'Draw'),
         (CHOICE_SECOND, 'Second'),
     )
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     game = models.ForeignKey(Game, on_delete=models.PROTECT, validators=[validate_game])
-    choice = models.CharField(max_length=2, choices=GAME_CHOICES)
+    choice = models.CharField(max_length=10, choices=GAME_CHOICES)
     amount = models.IntegerField()
+    status = models.CharField(max_length=255, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['game', '-created_at']

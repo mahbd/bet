@@ -5,53 +5,10 @@ from betting.models import Bet, Game, Transaction, TYPE_WITHDRAW, METHOD_TRANSFE
 from users.models import User, Club
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club', 'password',)
-        read_only_fields = ('id', 'balance',)
-        extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
-
-    def create(self, validated_data):
-        user = super().create(validated_data)
-        user.set_password(validated_data.get('password'))
-        user.save()
-        return user
-
-    def update(self, instance, validated_data):
-        user = super().update(instance, validated_data)
-        user.set_password(validated_data.get('password'))
-        user.save()
-        return user
-
-
-class ClubSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Club
-        fields = ('name', 'admin')
-
-
-class BetSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Bet
-        fields = ('user', 'game', 'choice', 'amount',)
-
-    def update(self, instance: Bet, validated_data):
-        if instance.game.locked or instance.game.time_locked():
-            raise ValidationError('Can not change locked bet')
-        return super().update(instance, validated_data)
-
-
-class GameSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Game
-        fields = ('first', 'second', 'start', 'end', 'locked')
-
-
 def user_balance_validator(data):
     user: User = data.get('user')
     amount = data.get('amount')
-    t_type = data.get('type')
+    t_type = data.get('type', TYPE_WITHDRAW)
     if t_type == TYPE_WITHDRAW:
         if user.balance < amount:
             raise ValidationError('User does not have enough balance.')
@@ -78,6 +35,70 @@ def club_validator(data):
             raise ValidationError("Transaction can not be done between regular users")
         if not receiver:
             raise ValidationError("Recipients is not selected")
+
+
+def game_time_validator(data):
+    game: Game = data.get('game')
+    if game.locked or game.time_locked():
+        raise ValidationError("Bet time passed. You can not bet now")
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club', 'password',
+                  'game_editor', 'is_club_admin')
+        read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin')
+        extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
+
+    def get_is_club_admin(self, user):
+        return user.is_club_admin()
+
+    def create(self, validated_data):
+        user = super().create(validated_data)
+        user.set_password(validated_data.get('password'))
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        user = super().update(instance, validated_data)
+        user.set_password(validated_data.get('password'))
+        user.save()
+        return user
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'first_name', 'last_name')
+
+
+class ClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ('name', 'admin')
+
+
+class BetSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = Bet
+        fields = ('user', 'game', 'choice', 'amount')
+        extra_kwargs = {'user': {'required': False}}
+        validators = [user_balance_validator, game_time_validator]
+
+    def create(self, validated_data):
+        print(validated_data)
+        return super().create(validated_data)
+
+
+class GameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Game
+        fields = ('name', 'first', 'second', 'start', 'end', 'locked')
 
 
 class TransactionSerializer(serializers.ModelSerializer):

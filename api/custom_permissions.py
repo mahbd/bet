@@ -20,6 +20,24 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         )
 
 
+class IsAdminGameEditorOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.method in SAFE_METHODS or
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_superuser or request.user.game_editor)
+        )
+
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.method in SAFE_METHODS or
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_superuser or request.user.game_editor)
+        )
+
+
 class IsOwnerOrAdminOrReadOnly(IsAdminOrReadOnly):
     def has_object_permission(self, request, view, obj):
         return bool(
@@ -48,3 +66,16 @@ class IsOwnerOrAdminOrCreateOnly(permissions.BasePermission):
         )
         print("Permission response objects", response)
         return response
+
+
+class BetPermissionClass(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.method in SAFE_METHODS and
+            request.user and
+            request.user.is_authenticated and
+            request.user == obj.user
+        )

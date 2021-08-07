@@ -17,6 +17,7 @@ class User(AbstractUser):
     user_club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=18, unique=True)
+    game_editor = models.BooleanField(default=False)
 
     def is_club_admin(self):
         try:
