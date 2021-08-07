@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     # Apps
     'users',
     'betting',
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -114,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Dhaka'
 
 USE_I18N = True
 
@@ -135,9 +136,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Custom settings
 # Rest Framework settings
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'bank.helpers.DjangoModelPermissions',
-        'bank.helpers.GuardianObjectPermission'
+    'DEFAULT_AUTHENTICATION_CLASSES': [  #
+        'rest_framework.authentication.SessionAuthentication',  #
+        'users.backends.RestBackendWithJWT',  #
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100
@@ -145,7 +146,7 @@ REST_FRAMEWORK = {
 
 # Authentication Settings
 AUTHENTICATION_BACKENDS = (
-    'django.contrib.auth.backends.ModelBackend',  # default
+    'users.backends.ModelBackendWithJWT',  # default
 )
 AUTH_USER_MODEL = 'users.User'
 
@@ -163,3 +164,6 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-auth-token',
 ]
+
+JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpGFQx30yUmW7PBDS"
+                                    "RtAuavkWRfpQ_lXrc8m5Ga9ebqpe3fcPvIZVPQ\",\"kty\":\"oct\"}")

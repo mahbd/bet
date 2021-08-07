@@ -1,3 +1,13 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Transaction, Bet
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Bet)
+class Bet(admin.ModelAdmin):
+    pass
