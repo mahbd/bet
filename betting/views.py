@@ -65,7 +65,7 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
 
 
 @receiver(post_save, sender=Game)
-def post_process_game(self, instance: Game, *args, **kwargs):
+def post_process_game(instance: Game, *args, **kwargs):
     if not instance.processed_internally and instance.winner:
         instance.processed_internally = True
         winners = list(instance.bet_set.filter(choice=instance.winner))
