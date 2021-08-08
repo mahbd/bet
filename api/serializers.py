@@ -126,5 +126,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = ('id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account')
-        read_only_fields = ('id',)
-        validators = [user_balance_validator, club_validator]
+        read_only_fields = ('id', 'user')
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        user_balance_validator(attrs)
+        club_validator(attrs)
+        return attrs
