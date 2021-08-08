@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, Game, Transaction, CHOICE_FIRST, CHOICE_SECOND, CHOICE_DRAW
+from betting.models import Bet, Game, Transaction, CHOICE_FIRST, CHOICE_SECOND, CHOICE_DRAW, DepositWithdrawMethod
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser
 from .custom_permissions import IsOwnerOrAdminOrReadOnly, IsOwnerOrAdminOrCreateOnly, IsAdminGameEditorOrReadOnly, \
@@ -16,26 +16,6 @@ User: MainUser = get_user_model()
 
 
 class RegisterViewSet(viewsets.ModelViewSet):
-    """
-    retrieve:
-        Return a user instance.
-
-    list:
-        Return all users, ordered by most recently joined.
-
-    create:
-        Create a new user.
-
-    delete:
-        Remove an existing user.
-
-    partial_update:
-        Update one or more fields on an existing user.
-
-    update:
-        Update a user.
-    """
-
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [IsOwnerOrAdminOrCreateOnly]
@@ -114,6 +94,12 @@ class GameViewSet(viewsets.ModelViewSet):
             'draw_ratio': (first + second + draw) / draw
         }
         return Response(data)
+
+
+class AvailableMethods(views.APIView):
+    def get(self, *args, **kwargs):
+        methods = [(method.code, method.name) for method in DepositWithdrawMethod.objects.all()]
+        return Response({'methods': methods})
 
 
 class TransactionListView(generics.ListCreateAPIView):

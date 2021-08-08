@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Transaction, Bet, Game
+from .models import Transaction, Bet, Game, DepositWithdrawMethod
 
 
 # noinspection PyMethodMayBeStatic
@@ -9,6 +9,21 @@ from .models import Transaction, Bet, Game
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'type', 'method', 'amount', 'verified']
     list_filter = ['verified', 'type', 'method', 'user']
+    readonly_fields = ['id', 'user', 'type', 'amount', 'method', 'to', 'transaction_id', 'account']
+    fieldsets = (
+        ('Verification Status', {
+            'fields': ['verified']
+        }),
+        ('Type and Method', {
+            'fields': ['type', 'method']
+        }),
+        ('Sensitive information', {
+            'fields': ['transaction_id', 'amount', 'account']
+        }),
+        ('Other information', {
+            'fields': ['user', 'to']
+        })
+    )
 
     def user(self, transaction: Transaction):
         return transaction.user.username
@@ -19,6 +34,20 @@ class TransactionAdmin(admin.ModelAdmin):
 class GameAdmin(admin.ModelAdmin):
     list_display = ['name', 'first', 'second', 'start', 'end', 'is_running']
     list_filter = ['name', 'first', 'second', 'start', 'end']
+    fieldsets = (
+        ('Status', {
+            'fields': ['locked']
+        }),
+        ('Basic Information', {
+            'fields': ['name', 'first', 'second']
+        }),
+        ('Date Time information', {
+            'fields': ['start', 'end']
+        }),
+        ('Win reward ratio', {
+            'fields': ['first_ratio', 'second_ratio', 'draw_ratio']
+        })
+    )
 
     @admin.display(boolean=True)
     def is_running(self, game: Game):
@@ -32,3 +61,8 @@ class BetAdmin(admin.ModelAdmin):
 
     def bet_by(self, bet: Bet):
         return bet.user.username
+
+
+@admin.register(DepositWithdrawMethod)
+class DepositWithdrawMethodAdmin(admin.ModelAdmin):
+    list_display = ['code', 'name']

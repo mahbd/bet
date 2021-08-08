@@ -9,6 +9,27 @@ TYPE_DEPOSIT = 'deposit'
 TYPE_WITHDRAW = 'withdraw'
 METHOD_BET = 'bet'
 METHOD_TRANSFER = 'transfer'
+METHOD_BKASH = 'bkash'
+METHOD_ROCKET = 'rocket'
+METHOD_NAGAD = 'nagad'
+METHOD_UPAY = 'upay'
+METHOD_MCASH = 'mcash'
+METHOD_MYCASH = 'mycash'
+METHOD_SURECASH = 'surecash'
+METHOD_TRUSTPAY = 'trustpay'
+
+DEPOSIT_WITHDRAW_CHOICES = (
+    (METHOD_BET, 'Bet'),
+    (METHOD_TRANSFER, 'Transfer money'),
+    (METHOD_BKASH, 'bKash'),
+    (METHOD_ROCKET, 'DBBL Rocket'),
+    (METHOD_SURECASH, 'Nagad'),
+    (METHOD_UPAY, 'Upay'),
+    (METHOD_MCASH, 'Mcash'),
+    (METHOD_MYCASH, 'My Cash'),
+    (METHOD_SURECASH, 'Sure Cash'),
+    (METHOD_TRUSTPAY, 'Trust Axiata Pay')
+)
 CHOICE_FIRST = 'first'
 CHOICE_SECOND = 'second'
 CHOICE_DRAW = 'draw'
@@ -40,6 +61,11 @@ def validate_amount(user: User, amount, t_type):
             raise ValidationError('User does not have enough balance.')
 
 
+class DepositWithdrawMethod(models.Model):
+    code = models.CharField(max_length=255, choices=DEPOSIT_WITHDRAW_CHOICES, unique=True)
+    name = models.CharField(max_length=255)
+
+
 class Transaction(models.Model):
     TYPE_CHOICES = (
         (TYPE_DEPOSIT, 'Deposit'),
@@ -47,7 +73,7 @@ class Transaction(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     type = models.CharField(max_length=50, choices=TYPE_CHOICES)
-    method = models.CharField(max_length=50)
+    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES)
     to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recipients')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
@@ -97,6 +123,9 @@ class Game(models.Model):
 
     def time_locked(self):
         return self.winner or self.end <= timezone.now()
+
+    def __str__(self):
+        return f'{self.first} vs {self.second} ({self.name})'
 
 
 def validate_game(game: Game):
