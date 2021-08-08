@@ -125,7 +125,10 @@ class Game(models.Model):
         return self.winner or self.end <= timezone.now()
 
     def __str__(self):
-        return f'{self.first} vs {self.second} ({self.name})'
+        return f'{self.first} vs {self.second} ({self.name}) {self.start.strftime("%d %b %y")}'
+
+    class Meta:
+        ordering = ['-end', '-start', 'name', 'first', 'second']
 
 
 def validate_game(game: Game):

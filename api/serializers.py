@@ -73,12 +73,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name')
+        read_only_fields = ('id',)
 
 
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
         fields = ('id', 'name', 'admin')
+        read_only_fields = ('id',)
 
 
 class BetSerializer(serializers.ModelSerializer):
@@ -86,7 +88,8 @@ class BetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bet
-        fields = ('user', 'game', 'choice', 'amount')
+        fields = ('id', 'user', 'game', 'choice', 'amount')
+        read_only_fields = ('id',)
         extra_kwargs = {'user': {'required': False}}
         validators = [user_balance_validator, game_time_validator]
 
@@ -98,11 +101,14 @@ class BetSerializer(serializers.ModelSerializer):
 class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
-        fields = ('name', 'first', 'second', 'start', 'end', 'locked', 'first_ratio', 'second_ratio', 'draw_ratio')
+        fields = (
+            'id', 'name', 'first', 'second', 'start', 'end', 'locked', 'first_ratio', 'second_ratio', 'draw_ratio')
+        read_only_fields = ('id',)
 
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account')
+        fields = ('id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account')
+        read_only_fields = ('id',)
         validators = [user_balance_validator, club_validator]

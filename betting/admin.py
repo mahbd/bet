@@ -32,6 +32,7 @@ class TransactionAdmin(admin.ModelAdmin):
 # noinspection PyMethodMayBeStatic
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
+    search_fields = ['name', 'first', 'last']
     list_display = ['name', 'first', 'second', 'start', 'end', 'is_running']
     list_filter = ['name', 'first', 'second', 'start', 'end']
     fieldsets = (
@@ -58,6 +59,7 @@ class GameAdmin(admin.ModelAdmin):
 class BetAdmin(admin.ModelAdmin):
     list_display = ['bet_by', 'game_id', 'choice', 'amount', 'created_at']
     list_filter = ['game', 'choice', 'user']
+    autocomplete_fields = ['game']
 
     def bet_by(self, bet: Bet):
         return bet.user.username
