@@ -49,7 +49,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club', 'password',
-                  'game_editor', 'is_club_admin', 'is_superuser')
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser')
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 

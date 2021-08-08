@@ -40,7 +40,9 @@ class Login(views.APIView):
 
     def get(self, *args, **kwargs):
         if self.request.user and self.request.user.is_authenticated:
-            return Response(RegisterSerializer(self.request.user).data)
+            data = RegisterSerializer(self.request.user).data
+            data['refer_set'] = [x.id for x in self.request.user.refer_set.all()]
+            return Response(data)
         return Response({'result': 'User must be logged in'}, status=403)
 
 

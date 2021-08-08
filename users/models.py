@@ -18,6 +18,7 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=18, unique=True)
     game_editor = models.BooleanField(default=False)
+    referred_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='refer_set')
 
     def is_club_admin(self):
         try:
