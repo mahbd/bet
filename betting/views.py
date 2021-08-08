@@ -5,15 +5,20 @@ from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, B
 from users.models import User
 
 
+def create_transaction(user, t_type, method, amount, verified=False):
+    transaction = Transaction()
+    transaction.user = user
+    transaction.type = t_type
+    transaction.method = method
+    transaction.amount = amount
+    transaction.verified = verified
+    transaction.save()
+    return transaction
+
+
 def transfer_deposit(instance: Transaction):
     try:
-        transaction = Transaction()
-        transaction.user = instance.to
-        transaction.type = TYPE_DEPOSIT
-        transaction.method = METHOD_TRANSFER
-        transaction.amount = instance.amount
-        transaction.verified = True
-        transaction.save()
+        create_transaction(instance.to, TYPE_DEPOSIT, METHOD_TRANSFER, instance.amount, verified=True)
     except Exception as e:
         print(e)
         instance.delete()
@@ -54,13 +59,7 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
         try:
             if instance.amount > instance.user.balance:
                 raise ValueError("Does not have enough balance.")
-            transaction = Transaction()
-            transaction.user = instance.user
-            transaction.type = TYPE_WITHDRAW
-            transaction.method = METHOD_BET
-            transaction.amount = instance.amount
-            transaction.verified = True
-            transaction.save()
+            create_transaction(instance.user, TYPE_WITHDRAW, METHOD_BET, instance.amount, verified=True)
         except:
             instance.delete()
 
@@ -80,11 +79,11 @@ def post_process_game(self, instance: Game, *args, **kwargs):
         else:
             ratio = (total_winners + total_losers) / total_winners
         for winner in winners:
-            winner.user.balance += (winner.amount * ratio) * 0.98
+            create_transaction(winner.user, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', (winner.amount * ratio) * 0.98,
+                               verified=True)
             winner.status = 'Win %.2f' % ((winner.amount * ratio) * 0.98)
             winner.save()
         for loser in losers:
             loser.status = 'Loss'
             loser.save()
         instance.save()
-
