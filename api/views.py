@@ -31,7 +31,11 @@ class Login(views.APIView):
         data = self.request.data
         if not data.get('username') or not data.get('password'):
             return Response({'Username or Password is not supplied.'}, status=400)
-        user = User.objects.get(username=data.get('username'))
+        user = User.objects.filter(username=data.get('username'))
+        if not user:
+            return Response({'Username or Password is not supplied.'}, status=400)
+        else:
+            user = user[0]
         if user.check_password(data.get('password')):
             data = RegisterSerializer(user).data
             jwt_str = jwt_writer(**data)
