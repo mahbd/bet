@@ -98,7 +98,7 @@ class BetSerializer(serializers.ModelSerializer):
 class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
-        fields = ('name', 'first', 'second', 'start', 'end', 'locked')
+        fields = ('name', 'first', 'second', 'start', 'end', 'locked', 'first_ratio', 'second_ratio', 'draw_ratio')
 
 
 class TransactionSerializer(serializers.ModelSerializer):

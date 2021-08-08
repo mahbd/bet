@@ -1,3 +1,4 @@
+from django.core import validators
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -85,6 +86,13 @@ class Game(models.Model):
     end = models.DateTimeField()
     winner = models.CharField(max_length=10, choices=GAME_CHOICES, blank=True, null=True)
     locked = models.BooleanField(default=False)
+
+    first_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                      validators=[validators.MinValueValidator(0)])
+    second_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                       validators=[validators.MinValueValidator(0)])
+    draw_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                     validators=[validators.MinValueValidator(0)])
     processed_internally = models.BooleanField(default=False, editable=False)
 
     def time_locked(self):
