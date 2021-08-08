@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     # 3rd party apps
     'django_admin_json_editor',
     'rest_framework',
+    'rest_framework_swagger',
     'corsheaders',
     # Apps
     'users',
