@@ -143,9 +143,9 @@ class Bet(models.Model):
         (CHOICE_SECOND, 'Second'),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    game = models.ForeignKey(Game, on_delete=models.PROTECT, validators=[validate_game])
+    game = models.ForeignKey(Game, on_delete=models.PROTECT, validators=[validate_game], help_text='Game or Match Name')
     choice = models.CharField(max_length=10, choices=GAME_CHOICES)
-    amount = models.IntegerField()
+    amount = models.IntegerField(help_text='How much he bet')
     status = models.CharField(max_length=255, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
 

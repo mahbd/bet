@@ -13,12 +13,14 @@ class Club(models.Model):
 
 class User(AbstractUser):
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                  validators=[validators.MinValueValidator(0)])
-    user_club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True)
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=18, unique=True)
-    game_editor = models.BooleanField(default=False)
-    referred_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='refer_set')
+                                  validators=[validators.MinValueValidator(0)],
+                                  help_text='Users current balance. ')
+    user_club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, help_text='Users current club.')
+    email = models.EmailField('Email address', unique=True)
+    phone = models.CharField('Phone number', max_length=18, unique=True)
+    game_editor = models.BooleanField(default=False, help_text='Decides if user can create add and update live match.')
+    referred_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='refer_set',
+                                    help_text='Who referred this user')
 
     def is_club_admin(self):
         try:

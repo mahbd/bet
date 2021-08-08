@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from betting.models import Bet, Game, Transaction, TYPE_WITHDRAW, METHOD_TRANSFER
+from users.backends import jwt_writer
 from users.models import User, Club
 
 
@@ -45,16 +46,31 @@ def game_time_validator(data):
 
 class RegisterSerializer(serializers.ModelSerializer):
     is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+    jwt = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club', 'password',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'jwt')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser')
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 
     def get_is_club_admin(self, user):
         return user.is_club_admin()
+
+    def get_jwt(self, user):
+        data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'phone': user.phone,
+            'last_name': user.last_name,
+            'first_name': user.first_name,
+            'game_editor': user.game_editor,
+            'is_superuser': user.is_superuser,
+            'referred_by': user.referred_by,
+        }
+        return jwt_writer(**data)
 
     def create(self, validated_data):
         user = super().create(validated_data)

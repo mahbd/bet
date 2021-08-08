@@ -8,8 +8,10 @@ from .models import Transaction, Bet, Game, DepositWithdrawMethod
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'type', 'method', 'amount', 'verified']
+    list_editable = ['verified']
+    list_per_page = 50
     list_filter = ['verified', 'type', 'method', 'user']
-    readonly_fields = ['id', 'user', 'type', 'amount', 'method', 'to', 'transaction_id', 'account']
+    readonly_fields = ['id', 'user', 'type', 'method', 'to', 'transaction_id', 'account']
     fieldsets = (
         ('Verification Status', {
             'fields': ['verified']
