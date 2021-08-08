@@ -64,20 +64,15 @@ class ClubViewSet(viewsets.ModelViewSet):
 
 class BetViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
-        try:
-            club_admin = bool(self.request.user.club)
-        except Club.DoesNotExist:
-            club_admin = False
-        if club_admin:
-            return Bet.objects.filter(user__user_club=self.request.user.club)
+        club_id = self.request.GET.get('club_id')
+        if club_id:
+            club = get_object_or_404(Club, id=club_id)
+            if club.admin == self.request.user:
+                return Bet.objects.filter(user__user_club=club)
         return Bet.objects.filter(user=self.request.user)
 
-    queryset = Bet.objects.all()
     serializer_class = BetSerializer
     permission_classes = [BetPermissionClass]
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class GameViewSet(viewsets.ModelViewSet):
@@ -86,6 +81,7 @@ class GameViewSet(viewsets.ModelViewSet):
         if name:
             return Game.objects.filter(name=name)
         return Game.objects.all()
+
     serializer_class = GameSerializer
     permission_classes = [IsAdminGameEditorOrReadOnly]
 
@@ -96,16 +92,17 @@ class GameViewSet(viewsets.ModelViewSet):
         second = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_SECOND)]) + 1
         draw = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_DRAW)]) + 1
         data = {
-            'first': first,
-            'second': second,
+            'option_1': first,
+            'option_2': second,
             'draw': draw,
-            'first_ratio': (first + second + draw) / first,
-            'second_ratio': (first + second + draw) / second,
-            'draw_ratio': (first + second + draw) / draw
+            'option_1_rate': (first + second + draw) / first,
+            'option_2_rate': (first + second + draw) / second,
+            'draw_rate': (first + second + draw) / draw
         }
         return Response(data)
 
 
+# noinspection PyMethodMayBeStatic
 class AvailableMethods(views.APIView):
     def get(self, *args, **kwargs):
         methods = [(method.code, method.name) for method in DepositWithdrawMethod.objects.all()]

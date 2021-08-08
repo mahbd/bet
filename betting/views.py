@@ -1,7 +1,8 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, Game
+from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, Game, CHOICE_FIRST, \
+    CHOICE_SECOND
 from users.models import User
 
 
@@ -70,19 +71,32 @@ def post_process_game(instance: Game, *args, **kwargs):
         instance.processed_internally = True
         winners = list(instance.bet_set.filter(choice=instance.winner))
         losers = instance.bet_set.exclude(choice=instance.winner)
-        total_winners = sum([x.amount for x in winners])
-        total_losers = sum([x.amount for x in losers])
-        if not winners:
-            ratio = 0
-        elif not losers:
-            ratio = 1
+        if instance.winner == CHOICE_FIRST:
+            ratio = instance.option_1_rate
+        elif instance.winner == CHOICE_SECOND:
+            ratio = instance.option_2_rate
         else:
-            ratio = (total_winners + total_losers) / total_winners
+            ratio = instance.draw_rate
+
+        # Uncomment if auto complete rate
+        # total_winners = sum([x.amount for x in winners])
+        # total_losers = sum([x.amount for x in losers])
+        # if not winners:
+        #     ratio = 0
+        # elif not losers:
+        #     ratio = 1
+        # else:
+        #     ratio = (total_winners + total_losers) / total_winners
+
         for winner in winners:
-            create_transaction(winner.user, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', (winner.amount * ratio) * 0.98,
-                               verified=True)
+            win_amount = (winner.amount * ratio) * 0.975
+            refer_amount = (winner.amount * ratio) * 0.005
+            create_transaction(winner.user, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', win_amount, verified=True)
             winner.status = 'Win %.2f' % ((winner.amount * ratio) * 0.98)
             winner.save()
+            if winner.user.referred_by:
+                create_transaction(winner.user.referred_by, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', refer_amount,
+                                   verified=True)
         for loser in losers:
             loser.status = 'Loss'
             loser.save()

@@ -30,8 +30,8 @@ DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_SURECASH, 'Sure Cash'),
     (METHOD_TRUSTPAY, 'Trust Axiata Pay')
 )
-CHOICE_FIRST = 'first'
-CHOICE_SECOND = 'second'
+CHOICE_FIRST = 'option_1'
+CHOICE_SECOND = 'option_2'
 CHOICE_DRAW = 'draw'
 
 
@@ -101,34 +101,33 @@ class Transaction(models.Model):
 
 class Game(models.Model):
     GAME_CHOICES = (
-        (CHOICE_FIRST, 'First'),
+        (CHOICE_FIRST, 'Option 1'),
         (CHOICE_DRAW, 'Draw'),
-        (CHOICE_SECOND, 'Second'),
+        (CHOICE_SECOND, 'Option 2'),
     )
     name = models.CharField(max_length=255)
-    first = models.CharField(max_length=255)
-    second = models.CharField(max_length=255)
-    start = models.DateTimeField()
-    end = models.DateTimeField()
+    option_1 = models.CharField(max_length=255)
+    option_1_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                        validators=[validators.MinValueValidator(0)])
+    option_2 = models.CharField(max_length=255)
+    option_2_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                        validators=[validators.MinValueValidator(0)])
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
     winner = models.CharField(max_length=10, choices=GAME_CHOICES, blank=True, null=True)
     locked = models.BooleanField(default=False)
-
-    first_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                      validators=[validators.MinValueValidator(0)])
-    second_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                       validators=[validators.MinValueValidator(0)])
-    draw_ratio = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                     validators=[validators.MinValueValidator(0)])
+    draw_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                    validators=[validators.MinValueValidator(0)])
     processed_internally = models.BooleanField(default=False, editable=False)
 
     def time_locked(self):
-        return self.winner or self.end <= timezone.now()
+        return self.winner or self.end_time <= timezone.now()
 
     def __str__(self):
-        return f'{self.first} vs {self.second} ({self.name}) {self.start.strftime("%d %b %y")}'
+        return f'{self.option_1} vs {self.option_2} ({self.name}) {self.start_time.strftime("%d %b %y")}'
 
     class Meta:
-        ordering = ['-end', '-start', 'name', 'first', 'second']
+        ordering = ['-end_time', '-start_time', 'name', 'option_1', 'option_2']
 
 
 def validate_game(game: Game):
@@ -138,9 +137,9 @@ def validate_game(game: Game):
 
 class Bet(models.Model):
     GAME_CHOICES = (
-        (CHOICE_FIRST, 'First'),
+        (CHOICE_FIRST, 'Option 1'),
         (CHOICE_DRAW, 'Draw'),
-        (CHOICE_SECOND, 'Second'),
+        (CHOICE_SECOND, 'Option 2'),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     game = models.ForeignKey(Game, on_delete=models.PROTECT, validators=[validate_game], help_text='Game or Match Name')

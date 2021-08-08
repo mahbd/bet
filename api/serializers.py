@@ -100,25 +100,25 @@ class ClubSerializer(serializers.ModelSerializer):
 
 
 class BetSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True, default=serializers.CurrentUserDefault())
-
     class Meta:
         model = Bet
         fields = ('id', 'user', 'game', 'choice', 'amount')
         read_only_fields = ('id',)
         extra_kwargs = {'user': {'required': False}}
-        validators = [user_balance_validator, game_time_validator]
 
-    def create(self, validated_data):
-        print(validated_data)
-        return super().create(validated_data)
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        user_balance_validator(attrs)
+        game_time_validator(attrs)
+        return attrs
 
 
 class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
         fields = (
-            'id', 'name', 'first', 'first_ratio', 'second', 'second_ratio', 'start', 'end', 'locked', 'draw_ratio')
+            'id', 'name', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate', 'start_time', 'end_time', 'locked', 'draw_rate')
         read_only_fields = ('id',)
 
 
