@@ -36,7 +36,7 @@ class GameAdmin(admin.ModelAdmin):
     list_filter = ['name', 'first', 'second', 'start', 'end']
     fieldsets = (
         ('Status', {
-            'fields': ['locked']
+            'fields': ['locked', 'winner']
         }),
         ('Basic Information', {
             'fields': ['name', 'first', 'second']

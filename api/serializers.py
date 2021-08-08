@@ -78,7 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ('name', 'admin')
+        fields = ('id', 'name', 'admin')
 
 
 class BetSerializer(serializers.ModelSerializer):
