@@ -81,7 +81,11 @@ class BetViewSet(viewsets.ModelViewSet):
 
 
 class GameViewSet(viewsets.ModelViewSet):
-    queryset = Game.objects.all()
+    def get_queryset(self, *args, **kwargs):
+        name = self.request.GET.get('name')
+        if name:
+            return Game.objects.filter(name=name)
+        return Game.objects.all()
     serializer_class = GameSerializer
     permission_classes = [IsAdminGameEditorOrReadOnly]
 

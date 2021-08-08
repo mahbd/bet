@@ -118,7 +118,7 @@ class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
         fields = (
-            'id', 'name', 'first', 'second', 'start', 'end', 'locked', 'first_ratio', 'second_ratio', 'draw_ratio')
+            'id', 'name', 'first', 'first_ratio', 'second', 'second_ratio', 'start', 'end', 'locked', 'draw_ratio')
         read_only_fields = ('id',)
 
 
