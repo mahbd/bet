@@ -8,6 +8,7 @@ from .models import Club, User
 class ClubAdmin(admin.ModelAdmin):
     search_fields = ['name']
     list_display = ['name', 'admin', 'id']
+    list_editable = ['admin']
     autocomplete_fields = ['admin']
 
     def admin(self, club: Club):
