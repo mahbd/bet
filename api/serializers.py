@@ -109,6 +109,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
         return bet_scope.is_locked()
 
     class Meta:
+        model = BetScope
         fields = ('id', 'match', 'question', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate', 'option_3',
                   'option_3_rate', 'option_4', 'option_4_rate', 'winner', 'start_time', 'end_time', 'is_locked')
         read_only_fields = ('id',)
