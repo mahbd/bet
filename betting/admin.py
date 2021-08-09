@@ -46,11 +46,12 @@ class MatchAdmin(admin.ModelAdmin):
 
 @admin.register(BetScope)
 class BetScopeAdmin(admin.ModelAdmin):
-    search_fields = ['match_title', 'question', 'is_running']
+    list_display = ['match_title', 'question']
+    search_fields = ['match_title', 'question']
     autocomplete_fields = ['match']
     fieldsets = (
         ('Basic Information', {
-            'fields': ['match', 'question',]
+            'fields': ['match', 'question']
         }),
         ('Change carefully', {
             'classes': ('collapse',),
@@ -68,10 +69,6 @@ class BetScopeAdmin(admin.ModelAdmin):
     # noinspection PyMethodMayBeStatic
     def match_title(self, bet_scope: BetScope):
         return bet_scope.match.title
-
-    @admin.display(boolean=True)
-    def is_running(self, bet_scope: BetScope):
-        return bet_scope.is_locked()
 
 
 @admin.register(Bet)
