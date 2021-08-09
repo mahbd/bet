@@ -4,13 +4,13 @@ from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, Game, Transaction, CHOICE_FIRST, CHOICE_SECOND, CHOICE_DRAW, DepositWithdrawMethod
+from betting.models import Bet, BetScope, Match, Transaction, DepositWithdrawMethod
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser
-from .custom_permissions import IsOwnerOrAdminOrReadOnly, IsOwnerOrAdminOrCreateOnly, IsAdminGameEditorOrReadOnly, \
+from .custom_permissions import IsOwnerOrAdminOrReadOnly, IsOwnerOrAdminOrCreateOnly, IsAdminMatchEditorOrReadOnly, \
     BetPermissionClass
-from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, GameSerializer, TransactionSerializer, \
-    UserSerializer
+from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, TransactionSerializer, \
+    UserSerializer, BetScopeSerializer
 
 User: MainUser = get_user_model()
 
@@ -75,37 +75,46 @@ class BetViewSet(viewsets.ModelViewSet):
     permission_classes = [BetPermissionClass]
 
 
-class GameViewSet(viewsets.ModelViewSet):
+class MatchViewSet(viewsets.ModelViewSet):
     def get_queryset(self, *args, **kwargs):
-        name = self.request.GET.get('name')
-        if name:
-            return Game.objects.filter(name=name)
-        return Game.objects.all()
+        game_name = self.request.GET.get('game_name')
+        if game_name:
+            return Match.objects.filter(game_name=game_name)
+        return Match.objects.all()
 
-    serializer_class = GameSerializer
-    permission_classes = [IsAdminGameEditorOrReadOnly]
+    serializer_class = MatchSerializer
+    permission_classes = [IsAdminMatchEditorOrReadOnly]
 
-    @action(methods=['GET'], detail=True)
-    def ratio(self, request, pk, *args, **kwargs):
-        game = get_object_or_404(Game, id=pk)
-        first = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_FIRST)]) + 1
-        second = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_SECOND)]) + 1
-        draw = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_DRAW)]) + 1
-        data = {
-            'option_1': first,
-            'option_2': second,
-            'draw': draw,
-            'option_1_rate': (first + second + draw) / first,
-            'option_2_rate': (first + second + draw) / second,
-            'draw_rate': (first + second + draw) / draw
-        }
-        return Response(data)
+
+class BetScopeViewSet(viewsets.ModelViewSet):
+    def get_queryset(self):
+        match_id = self.request.GET.get('match_id', -1)
+        return BetScope.objects.filter(match_id=match_id)
+
+    serializer_class = BetScopeSerializer
+    permission_classes = [IsAdminMatchEditorOrReadOnly]
+
+    # @action(methods=['GET'], detail=True)
+    # def ratio(self, request, pk, *args, **kwargs):
+    #     game = get_object_or_404(Game, id=pk)
+    #     first = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_FIRST)]) + 1
+    #     second = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_SECOND)]) + 1
+    #     draw = sum([x.amount for x in game.bet_set.filter(choice=CHOICE_DRAW)]) + 1
+    #     data = {
+    #         'option_1': first,
+    #         'option_2': second,
+    #         'draw': draw,
+    #         'option_1_rate': (first + second + draw) / first,
+    #         'option_2_rate': (first + second + draw) / second,
+    #         'draw_rate': (first + second + draw) / draw
+    #     }
+    #     return Response(data)
 
 
 # noinspection PyMethodMayBeStatic
 class AvailableMethods(views.APIView):
     def get(self, *args, **kwargs):
-        methods = [(method.code, method.name) for method in DepositWithdrawMethod.objects.all()]
+        methods = [(method.code, method.game_name) for method in DepositWithdrawMethod.objects.all()]
         return Response({'methods': methods})
 
 

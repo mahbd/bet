@@ -1,47 +1,20 @@
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 
-from betting.models import Bet, Game, Transaction, TYPE_WITHDRAW, METHOD_TRANSFER
+from betting.models import Bet, BetScope, Match, Transaction, TYPE_WITHDRAW, club_validator, \
+    user_balance_validator, bet_scope_validator
 from users.backends import jwt_writer
 from users.models import User, Club
 
 
-def user_balance_validator(data):
-    user: User = data.get('user')
-    amount = data.get('amount')
-    t_type = data.get('type', TYPE_WITHDRAW)
-    if t_type == TYPE_WITHDRAW:
-        if user.balance < amount:
-            raise ValidationError('User does not have enough balance.')
-
-
-def club_validator(data):
-    sender: User = data.get('user')
-    receiver: User = data.get('to')
-    data.get('amount')
-    t_type = data.get('type')
-    method = data.get('method')
-    if t_type == TYPE_WITHDRAW and method == METHOD_TRANSFER:
-        if sender.user_club != receiver.user_club:
-            raise ValidationError("Transaction outside club is not allowed")
-        try:
-            sender_admin = bool(sender.club)
-        except Club.DoesNotExist:
-            sender_admin = False
-        try:
-            receiver_admin = bool(receiver.club)
-        except Club.DoesNotExist:
-            receiver_admin = False
-        if not sender_admin and not receiver_admin:
-            raise ValidationError("Transaction can not be done between regular users")
-        if not receiver:
-            raise ValidationError("Recipients is not selected")
-
-
-def game_time_validator(data):
-    game: Game = data.get('game')
-    if game.locked or game.time_locked():
-        raise ValidationError("Bet time passed. You can not bet now")
+def bet_or_trans_validator(attrs):
+    sender: User = attrs.get('user')
+    receiver: User = attrs.get('to')
+    t_type = attrs.get('type', TYPE_WITHDRAW)
+    amount = attrs.get('amount')
+    method = attrs.get('method')
+    user_balance_validator(sender, amount, t_type)
+    club_validator(sender, t_type, method, receiver)
+    return attrs
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -55,9 +28,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser')
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 
+    # noinspection PyMethodMayBeStatic
     def get_is_club_admin(self, user):
         return user.is_club_admin()
 
+    # noinspection PyMethodMayBeStatic
     def get_jwt(self, user):
         data = {
             'id': user.id,
@@ -95,30 +70,47 @@ class UserSerializer(serializers.ModelSerializer):
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ('id', 'name', 'admin')
+        fields = ('id', 'game_name', 'admin')
         read_only_fields = ('id',)
 
 
 class BetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bet
-        fields = ('id', 'user', 'game', 'choice', 'amount')
+        fields = ('id', 'user', 'bet_scope', 'choice', 'amount')
         read_only_fields = ('id',)
         extra_kwargs = {'user': {'required': False}}
 
     def validate(self, attrs):
         if not self.instance:
             attrs['user'] = self.context['request'].user
-        user_balance_validator(attrs)
-        game_time_validator(attrs)
+        bet_scope: BetScope = attrs.get('bet_scope')
+        sender: User = attrs.get('user')
+        t_type = attrs.get('type', TYPE_WITHDRAW)
+        amount = attrs.get('amount')
+        bet_scope_validator(bet_scope)
+        user_balance_validator(sender, amount, t_type)
         return attrs
 
 
-class GameSerializer(serializers.ModelSerializer):
+class MatchSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Game
+        model = Match
         fields = (
-            'id', 'name', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate', 'start_time', 'end_time', 'locked', 'draw_rate')
+            'id', 'game_name', 'start_time', 'end_time')
+        read_only_fields = ('id',)
+
+
+class BetScopeSerializer(serializers.ModelSerializer):
+    is_locked = serializers.SerializerMethodField(default=False, read_only=True)
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_locked(self, bet_scope: BetScope):
+        return bet_scope.is_locked()
+
+    class Meta:
+        fields = ('id', 'match', 'question', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate', 'option_3',
+                  'option_3_rate', 'option_4', 'option_4_rate', 'winner', 'start_time', 'end_time', 'is_locked')
         read_only_fields = ('id',)
 
 
@@ -131,6 +123,4 @@ class TransactionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if not self.instance:
             attrs['user'] = self.context['request'].user
-        user_balance_validator(attrs)
-        club_validator(attrs)
-        return attrs
+        return bet_or_trans_validator(attrs)

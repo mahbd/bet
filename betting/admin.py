@@ -1,7 +1,6 @@
 from django.contrib import admin
-from django.utils import timezone
 
-from .models import Transaction, Bet, Game, DepositWithdrawMethod
+from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
 
 
 @admin.register(Transaction)
@@ -9,8 +8,7 @@ class TransactionAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'type', 'method', 'amount', 'verified']
     list_editable = ['verified']
     list_per_page = 50
-    list_filter = ['verified', 'type', 'method', 'user']
-    readonly_fields = ['id', 'user', 'type', 'method', 'to', 'transaction_id', 'account']
+    list_filter = ['verified', 'type', 'method', 'created_at', 'user']
     fieldsets = (
         ('Verification Status', {
             'fields': ['verified']
@@ -31,36 +29,56 @@ class TransactionAdmin(admin.ModelAdmin):
         return transaction.user.username
 
 
-@admin.register(Game)
-class GameAdmin(admin.ModelAdmin):
-    search_fields = ['name', 'option_1', 'last']
-    list_display = ['name', 'option_1', 'option_2', 'start_time', 'end_time', 'is_running']
-    list_filter = ['name', 'option_1', 'option_2', 'start_time', 'end_time']
+@admin.register(Match)
+class MatchAdmin(admin.ModelAdmin):
+    search_fields = ['game_name', 'title', 'start_time']
+    list_display = ['game_name', 'title', 'start_time', 'end_time', ]
+    list_filter = ['game_name', 'start_time', 'end_time']
     fieldsets = (
-        ('Status', {
-            'fields': ['locked', 'winner']
-        }),
         ('Basic Information', {
-            'fields': ['name', 'option_1', 'option_2']
+            'fields': ['game_name', 'title']
         }),
         ('Date Time information', {
             'fields': ['start_time', 'end_time']
-        }),
-        ('Win reward ratio', {
-            'fields': ['option_1_rate', 'option_2_rate', 'draw_rate']
         })
     )
 
+
+@admin.register(BetScope)
+class BetScopeAdmin(admin.ModelAdmin):
+    search_fields = ['match_title', 'question', 'is_running']
+    autocomplete_fields = ['match']
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ['match', 'question',]
+        }),
+        ('Change carefully', {
+            'classes': ('collapse',),
+            'fields': ['locked', 'winner']
+        }),
+        ('Bet Options', {
+            'fields': ['option_1', 'option_1_rate', 'option_2', 'option_2_rate',
+                       'option_3', 'option_3_rate', 'option_4', 'option_4_rate']
+        }),
+        ('Date Time information', {
+            'fields': ['start_time', 'end_time']
+        })
+    )
+
+    # noinspection PyMethodMayBeStatic
+    def match_title(self, bet_scope: BetScope):
+        return bet_scope.match.title
+
     @admin.display(boolean=True)
-    def is_running(self, game: Game):
-        return game.end_time > timezone.now()
+    def is_running(self, bet_scope: BetScope):
+        return bet_scope.is_locked()
 
 
 @admin.register(Bet)
 class BetAdmin(admin.ModelAdmin):
-    list_display = ['bet_by', 'game_id', 'choice', 'amount', 'created_at']
-    list_filter = ['choice', 'game', 'user']
-    autocomplete_fields = ['game']
+    list_display = ['bet_by', 'bet_scope', 'choice', 'amount', 'created_at']
+    list_filter = ['choice', 'bet_scope', 'user']
+    autocomplete_fields = ['bet_scope']
 
     # noinspection PyMethodMayBeStatic
     def bet_by(self, bet: Bet):

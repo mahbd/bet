@@ -20,7 +20,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         )
 
 
-class IsAdminGameEditorOrReadOnly(permissions.BasePermission):
+class IsAdminMatchEditorOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(
             request.method in SAFE_METHODS or

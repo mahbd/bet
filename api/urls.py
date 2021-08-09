@@ -11,7 +11,8 @@ router = DefaultRouter()
 router.register('register', views.RegisterViewSet, 'register')
 router.register('club', views.ClubViewSet, 'club')
 router.register('bet', views.BetViewSet, 'bet')
-router.register('game', views.GameViewSet, 'game')
+router.register('match', views.MatchViewSet, 'match')
+router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
 router.register('user', views.UserViewSet, 'user')
 
 app_name = 'api'

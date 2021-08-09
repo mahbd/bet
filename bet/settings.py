@@ -150,6 +150,7 @@ CORS_ALLOW_METHODS = [
     'OPTIONS',
     'POST',
     'PUT',
+    'PATCH'
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
