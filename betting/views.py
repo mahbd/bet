@@ -104,7 +104,5 @@ def post_process_game(instance: BetScope, *args, **kwargs):
             if winner.user.referred_by:
                 create_transaction(winner.user.referred_by, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', refer_amount,
                                    verified=True)
-        for loser in bet_losers:
-            loser.status = 'Loss'
-            loser.save()
+        bet_losers.update(status='Loss')
         instance.save()  # To avoid reprocessing the bet scope

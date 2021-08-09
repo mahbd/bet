@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import F
 from django.utils.html import format_html
 
 from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
@@ -52,8 +53,8 @@ class MatchAdmin(admin.ModelAdmin):
 
 @admin.register(BetScope)
 class BetScopeAdmin(admin.ModelAdmin):
-    list_display = ['match_title', 'question']
-    search_fields = ['match_title', 'question']
+    list_display = ['match_title', 'question', 'is_running']
+    search_fields = ['match_title', 'start_time', 'question']
     autocomplete_fields = ['match']
     list_filter = ['match']
     fieldsets = (
@@ -73,16 +74,26 @@ class BetScopeAdmin(admin.ModelAdmin):
         })
     )
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            match_title=F('match__title')
+        )
+
     # noinspection PyMethodMayBeStatic
     def match_title(self, bet_scope: BetScope):
         return bet_scope.match.title
 
+    @admin.display(boolean=True)
+    def is_running(self, bet_scope: BetScope):
+        return not bet_scope.is_locked()
+
 
 @admin.register(Bet)
 class BetAdmin(admin.ModelAdmin):
-    list_display = ['bet_by', 'bet_scope', 'choice', 'amount', 'created_at']
+    list_display = ['bet_by', 'bet_scope', 'choice', 'amount', 'status', 'created_at']
+    readonly_fields = ['status', 'created_at']
     list_filter = ['choice', 'bet_scope', 'user']
-    autocomplete_fields = ['bet_scope']
+    autocomplete_fields = ['bet_scope', 'user']
 
     # noinspection PyMethodMayBeStatic
     def bet_by(self, bet: Bet):

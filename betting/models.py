@@ -176,10 +176,14 @@ class BetScope(models.Model):
     processed_internally = models.BooleanField(default=False)
 
     def is_locked(self):
-        return self.locked or self.winner or self.end_time <= timezone.now() or self.match.end_time <= timezone.now()
+        return bool(
+            self.locked or self.winner or self.end_time <= timezone.now() or self.match.end_time <= timezone.now())
 
     def __str__(self):
-        return f'{self.match.title} {self.question}__{self.start_time.strftime("%d %b %y")}'
+        return f'{self.match.title} {self.question} {not self.is_locked()} {self.start_time.strftime("%d %b %y")}'
+
+    class Meta:
+        ordering = ['-end_time']
 
 
 class Bet(models.Model):
@@ -187,7 +191,7 @@ class Bet(models.Model):
     bet_scope = models.ForeignKey(BetScope, on_delete=models.PROTECT, validators=[bet_scope_validator])
     choice = models.CharField(max_length=10, choices=BET_CHOICES)
     amount = models.IntegerField(help_text='How much he bet')
-    status = models.CharField(max_length=255, default='Pending')
+    status = models.CharField(max_length=255, default='No result', help_text='Result of the bet. Win/Loss')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
