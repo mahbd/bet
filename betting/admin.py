@@ -46,7 +46,8 @@ class MatchAdmin(admin.ModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def bet_scopes(self, match: Match):
-        return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">scopes</a>', match.id)
+        return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">{} scope(s)</a>', match.id,
+                           match.betscope_set.count())
 
 
 @admin.register(BetScope)
