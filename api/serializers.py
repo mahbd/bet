@@ -97,7 +97,7 @@ class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         fields = (
-            'id', 'game_name', 'start_time', 'end_time')
+            'id', 'game_name', 'title', 'start_time', 'end_time')
         read_only_fields = ('id',)
 
 
