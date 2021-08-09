@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
 
@@ -32,7 +33,7 @@ class TransactionAdmin(admin.ModelAdmin):
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
     search_fields = ['game_name', 'title', 'start_time']
-    list_display = ['game_name', 'title', 'start_time', 'end_time', ]
+    list_display = ['game_name', 'title', 'start_time', 'end_time', 'bet_scopes']
     list_filter = ['game_name', 'start_time', 'end_time']
     fieldsets = (
         ('Basic Information', {
@@ -43,12 +44,17 @@ class MatchAdmin(admin.ModelAdmin):
         })
     )
 
+    # noinspection PyMethodMayBeStatic
+    def bet_scopes(self, match: Match):
+        return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">scopes</a>', match.id)
+
 
 @admin.register(BetScope)
 class BetScopeAdmin(admin.ModelAdmin):
     list_display = ['match_title', 'question']
     search_fields = ['match_title', 'question']
     autocomplete_fields = ['match']
+    list_filter = ['match']
     fieldsets = (
         ('Basic Information', {
             'fields': ['match', 'question']
