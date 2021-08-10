@@ -137,7 +137,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account')
+        fields = ('id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account', 'superuser_account')
         read_only_fields = ('id', 'user')
 
     def validate(self, attrs):

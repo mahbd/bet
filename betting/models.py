@@ -118,9 +118,11 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(MINIMUM_TRANSACTION)],
                                  help_text="how much money transacted in 2 point precession decimal number")
     transaction_id = models.CharField(max_length=255, blank=True, null=True,
-                                      help_text="Transaction id, used for only deposit")
+                                      help_text="Transaction id from bank when sent money")
     account = models.CharField(max_length=255, blank=True, null=True,
                                help_text="bank account number. Used for deposit and withdraw")
+    superuser_account = models.CharField(max_length=255, blank=True, null=True,
+                                         help_text="bank account number of the superuser")
     verified = models.BooleanField(default=False,
                                    help_text="Status if admin had verified. After verification(for deposit), "
                                              "user account will be deposited")
