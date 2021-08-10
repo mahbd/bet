@@ -24,7 +24,7 @@ METHOD_TRUSTPAY = 'trustpay'
 DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_BKASH, 'bKash'),
     (METHOD_ROCKET, 'DBBL Rocket'),
-    (METHOD_SURECASH, 'Nagad'),
+    (METHOD_NAGAD, 'Nagad'),
     (METHOD_UPAY, 'Upay'),
     (METHOD_MCASH, 'Mcash'),
     (METHOD_MYCASH, 'My Cash'),
@@ -99,6 +99,8 @@ class DepositWithdrawMethod(models.Model):
     code = models.CharField(max_length=255, choices=DEPOSIT_WITHDRAW_CHOICES[:8], unique=True,
                             help_text="hidden method code for internal processing")
     name = models.CharField(max_length=255, help_text="Method name to be shown to users")
+    number1 = models.CharField(default="017331245546", max_length=32)
+    number2 = models.CharField(default="019455422145", max_length=32)
 
 
 class Transaction(models.Model):

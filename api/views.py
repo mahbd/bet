@@ -275,5 +275,10 @@ class TransactionViewSet(mixins.CreateModelMixin,
         get:
         Returns a list of available methods for deposit and withdraw methods
         """
-        methods = [(method.code, method.name) for method in DepositWithdrawMethod.objects.all()]
+        methods = [{
+            "id": method.code,
+            "to_show": method.name,
+            "number1": method.number1,
+            "number2": method.number2} for
+                   method in DepositWithdrawMethod.objects.all()]
         return Response({'methods': methods})
