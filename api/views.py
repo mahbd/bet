@@ -269,11 +269,11 @@ class TransactionViewSet(mixins.CreateModelMixin,
     serializer_class = TransactionSerializer
     permission_classes = [TransactionPermissionClass]
 
-    @action(detail=False, methods=['GET'])
+    @action(detail=False, methods=['GET'], permission_classes=[])
     def available_methods(self, *args, **kwargs):
         """
         get:
         Returns a list of available methods for deposit and withdraw methods
         """
-        methods = [(method.code, method.game_name) for method in DepositWithdrawMethod.objects.all()]
+        methods = [(method.code, method.name) for method in DepositWithdrawMethod.objects.all()]
         return Response({'methods': methods})
