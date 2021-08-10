@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     # 3rd party apps
     'django_admin_json_editor',
     'rest_framework',
-    'rest_framework_swagger',
+    'drf_yasg',
     'corsheaders',
     # Apps
     'users',
@@ -163,3 +163,23 @@ JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpG
 # Configuration
 MINIMUM_TRANSACTION = os.environ.get('MINIMUM_TRANSACTION', 1)
 django_heroku.settings(locals())
+
+ADMIN_AUTH_TOKEN = os.environ.get('ADMIN_AUTH_TOKEN', 'eyJhbGciOiJIUzI1NiJ9.eyJiYWxhbmNlIjoiNjc2LjAwIiwiZW1haWwiOi'
+                                                      'JnQGcuY29tIiwiZmlyc3RfbmFtZSI6IiIs'
+                                                      'ImdhbWVfZWRpdG9yIjpmYWxzZSwiaWQiOjEsImlzX2NsdWJfYWRtaW4iOnRy'
+                                                      'dWUsImlzX3N1cGVydXNlciI6dHJ1ZSwia'
+                                                      'nd0IjoiTm90IGFsbG93ZWQgand0LiBQbGVhc2UgbG9naW4gdG8gZ2V0IEpXV'
+                                                      'CIsImxhc3RfbmFtZSI6IiIsInBob25lIj'
+                                                      'oiZHNhZGFmIiwicmVmZXJyZWRfYnkiOm51bGwsInVzZXJfY2x1YiI6MSwidXN'
+                                                      'lcm5hbWUiOiJtYWgifQ.CqB1e1u9vIs5'
+                                                      'nbgZZrnlvDFlMCiV3fU13yZMy24VDUU')
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': ADMIN_AUTH_TOKEN,
+            'name': 'x-auth-token',
+            'in': 'header'
+        }
+    }
+}

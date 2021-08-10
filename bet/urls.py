@@ -5,6 +5,7 @@ admin.site.site_header = 'SuperBetting Admin Panel'
 admin.site.index_title = 'Admin Site'
 
 urlpatterns = [
+    path('accounts/', include('django.contrib.auth.urls')),
     path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),

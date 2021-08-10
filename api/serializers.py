@@ -64,11 +64,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name')
         read_only_fields = ('id',)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_club_admin(self, user):
+        return user.is_club_admin()
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club',
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by',)
+        read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
+        extra_kwargs = {'user_club': {'required': True}}
 
 
 class ClubSerializer(serializers.ModelSerializer):
