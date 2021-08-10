@@ -20,7 +20,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
         )
 
 
-class IsAdminMatchEditorOrReadOnly(permissions.BasePermission):
+class MatchPermissionClass(permissions.BasePermission):
     def has_permission(self, request, view):
         return bool(
             request.method in SAFE_METHODS or
@@ -44,38 +44,51 @@ class IsOwnerOrAdminOrReadOnly(IsAdminOrReadOnly):
             request.method in SAFE_METHODS or
             request.user and
             request.user.is_authenticated and
-            (request.user.is_superuser or obj.admin_id == request.user.id)
+            (request.user.is_superuser or obj.user.id == request.user.id)
         )
 
 
-class IsOwnerOrAdminOrCreateOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        response = bool(
-            request.method not in ['GET', 'PUT'] or
-            request.user and
-            request.user.is_superuser
-        )
-        print("Permission response", response)
-        return response
-
-    def has_object_permission(self, request, view, obj):
-        response = bool(
-            request.user and
-            request.user.is_authenticated and
-            (request.user.is_superuser or obj.admin_id == request.user.id)
-        )
-        print("Permission response objects", response)
-        return response
-
-
-class BetPermissionClass(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated)
-
+class ClubPermissionClass(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         return bool(
-            request.method in SAFE_METHODS and
+            request.method in SAFE_METHODS or
             request.user and
             request.user.is_authenticated and
-            request.user == obj.user
+            (request.user.is_superuser or obj.admin.id == request.user.id)
+        )
+
+
+class RegisterPermissionClass(permissions.BasePermission):
+    def has_permission(self, request, view):
+        response = bool(
+            request.method == 'POST' or
+            request.user and
+            request.user.is_authenticated
+        )
+        return response
+
+    def has_object_permission(self, request, view, obj):
+        response = bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.is_superuser or obj.id == request.user.id)
+        )
+        return response
+
+
+class BetPermissionClass(permissions.IsAuthenticated):
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.id == obj.user.id or request.user.is_superuser)
+        )
+
+
+class TransactionPermissionClass(permissions.IsAuthenticated):
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            (request.user.id == obj.user.id or request.user.is_superuser)
         )

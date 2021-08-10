@@ -1,11 +1,11 @@
 from django.contrib.auth.models import AbstractUser
-from django.core import validators
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
 class Club(models.Model):
-    admin = models.OneToOneField('User', on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=255)
+    admin = models.OneToOneField('User', on_delete=models.SET_NULL, null=True, help_text="Club admin id")
+    name = models.CharField(max_length=255, help_text="Name of the club")
 
     def __str__(self):
         return self.name
@@ -13,7 +13,7 @@ class Club(models.Model):
 
 class User(AbstractUser):
     balance = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                  validators=[validators.MinValueValidator(0)],
+                                  validators=[MinValueValidator(0)],
                                   help_text='Users current balance. ')
     user_club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, help_text='Users current club.')
     email = models.EmailField('Email address', unique=True)

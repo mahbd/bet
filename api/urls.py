@@ -14,6 +14,7 @@ router.register('bet', views.BetViewSet, 'bet')
 router.register('match', views.MatchViewSet, 'match')
 router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
 router.register('user', views.UserViewSet, 'user')
+router.register('transactions', views.TransactionViewSet, 'transactions')
 
 app_name = 'api'
 
@@ -23,8 +24,6 @@ urlpatterns = [
     path('doc_open/', schema_view, name='doc_open'),
     path('', include(router.urls), name='main_api'),
     path('login/', views.Login.as_view(), name='api_login'),
-    path('transactions/available-methods/', views.AvailableMethods.as_view(), name='available_methods'),
-    path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
     path('doc/', TemplateView.as_view(
         template_name='api/documentation.html',
         extra_context={'schema_url': 'api:doc_open'}

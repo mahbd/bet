@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from betting.models import Bet, BetScope, Match, Transaction, TYPE_WITHDRAW, club_validator, \
@@ -45,6 +46,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             'is_superuser': user.is_superuser,
             'referred_by': user.referred_by,
         }
+        diff = (timezone.now() - user.date_joined).total_seconds()
+        if diff > 60:
+            return "Not allowed jwt. Please login to get JWT"
         return jwt_writer(**data)
 
     def create(self, validated_data):
@@ -71,7 +75,7 @@ class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
         fields = ('id', 'name', 'admin')
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'admin')
 
 
 class BetSerializer(serializers.ModelSerializer):
