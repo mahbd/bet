@@ -278,7 +278,15 @@ class TransactionViewSet(mixins.CreateModelMixin,
         methods = [{
             "id": method.code,
             "to_show": method.name,
-            "number1": method.number1,
-            "number2": method.number2} for
-                   method in DepositWithdrawMethod.objects.all()]
+            "numbers": [
+                {
+                    "id": 1,
+                    "number": method.number1
+                },
+                {
+                    "id": 2,
+                    "number": method.number2
+                }
+            ]} for
+            method in DepositWithdrawMethod.objects.all()]
         return Response({'methods': methods})

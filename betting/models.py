@@ -99,8 +99,8 @@ class DepositWithdrawMethod(models.Model):
     code = models.CharField(max_length=255, choices=DEPOSIT_WITHDRAW_CHOICES[:8], unique=True,
                             help_text="hidden method code for internal processing")
     name = models.CharField(max_length=255, help_text="Method name to be shown to users")
-    number1 = models.CharField(default="017331245546", max_length=32)
-    number2 = models.CharField(default="019455422145", max_length=32)
+    number1 = models.CharField(default="017331245546", max_length=32, null=True, blank=True)
+    number2 = models.CharField(default="019455422145", max_length=32, null=True, blank=True)
 
 
 class Transaction(models.Model):
