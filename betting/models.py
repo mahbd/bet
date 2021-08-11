@@ -180,14 +180,15 @@ class BetScope(models.Model):
     winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True,
                               help_text="Which option is the winner. Be careful. As soon as you select winner,"
                                         " bet winner receive money. This can not be reverted")
-    start_time = models.DateTimeField(help_text="when this question will be available for bet")
-    end_time = models.DateTimeField(help_text="when this question will no longer accept bet")
+    start_time = models.DateTimeField(help_text="when this question will be available for bet", blank=True, null=True)
+    end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
     locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
     processed_internally = models.BooleanField(default=False)
 
     def is_locked(self):
         return bool(
-            self.locked or self.winner or self.end_time <= timezone.now() or self.match.end_time <= timezone.now())
+            self.locked or self.winner or (
+                        self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
 
     def __str__(self):
         return f'{self.match.title} {self.question} {not self.is_locked()} {self.start_time.strftime("%d %b %y")}'
