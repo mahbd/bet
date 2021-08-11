@@ -87,6 +87,8 @@ class BetPermissionClass(permissions.IsAuthenticated):
 
 class TransactionPermissionClass(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
+        if request.method == 'DELETE' and obj.verified:
+            return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
         return bool(
             request.user and
             request.user.is_authenticated and
