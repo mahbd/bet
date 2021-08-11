@@ -188,10 +188,10 @@ class BetScope(models.Model):
     def is_locked(self):
         return bool(
             self.locked or self.winner or (
-                        self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
+                    self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
 
     def __str__(self):
-        return f'{self.match.title} {self.question} {not self.is_locked()} {self.start_time.strftime("%d %b %y")}'
+        return f'{self.match.title} {self.question} {not self.is_locked()} {self.start_time and self.start_time.strftime("%d %b %y")}'
 
     class Meta:
         ordering = ['-end_time']
