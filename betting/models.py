@@ -92,7 +92,7 @@ def bet_scope_validator(bet_scope):
         else:
             raise ValidationError('Wrong bet scope id!')
     if bet_scope.is_locked():
-        raise ValidationError('Currently bet is not allowed here!')
+        raise ValidationError('This bet_scope is locked!')
 
 
 class DepositWithdrawMethod(models.Model):

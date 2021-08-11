@@ -25,7 +25,7 @@ class BetViewSet(mixins.CreateModelMixin,
     Returns list of bet of current user. User MUST bet logged in.\n
     To get clubs bet list add ?club_id={{ club_id }} . User MUST be admin of that club.
     create:
-    Create a bet instance.
+    Create a bet instance. You can not bet if bet scope is locked or if you don't have enough balance
     retrieve:
     Returns bet instance. User must be logged in and creator of that bet.
     """
@@ -120,10 +120,10 @@ class Login(views.APIView):
     def post(self, *args, **kwargs):
         data = self.request.data
         if not data.get('username') or not data.get('password'):
-            return Response({'Username or Password is not supplied.'}, status=400)
+            return Response({'detail': 'Username or Password is not supplied.'}, status=400)
         user = User.objects.filter(username=data.get('username'))
         if not user:
-            return Response({'Username or Password is wrong.'}, status=400)
+            return Response({'detail': 'Username or Password is wrong.'}, status=400)
         else:
             user = user[0]
         if user.check_password(data.get('password')):
@@ -132,14 +132,14 @@ class Login(views.APIView):
             data = RegisterSerializer(user).data
             jwt_str = jwt_writer(**data)
             return Response({'jwt': jwt_str})
-        return Response({'Username or Password is wrong.'}, status=400)
+        return Response({'detail': 'Username or Password is wrong.'}, status=400)
 
     def get(self, *args, **kwargs):
         if self.request.user and self.request.user.is_authenticated:
             data = RegisterSerializer(self.request.user).data
             data['refer_set'] = [x.id for x in self.request.user.refer_set.all()]
             return Response(data)
-        return Response({'result': 'User must be logged in'}, status=403)
+        return Response({'detail': 'User must be logged in'}, status=403)
 
 
 class MatchViewSet(viewsets.ModelViewSet):
