@@ -94,7 +94,7 @@ class UserSerializer(serializers.ModelSerializer):
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ('id', 'name', 'admin')
+        fields = ('id', 'name', 'admin', 'balance')
         read_only_fields = ('id', 'admin')
 
 

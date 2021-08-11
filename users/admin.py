@@ -8,7 +8,7 @@ from .models import Club, User
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
     search_fields = ['name']
-    list_display = ['id', 'name', 'balance', 'club_admin', 'total_users']
+    list_display = ['id', 'name', 'balance', 'club_admin', 'total_users', 'total_balance']
     autocomplete_fields = ['admin']
 
     def admin(self, club: Club):

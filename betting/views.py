@@ -1,11 +1,12 @@
 from decimal import Decimal, getcontext
 
+from django.db.models import F
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
 from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, Match, CHOICE_FIRST, \
     CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_BET_ODD, METHOD_BET_EVEN
-from users.models import User
+from users.models import User, Club
 
 
 def create_transaction(user, t_type, method, amount, verified=False):
@@ -104,5 +105,8 @@ def post_process_game(instance: BetScope, *args, **kwargs):
             if winner.user.referred_by:
                 create_transaction(winner.user.referred_by, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', refer_amount,
                                    verified=True)
+            if winner.user.user_club:
+                club = Club.objects.get(id=winner.user.user_club_id)
+                club.objects.update(balance=F('balance') + (winner.amount * ratio) * Decimal(0.02))
         bet_losers.update(status='Loss')
         instance.save()  # To avoid reprocessing the bet scope
