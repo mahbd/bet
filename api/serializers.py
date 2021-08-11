@@ -30,11 +30,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 
     # noinspection PyMethodMayBeStatic
-    def get_is_club_admin(self, user):
+    def get_is_club_admin(self, user) -> bool:
         return user.is_club_admin()
 
     # noinspection PyMethodMayBeStatic
-    def get_jwt(self, user):
+    def get_jwt(self, user) -> str:
         data = {
             'id': user.id,
             'username': user.username,
@@ -76,7 +76,7 @@ class UserSerializer(serializers.ModelSerializer):
     refer_set = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
-    def get_is_club_admin(self, user):
+    def get_is_club_admin(self, user) -> bool:
         return user.is_club_admin()
 
     # noinspection PyMethodMayBeStatic
@@ -129,7 +129,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField(default=False, read_only=True)
 
     # noinspection PyMethodMayBeStatic
-    def get_is_locked(self, bet_scope: BetScope):
+    def get_is_locked(self, bet_scope: BetScope) -> bool:
         return bet_scope.is_locked()
 
     class Meta:
@@ -142,8 +142,10 @@ class BetScopeSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ('id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account', 'superuser_account')
-        read_only_fields = ('id', 'user')
+        fields = (
+            'id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account', 'superuser_account',
+            'verified')
+        read_only_fields = ('id', 'user', 'verified')
 
     def validate(self, attrs):
         if not self.instance:
