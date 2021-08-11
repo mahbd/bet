@@ -23,6 +23,9 @@ class ClubAdmin(admin.ModelAdmin):
             return "None"
         return format_html('<a href=/admin/users/user/{}/change/>{}</a>', club.admin_id, club.admin.username)
 
+    def total_balance(self, club: Club):
+        return 0
+
 
 # noinspection PyMethodMayBeStatic
 @admin.register(User)
