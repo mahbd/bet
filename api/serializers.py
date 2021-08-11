@@ -73,15 +73,20 @@ class UserListSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+    refer_set = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def get_is_club_admin(self, user):
         return user.is_club_admin()
 
+    # noinspection PyMethodMayBeStatic
+    def get_refer_set(self, user: User):
+        return [user.id for user in user.refer_set.all()]
+
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by',)
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'refer_set')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
         extra_kwargs = {'user_club': {'required': True}}
 
@@ -97,7 +102,7 @@ class BetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bet
         fields = ('id', 'user', 'bet_scope', 'choice', 'amount')
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'user')
         extra_kwargs = {'user': {'required': False}}
 
     def validate(self, attrs):

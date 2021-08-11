@@ -32,7 +32,7 @@ class UserAdmin(admin.ModelAdmin):
         }),
         ('Advance Options', {
             'classes': ('collapse',),
-            'fields': ['last_login', 'groups', 'user_permissions', 'is_superuser', 'referred_by']
+            'fields': ['password', 'last_login', 'groups', 'user_permissions', 'is_superuser', 'referred_by']
         })
     )
 

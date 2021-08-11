@@ -53,7 +53,7 @@ class MatchAdmin(admin.ModelAdmin):
 
 @admin.register(BetScope)
 class BetScopeAdmin(admin.ModelAdmin):
-    list_display = ['match_title', 'question', 'is_running']
+    list_display = ['id', 'match_link', 'question', 'is_running']
     search_fields = ['match_title', 'start_time', 'question']
     autocomplete_fields = ['match']
     list_filter = ['match']
@@ -79,8 +79,11 @@ class BetScopeAdmin(admin.ModelAdmin):
             match_title=F('match__title')
         )
 
+    def match_link(self, bet_scope):
+        return format_html('<a href=/admin/betting/match/{}/change/>{}</a>', bet_scope.match_id, bet_scope.match_title)
+
     # noinspection PyMethodMayBeStatic
-    def match_title(self, bet_scope: BetScope):
+    def match_title(self,  bet_scope: BetScope):
         return bet_scope.match.title
 
     @admin.display(boolean=True)
@@ -90,14 +93,18 @@ class BetScopeAdmin(admin.ModelAdmin):
 
 @admin.register(Bet)
 class BetAdmin(admin.ModelAdmin):
-    list_display = ['bet_by', 'bet_scope', 'choice', 'amount', 'status', 'created_at']
+    list_display = ['id', 'bet_by', 'bet_scope_link', 'choice', 'amount', 'status', 'created_at']
     readonly_fields = ['status', 'created_at']
     list_filter = ['choice', 'bet_scope', 'user']
     autocomplete_fields = ['bet_scope', 'user']
 
     # noinspection PyMethodMayBeStatic
     def bet_by(self, bet: Bet):
-        return bet.user.username
+        return format_html('<a href=/admin/users/user/{}/change/>{}</a>', bet.user.id, bet.user.username)
+
+    # noinspection PyMethodMayBeStatic
+    def bet_scope_link(self, bet: Bet):
+        return format_html('<a href=/admin/betting/betscope/{}/change/>{}</a>', bet.bet_scope_id, bet.bet_scope)
 
 
 @admin.register(DepositWithdrawMethod)
