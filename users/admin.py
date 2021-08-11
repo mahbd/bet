@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from .models import Club, User
 
@@ -7,12 +8,20 @@ from .models import Club, User
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
     search_fields = ['name']
-    list_display = ['name', 'admin', 'id']
-    list_editable = ['admin']
+    list_display = ['id', 'name', 'balance', 'club_admin', 'total_users']
     autocomplete_fields = ['admin']
 
     def admin(self, club: Club):
         return club.admin.username
+
+    def total_users(self, club: Club):
+        return format_html('<a href=/admin/users/user/?user_club__id__exact={}>{} user(s)</a>', club.id,
+                           club.user_set.count())
+
+    def club_admin(self, club: Club):
+        if club.admin is None:
+            return "None"
+        return format_html('<a href=/admin/users/user/{}/change/>{}</a>', club.admin_id, club.admin.username)
 
 
 # noinspection PyMethodMayBeStatic
