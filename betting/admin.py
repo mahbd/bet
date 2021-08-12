@@ -8,6 +8,7 @@ from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'type', 'method', 'amount', 'verified']
+    autocomplete_fields = ['user', 'to']
     list_editable = ['verified']
     list_per_page = 50
     list_filter = ['verified', 'type', 'method', 'created_at', 'user']
@@ -19,7 +20,7 @@ class TransactionAdmin(admin.ModelAdmin):
             'fields': ['type', 'method']
         }),
         ('Sensitive information', {
-            'fields': ['transaction_id', 'amount', 'account']
+            'fields': ['transaction_id', 'amount', 'account', 'superuser_account']
         }),
         ('Other information', {
             'fields': ['user', 'to']

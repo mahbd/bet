@@ -8,9 +8,6 @@ from users.models import User, Club
 
 TYPE_DEPOSIT = 'deposit'
 TYPE_WITHDRAW = 'withdraw'
-METHOD_BET = 'bet'
-METHOD_BET_ODD = 'bet_odd'
-METHOD_BET_EVEN = 'bet_even'
 METHOD_TRANSFER = 'transfer'
 METHOD_BKASH = 'bkash'
 METHOD_ROCKET = 'rocket'
@@ -20,6 +17,10 @@ METHOD_MCASH = 'mcash'
 METHOD_MYCASH = 'mycash'
 METHOD_SURECASH = 'surecash'
 METHOD_TRUSTPAY = 'trustpay'
+METHOD_BET = 'bet'
+METHOD_BET_ODD = 'bet_odd'
+METHOD_BET_EVEN = 'bet_even'
+METHOD_CLUB = 'club'
 
 DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_BKASH, 'bKash'),
@@ -34,6 +35,7 @@ DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_BET_ODD, 'Odd bet id'),
     (METHOD_BET_EVEN, 'Even bet id'),
     (METHOD_TRANSFER, 'Transfer'),
+    (METHOD_CLUB, 'Club withdraw'),
 )
 CHOICE_FIRST = 'option_1'
 CHOICE_SECOND = 'option_2'
@@ -61,7 +63,7 @@ GAME_CHOICES = (
 def club_validator(sender: User, t_type, method, receiver: User):
     if t_type == TYPE_WITHDRAW and method == METHOD_TRANSFER:
         if sender.user_club != receiver.user_club:
-            raise ValidationError("Transaction outside club is not allowed")
+            raise ValidationError("Transaction outside club is not allowed.")
 
         try:
             sender_admin = bool(sender.club)
@@ -73,14 +75,19 @@ def club_validator(sender: User, t_type, method, receiver: User):
             receiver_admin = False
 
         if not sender_admin and not receiver_admin:
-            raise ValidationError("Transaction can not be done between regular users")
+            raise ValidationError("Transaction can not be done between regular users.")
         if not receiver:
             raise ValidationError("Recipients is not selected")
+    if t_type == TYPE_WITHDRAW and method == METHOD_CLUB:
+        if not sender.is_club_admin():
+            raise ValidationError("Only club admin can withdraw club balance.")
 
 
-def user_balance_validator(user: User, amount, t_type):
+def user_balance_validator(user: User, amount, t_type, method):
     if t_type == TYPE_WITHDRAW:
-        if user.balance < amount:
+        if method == METHOD_CLUB and user.club.balance < amount:
+            raise ValidationError('Club do not have enough balance.')
+        elif user.balance < amount:
             raise ValidationError('User does not have enough balance.')
 
 
@@ -131,7 +138,7 @@ class Transaction(models.Model):
 
     def clean(self):
         club_validator(self.user, self.type, self.method, self.to)
-        user_balance_validator(self.user, self.amount, self.type)
+        user_balance_validator(self.user, self.amount, self.type, self.method)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -191,7 +198,8 @@ class BetScope(models.Model):
                     self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
 
     def __str__(self):
-        return f'{self.match.title} {self.question} {not self.is_locked()} {self.start_time and self.start_time.strftime("%d %b %y")}'
+        return f'{self.match.title} {self.question} {not self.is_locked()} ' \
+               f'{self.start_time and self.start_time.strftime("%d %b %y")}'
 
     class Meta:
         ordering = ['-end_time']
@@ -207,7 +215,7 @@ class Bet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        user_balance_validator(self.user, self.amount, TYPE_WITHDRAW)
+        user_balance_validator(self.user, self.amount, TYPE_WITHDRAW, METHOD_BET)
         super().clean()
 
     class Meta:

@@ -4,9 +4,9 @@ from django.db.models import F
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, Match, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_BET_ODD, METHOD_BET_EVEN
 from users.models import User, Club
+from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, CHOICE_FIRST, \
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_BET_ODD, METHOD_BET_EVEN, METHOD_CLUB
 
 
 def create_transaction(user, t_type, method, amount, verified=False):
@@ -31,7 +31,17 @@ def transfer_deposit(instance: Transaction):
 @receiver(post_save, sender=Transaction)
 def post_process_transaction(instance: Transaction, created: bool, **kwargs):
     if created:
-        if instance.type == TYPE_WITHDRAW:
+        if instance.type == TYPE_WITHDRAW and instance.method == METHOD_CLUB:
+            try:
+                club = Club.objects.get(pk=instance.user.club.id)
+                club.balance -= instance.amount
+                club.full_clean()
+                club.save()
+            except Exception as e:
+                print(e)
+                instance.delete()
+                raise ValueError('Failed to process Transaction')  # TODO: Implement error logging
+        elif instance.type == TYPE_WITHDRAW:
             try:
                 user = User.objects.get(pk=instance.user.id)
                 user.balance -= instance.amount
@@ -52,7 +62,10 @@ def post_process_transaction(instance: Transaction, created: bool, **kwargs):
 
 @receiver(post_delete, sender=Transaction)
 def post_delete_transaction(instance: Transaction, *args, **kwargs):
-    if instance.type == TYPE_WITHDRAW:
+    if instance.type == TYPE_WITHDRAW and instance.method == METHOD_CLUB:
+        instance.user.club.balance += instance.amount
+        instance.user.club.save()
+    elif instance.type == TYPE_WITHDRAW:
         instance.user.balance += instance.amount
         instance.user.save()
 
@@ -64,7 +77,8 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
             if instance.amount > instance.user.balance:
                 raise ValueError("Does not have enough balance.")
             create_transaction(instance.user, TYPE_WITHDRAW, METHOD_BET, instance.amount, verified=True)
-        except:
+        except Exception as e:
+            print(e)
             instance.delete()
 
 

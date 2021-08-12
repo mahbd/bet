@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from betting.models import Bet, BetScope, Match, Transaction, TYPE_WITHDRAW, club_validator, \
-    user_balance_validator, bet_scope_validator
+    user_balance_validator, bet_scope_validator, METHOD_BET
 from users.backends import jwt_writer
 from users.models import User, Club
 
@@ -13,7 +13,7 @@ def bet_or_trans_validator(attrs):
     t_type = attrs.get('type', TYPE_WITHDRAW)
     amount = attrs.get('amount')
     method = attrs.get('method')
-    user_balance_validator(sender, amount, t_type)
+    user_balance_validator(sender, amount, t_type, method)
     club_validator(sender, t_type, method, receiver)
     return attrs
 
@@ -110,10 +110,9 @@ class BetSerializer(serializers.ModelSerializer):
             attrs['user'] = self.context['request'].user
         bet_scope: BetScope = attrs.get('bet_scope')
         sender: User = attrs.get('user')
-        t_type = attrs.get('type', TYPE_WITHDRAW)
         amount = attrs.get('amount')
         bet_scope_validator(bet_scope)
-        user_balance_validator(sender, amount, t_type)
+        user_balance_validator(sender, amount, TYPE_WITHDRAW, METHOD_BET)
         return attrs
 
 
