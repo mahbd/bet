@@ -109,6 +109,10 @@ class DepositWithdrawMethod(models.Model):
     number1 = models.CharField(default="017331245546", max_length=32, null=True, blank=True)
     number2 = models.CharField(default="019455422145", max_length=32, null=True, blank=True)
 
+    class Meta:
+        verbose_name = 'Method'
+        verbose_name_plural = 'Method List'
+
 
 class Transaction(models.Model):
     TYPE_CHOICES = (
@@ -202,6 +206,7 @@ class BetScope(models.Model):
                f'{self.start_time and self.start_time.strftime("%d %b %y")}'
 
     class Meta:
+        verbose_name_plural = 'Bet Options'
         ordering = ['-end_time']
 
 

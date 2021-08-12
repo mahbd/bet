@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.db.models import F
+from django.shortcuts import render
+from django.urls import path
 from django.utils.html import format_html
 
 from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
@@ -30,6 +32,39 @@ class TransactionAdmin(admin.ModelAdmin):
     # noinspection PyMethodMayBeStatic
     def user(self, transaction: Transaction):
         return transaction.user.username
+
+    def deposit(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+        )
+
+        return render(request, 'admin/deposit.html', context)
+
+    def withdraw(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+        )
+
+        return render(request, 'admin/withdraw.html', context)
+
+    def transfer(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+        )
+
+        return render(request, 'admin/transfer.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('deposit/', self.deposit, name='deposit'),
+            path('withdraw/', self.withdraw, name='withdraw'),
+            path('transfer/', self.transfer, name='transfer'),
+        ]
+        return my_urls + urls
 
 
 @admin.register(Match)
@@ -90,6 +125,21 @@ class BetScopeAdmin(admin.ModelAdmin):
     @admin.display(boolean=True)
     def is_running(self, bet_scope: BetScope):
         return not bet_scope.is_locked()
+
+    def bet_option(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+        )
+
+        return render(request, 'admin/bet_option.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('bet_option/', self.bet_option, name='bet_option'),
+        ]
+        return my_urls + urls
 
 
 @admin.register(Bet)

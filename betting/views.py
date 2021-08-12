@@ -1,6 +1,7 @@
+from datetime import datetime
 from decimal import Decimal, getcontext
 
-from django.db.models import F
+from django.db.models import F, Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
@@ -124,3 +125,15 @@ def post_process_game(instance: BetScope, *args, **kwargs):
                 club.objects.update(balance=F('balance') + (winner.amount * ratio) * Decimal(0.02))
         bet_losers.update(status='Loss')
         instance.save()  # To avoid reprocessing the bet scope
+
+
+def total_transaction_amount(t_type=None, method=None, date: datetime = None) -> float:
+    all_transaction = Transaction.objects.all()
+    if t_type:
+        all_transaction = all_transaction.filter(type=t_type)
+        print("Filtering t_type", t_type)
+    if method:
+        all_transaction = all_transaction.filter(method=method)
+    if date:
+        all_transaction = all_transaction.filter(created_at__gte=date)
+    return float(all_transaction.aggregate(Sum('amount'))['amount__sum'])

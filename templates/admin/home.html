@@ -1,0 +1,28 @@
+{% extends 'admin/base_site.html' %}
+{% block content %}
+    <h1>Dashboard</h1>
+    <table>
+        <caption>
+            <h2>Short summery</h2>
+        </caption>
+        <tr>
+            <td>Total Deposit</td>
+            <td>{{ total_deposit }}</td>
+        </tr>
+        <tr>
+            <td>Total Withdraw</td>
+            <td>{{ total_withdraw }}</td>
+        </tr>
+        <tr>
+            <td>Total user balance</td>
+            <td>{{ total_user_balance }}</td>
+        </tr>
+        <tr>
+            <td>Total club balance</td>
+            <td>{{ total_club_balance }}</td>
+        </tr>
+    </table>
+    <h2>Work in progress</h2>
+    <h2>Developed by {{ developer_name }}</h2>
+{% endblock %}
+
