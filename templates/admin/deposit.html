@@ -22,16 +22,15 @@
                    class="form-control">
 
             <label for="id_account">Account:</label>
-            <input value="{{ deposit.account }}" type="text" name="account" class="form-control" maxlength="255" id="id_account" disabled>
-
+            <input value="{{ deposit.account|default:"" }}" type="text" name="account" class="form-control"
+                   maxlength="255" id="id_account" disabled>
 
             <label for="id_superuser_account">Superuser account:</label>
-            <input value="{{ deposit.superuser_account }}" type="text" name="superuser_account" class="form-control" maxlength="255" id="id_superuser_account"
+            <input value="{{ deposit.superuser_account|default:"" }}" type="text" name="superuser_account"
+                   class="form-control" maxlength="255" id="id_superuser_account"
                    disabled>
 
-
             <input type="submit" value="Verify" class="btn btn-success" name="_save">
-
 
             <a href="{% url 'admin:betting_transaction_delete' deposit.id %}"
                class="btn btn-danger float-end text-white">Cancel</a>

@@ -1,4 +1,60 @@
-{% extends 'admin/base_site.html'%}
+{% extends 'admin/base_site.html' %}
 {% block content %}
     <h1>Work in progress</h1>
+    {% for transfer in unverified_transfers %}
+        <form action="{% url 'admin:betting_transaction_change' transfer.id %}" method="post">
+            {% csrf_token %}
+            <label>Username
+                <input type="text" value="{{ transfer.user.username }}" class="form-control" disabled>
+            </label>
+            <label>Full Name
+                <input type="text" class="form-control" value="{{ transfer.user.full_name|default:"Not provided" }}"
+                       disabled>
+            </label>
+            <label for="id_verified"><input type="checkbox" name="verified" id="id_verified" checked hidden></label>
+            <br>
+            <label for="id_transaction_id">Transaction id:</label>
+            <input value={{ transfer.transaction_id }} type="text" name="transaction_id" class="form-control"
+                   maxlength="255" id="id_transaction_id">
+
+            <label class="required label" for="id_amount">Amount:</label>
+            <input type="number" name="amount" value={{ transfer.amount }} step="0.01" required="" id="id_amount"
+                   class="form-control">
+
+
+            <div>
+                <label for="id_to">To:</label>
+                <div class="related-widget-wrapper">
+                    <select name="to" id="id_to" class="admin-autocomplete select2-hidden-accessible"
+                            data-ajax--cache="true" data-ajax--delay="250" data-ajax--type="GET"
+                            data-ajax--url="/admin/autocomplete/" data-app-label="betting" data-model-name="transaction"
+                            data-field-name="to" data-theme="admin-autocomplete" data-allow-clear="true"
+                            data-placeholder="" data-select2-id="id_to" tabindex="-1" aria-hidden="true">
+                        <option value="" data-select2-id="4"></option>
+                    </select><span class="select2 select2-container select2-container--admin-autocomplete" dir="ltr"
+                                   data-select2-id="3" style="width: 260px;"><span class="selection"><span
+                        class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true"
+                        aria-expanded="false" tabindex="0" aria-disabled="false"
+                        aria-labelledby="select2-id_to-container"><span class="select2-selection__rendered"
+                                                                        id="select2-id_to-container" role="textbox"
+                                                                        aria-readonly="true"><span
+                        class="select2-selection__placeholder"></span></span><span class="select2-selection__arrow"
+                                                                                   role="presentation"><b
+                        role="presentation"></b></span></span></span><span class="dropdown-wrapper"
+                                                                           aria-hidden="true"></span></span>
+
+                </div>
+
+                <div class="help">User id to whom money transferred</div>
+
+            </div>
+
+
+            <a href="{% url 'admin:betting_transaction_delete' transfer.id %}"
+               class="btn btn-danger float-end text-white">Cancel</a>
+
+        </form>
+    {% empty %}
+        <p>There is no unverified withdraw</p>
+    {% endfor %}
 {% endblock %}

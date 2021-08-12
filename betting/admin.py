@@ -4,7 +4,8 @@ from django.shortcuts import render
 from django.urls import path
 from django.utils.html import format_html
 
-from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod, TYPE_WITHDRAW, TYPE_DEPOSIT
+from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod, TYPE_WITHDRAW, TYPE_DEPOSIT, \
+    METHOD_TRANSFER
 
 
 @admin.register(Transaction)
@@ -47,6 +48,8 @@ class TransactionAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
+            unverified_withdraws=Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW).exclude(
+                method=METHOD_TRANSFER),
         )
 
         return render(request, 'admin/withdraw.html', context)
@@ -55,6 +58,7 @@ class TransactionAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
+            unverified_transfers=Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW, method=METHOD_TRANSFER),
         )
 
         return render(request, 'admin/transfer.html', context)
@@ -121,7 +125,7 @@ class BetScopeAdmin(admin.ModelAdmin):
         return format_html('<a href=/admin/betting/match/{}/change/>{}</a>', bet_scope.match_id, bet_scope.match_title)
 
     # noinspection PyMethodMayBeStatic
-    def match_title(self,  bet_scope: BetScope):
+    def match_title(self, bet_scope: BetScope):
         return bet_scope.match.title
 
     @admin.display(boolean=True)
