@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.urls import path
 from django.utils.html import format_html
 
-from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod
+from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod, TYPE_WITHDRAW, TYPE_DEPOSIT
 
 
 @admin.register(Transaction)
@@ -37,6 +37,8 @@ class TransactionAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
+            unverified_deposits=Transaction.objects.filter(verified=False, type=TYPE_DEPOSIT),
+            model_url=self.get_urls()
         )
 
         return render(request, 'admin/deposit.html', context)
