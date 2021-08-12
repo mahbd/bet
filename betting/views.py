@@ -137,3 +137,15 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return float(all_transaction.aggregate(Sum('amount'))['amount__sum'])
+
+
+def unverified_transaction_count(t_type=None, method=None, date: datetime = None) -> int:
+    all_transaction = Transaction.objects.filter(verified=False)
+    if t_type:
+        all_transaction = all_transaction.filter(type=t_type)
+        print("Filtering t_type", t_type)
+    if method:
+        all_transaction = all_transaction.filter(method=method)
+    if date:
+        all_transaction = all_transaction.filter(created_at__gte=date)
+    return all_transaction.count()

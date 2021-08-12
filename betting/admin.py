@@ -1,4 +1,4 @@
-from django.contrib import admin
+from bet import admin
 from django.db.models import F
 from django.shortcuts import render
 from django.urls import path
