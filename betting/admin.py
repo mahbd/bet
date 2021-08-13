@@ -94,6 +94,9 @@ class MatchAdmin(admin.ModelAdmin):
         return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">{} scope(s)</a>', match.id,
                            match.betscope_set.count())
 
+    def add(self, match):
+        return format_html('<a href="/admin/betting/betscope/add/?match_id={}">add</a>', match.id)
+
     def match(self, request):
         request.current_app = self.admin_site.name
         context = dict(
@@ -102,9 +105,6 @@ class MatchAdmin(admin.ModelAdmin):
         )
 
         return render(request, 'admin/match.html', context)
-
-    def add(self, match):
-        return format_html('<a href="/admin/betting/betscope/add/?match_id={}">add</a>', match.id)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -137,19 +137,35 @@ class DepositWithdrawMethodAdmin(admin.ModelAdmin):
 
 @admin.register(Deposit)
 class DepositAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'method', 'verified')
-    list_filter = ('method', )
+    list_display = ('id', 'user', 'method', 'amount', 'verified')
+    list_filter = ('method',)
     autocomplete_fields = ('user',)
+
+    def deposit(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+            unverified_deposits=Deposit.objects.exclude(verified=True)
+        )
+
+        return render(request, 'admin/deposit.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('deposit/', self.deposit, name='deposit'),
+        ]
+        return my_urls + urls
 
 
 @admin.register(Withdraw)
 class WithdrawAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'method', 'verified')
+    list_display = ('id', 'user', 'method', 'amount', 'verified')
     list_filter = ('method',)
-    autocomplete_fields = ('user', )
+    autocomplete_fields = ('user',)
 
 
 @admin.register(Transfer)
 class TransferAdmin(admin.ModelAdmin):
-    list_display = ('user', 'to', 'amount', )
-    autocomplete_fields = ('user', 'to', )
+    list_display = ('user', 'to', 'amount',)
+    autocomplete_fields = ('user', 'to',)

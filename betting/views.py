@@ -151,7 +151,7 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
     if t_type == TYPE_WITHDRAW:
         all_transaction = Withdraw.objects.filter(verified=True)
     else:
-        all_transaction = Deposit.objects.all()
+        all_transaction = Deposit.objects.filter(verified=True)
     if method:
         all_transaction = all_transaction.filter(method=method)
     if date:
@@ -161,9 +161,9 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
 
 def unverified_transaction_count(t_type=None, method=None, date: datetime = None) -> int:
     if t_type == TYPE_WITHDRAW:
-        all_transaction = Withdraw.objects.filter(verified=True)
+        all_transaction = Withdraw.objects.exclude(verified=True)
     else:
-        all_transaction = Deposit.objects.all()
+        all_transaction = Deposit.objects.exclude(verified=True)
 
     if method:
         all_transaction = all_transaction.filter(method=method)
