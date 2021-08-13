@@ -164,8 +164,40 @@ class WithdrawAdmin(admin.ModelAdmin):
     list_filter = ('method',)
     autocomplete_fields = ('user',)
 
+    def withdraw(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+            unverified_withdraws=Withdraw.objects.exclude(verified=True)
+        )
+
+        return render(request, 'admin/withdraw.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('withdraw/', self.withdraw, name='withdraw'),
+        ]
+        return my_urls + urls
+
 
 @admin.register(Transfer)
 class TransferAdmin(admin.ModelAdmin):
-    list_display = ('user', 'to', 'amount',)
+    list_display = ('user', 'to', 'amount', 'verified')
     autocomplete_fields = ('user', 'to',)
+
+    def transfer(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+            unverified_transfers=Transfer.objects.exclude(verified=True)
+        )
+
+        return render(request, 'admin/transfer.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('transfer/', self.transfer, name='transfer'),
+        ]
+        return my_urls + urls

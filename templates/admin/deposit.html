@@ -1,6 +1,5 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
-    <h1>Work in progress</h1>
     {% for deposit in unverified_deposits %}
         <form action="{% url 'admin:betting_deposit_change' deposit.id %}" method="post" style="padding-bottom: 100px">
             {% csrf_token %}
