@@ -4,7 +4,7 @@ from django.db import models
 
 
 class Club(models.Model):
-    admin = models.OneToOneField('User', on_delete=models.SET_NULL, null=True, help_text="Club admin id")
+    admin = models.OneToOneField('User', on_delete=models.SET_NULL, null=True, blank=True, help_text="Club admin id")
     name = models.CharField(max_length=255, help_text="Name of the club")
     balance = models.FloatField(default=0,
                                 validators=[MinValueValidator(0)],
