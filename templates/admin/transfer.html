@@ -1,10 +1,11 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
     {% for transfer in unverified_transfers %}
-        <form action="{% url 'admin:betting_transfer_change' transfer.id %}" method="post"
-              style="padding-bottom: 100px">
+        <form action="{% url 'admin:betting_transfer_change' transfer.id %}" method="post" class="border-danger"
+              style="margin-bottom: 100px; border: 10px red;">
             {% csrf_token %}
-            <label class="form-control">From
+            <div class="border border-primary border-3  rounded-3">
+            <label>From
                 <label> Username
                     <input type="text" value="{{ transfer.user.username }}" class="form-control" readonly>
                 </label>
@@ -17,7 +18,7 @@
                 </label>
             </label>
 
-            <label class="form-control">To
+            <label>To
                 <label> Username
                     <input type="text" value="{{ transfer.to.username }}" class="form-control" readonly>
                 </label>
@@ -47,7 +48,7 @@
 
             <a href="{% url 'admin:betting_transfer_delete' transfer.id %}"
                class="btn btn-danger float-end text-white">Cancel</a>
-
+            </div>
         </form>
     {% empty %}
         <p>There is no unverified transfer</p>

@@ -24,6 +24,7 @@ class BetScopeAdmin(admin.ModelAdmin):
             'fields': ['locked', 'winner']
         }),
         ('Bet Options', {
+            'classes': ('collapse',),
             'fields': ['option_1', 'option_1_rate', 'option_2', 'option_2_rate',
                        'option_3', 'option_3_rate', 'option_4', 'option_4_rate']
         }),
@@ -94,6 +95,7 @@ class MatchAdmin(admin.ModelAdmin):
         return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">{} scope(s)</a>', match.id,
                            match.betscope_set.count())
 
+    # noinspection PyMethodMayBeStatic
     def add(self, match):
         return format_html('<a href="/admin/betting/betscope/add/?match_id={}">add</a>', match.id)
 

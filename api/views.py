@@ -151,9 +151,13 @@ class Login(views.APIView):
 class MatchViewSet(viewsets.ModelViewSet):
     """
     list:
-    Return a list of matches
+    Return a list of matches\n
     To get list of matches of a game \n
     /api/match/?game_name={{ game_name }}\n
+    To get only active matches \n
+    /api/match/?active_only=true \n
+    To get only active matches of a game\n
+    /api/match/?active_only=true&game_name={{ game_name }} \n
     Allowed game names: football|cricket|tennis|others
     create:
     Create an instance of match. Only game_editor enabled user and superuser can create new match
@@ -167,9 +171,15 @@ class MatchViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self, *args, **kwargs):
         game_name = self.request.GET.get('game_name')
+        active_only = self.request.GET.get('active_only', False)
+        print(game_name, active_only)
+        match_list = Match.objects.all()
+        if active_only:
+            match_list = match_list.filter(end_time__gte=timezone.now())
+            print(match_list)
         if game_name:
-            return Match.objects.filter(game_name=game_name)
-        return Match.objects.all()
+            match_list = match_list.filter(game_name=game_name)
+        return match_list
 
     serializer_class = MatchSerializer
     permission_classes = [MatchPermissionClass]
@@ -192,45 +202,6 @@ class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [RegisterPermissionClass]
-
-
-# class TransactionViewSet(mixins.CreateModelMixin,
-#                          mixins.RetrieveModelMixin,
-#                          mixins.ListModelMixin,
-#                          viewsets.GenericViewSet):
-#     """
-#     list:
-#     Returns list of transaction for current user. User must be logged in.
-#     retrieve:
-#     Returns selected transaction details. User must be the owner of that transaction.
-#     create:
-#     Create a transaction instance. You can deposit, withdraw and transfer money using this method.\n
-#     DEPOSIT\n
-#     To deposit money transfer money to the superuser and send the following details\n
-#     {\n
-#     "type": "deposit", // Don't change this\n
-#     "method": "bkash", // using which method you sent money. See below for details\n
-#     "amount": "1000", // Amount of money you sent to superuser\n
-#     "transaction_id": "fdksafkljdsfklj", // The transaction id when you sent money to superuser\n
-#     "account": "01735860134" // From which account you sent money\n
-#     }\n
-#     List of available methods: /api/transactions/available-methods/\n
-#     WITHDRAW\n
-#     {\n
-#     "type": "withdraw", // Don't change this\n
-#     "method": "bkash", // using which method you want to receive money. See below for details\n
-#     "amount": "1000", // Amount of money you want to withdraw\n
-#     "account": "01735860134" // In which account you want to get money\n
-#     }\n
-#     List of available methods: /api/transactions/available-methods/\n
-#     TRANSFER\n
-#     {\n
-#     "type": "withdraw", // Don't change this\n
-#     "method": "transfer", // Don't change this'\n
-#     "amount": "1000", // Amount of money you want to withdraw\n
-#     "to": "3" // To whom you want to send money\n
-#     }\n
-#     """
 
 
 @api_view(['GET'])

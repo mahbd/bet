@@ -1,6 +1,35 @@
-{% extends 'admin/base_site.html'%}
+{% extends 'admin/base_site.html' %}
 {% block content %}
+    <a href="{% url 'admin:betting_match_add' %}" class="btn btn-success text-white float-lg-end">Add New Match</a>
+    <h1>Work in progress</h1>
     {% for match in match_list %}
-        <p></p>
+        <div style="margin-bottom: 100px">
+            <div class="row">
+                <div class="col-sm">
+                    <label class="required" for="id_game_name">Game name:</label>
+                    <input name="game_name" required="" id="id_game_name" class="form-control"
+                           value="{{ match.game_name }}"
+                           readonly>
+                </div>
+                <div class="col-sm">
+                    <label class="required" for="id_title">Match Title:</label>
+                    <input type="text" name="title" value="{{ match.title }}" class="form-control" maxlength="255"
+                           required="" id="id_title" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    <label for="start_date">Start date</label>
+                    <input type="text" id="start_date" value="{{ match.start_time|date:"Y-m-d H:i:s" }}"
+                           class="form-control" readonly></div>
+                <div class="col-sm">
+                    <label for="end_time_0">End date</label>
+                    <input type="text" id="end_time_0" value="{{ match.end_time|date:"Y-m-d H:i:s" }}"
+                           class="form-control" readonly></div>
+            </div>
+        </div>
+
+    {% empty %}
+        <h2>No live match available</h2>
     {% endfor %}
 {% endblock %}

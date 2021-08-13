@@ -116,8 +116,12 @@ class DepositWithdrawMethod(models.Model):
 class Match(models.Model):
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
     title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
+    locked = models.BooleanField(default=False)
     start_time = models.DateTimeField(help_text="When match will be unlocked for betting.")
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
+
+    def is_live(self):
+        return not self.locked and self.start_time >= timezone.now() >= self.end_time
 
     def __str__(self):
         return f'{self.title} {self.start_time.strftime("%d %b %y")}'
@@ -154,7 +158,7 @@ class BetScope(models.Model):
 
     def is_locked(self):
         return bool(
-            self.locked or self.winner or (
+            self.locked or self.match.locked or self.winner or (
                     self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
 
     def __str__(self):
