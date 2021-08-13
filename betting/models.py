@@ -60,35 +60,34 @@ GAME_CHOICES = (
 )
 
 
-def club_validator(sender: User, t_type, method, receiver: User):
-    if t_type == TYPE_WITHDRAW and method == METHOD_TRANSFER:
-        if sender.user_club != receiver.user_club:
-            raise ValidationError("Transaction outside club is not allowed.")
+def club_validator(sender: User, receiver: User):
+    if sender.user_club != receiver.user_club:
+        raise ValidationError("Transaction outside club is not allowed.")
+    try:
+        sender_admin = bool(sender.club)
+    except Club.DoesNotExist:
+        sender_admin = False
+    try:
+        receiver_admin = bool(receiver.club)
+    except Club.DoesNotExist:
+        receiver_admin = False
 
-        try:
-            sender_admin = bool(sender.club)
-        except Club.DoesNotExist:
-            sender_admin = False
-        try:
-            receiver_admin = bool(receiver.club)
-        except Club.DoesNotExist:
-            receiver_admin = False
-
-        if not sender_admin and not receiver_admin:
-            raise ValidationError("Transaction can not be done between regular users.")
-        if not receiver:
-            raise ValidationError("Recipients is not selected")
-    if t_type == TYPE_WITHDRAW and method == METHOD_CLUB:
-        if not sender.is_club_admin():
-            raise ValidationError("Only club admin can withdraw club balance.")
+    if not sender_admin and not receiver_admin:
+        raise ValidationError("Transaction can not be done between regular users.")
+    if not receiver:
+        raise ValidationError("Recipients is not selected")
 
 
-def user_balance_validator(user: User, amount, t_type, method):
-    if t_type == TYPE_WITHDRAW:
-        if method == METHOD_CLUB and user.club.balance < amount:
-            raise ValidationError('Club do not have enough balance.')
-        elif user.balance < amount:
-            raise ValidationError('User does not have enough balance.')
+def club_admin_withdraw_validator(user: User):
+    if not user.is_club_admin():
+        raise ValidationError("Only club admin can withdraw club balance.")
+
+
+def user_balance_validator(user: User, amount, method=None):
+    if method == METHOD_CLUB and user.club.balance < amount:
+        raise ValidationError('Club do not have enough balance.')
+    elif user.balance < amount:
+        raise ValidationError('User does not have enough balance.')
 
 
 def bet_scope_validator(bet_scope):
@@ -112,49 +111,6 @@ class DepositWithdrawMethod(models.Model):
     class Meta:
         verbose_name = 'Method'
         verbose_name_plural = 'Method List'
-
-
-class Transaction(models.Model):
-    TYPE_CHOICES = (
-        (TYPE_DEPOSIT, 'Deposit'),
-        (TYPE_WITHDRAW, 'Withdrawal')
-    )
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    type = models.CharField(max_length=50, choices=TYPE_CHOICES,
-                            help_text=f"type of transaction, {TYPE_WITHDRAW} or {TYPE_DEPOSIT}")
-    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
-                              help_text="method used to do transaction")
-    to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recipients',
-                           help_text="User id to whom money transferred")
-    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                                 help_text="how much money transacted in 2 point precession decimal number")
-    transaction_id = models.CharField(max_length=255, blank=True, null=True,
-                                      help_text="Transaction id from bank when sent money")
-    account = models.CharField(max_length=255, blank=True, null=True,
-                               help_text="bank account number. Used for deposit and withdraw")
-    superuser_account = models.CharField(max_length=255, blank=True, null=True,
-                                         help_text="bank account number of the superuser")
-    verified = models.BooleanField(default=False,
-                                   help_text="Status if admin had verified. After verification(for deposit), "
-                                             "user account will be deposited")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
-    created_at = models.DateTimeField(default=timezone.now)
-
-    def clean(self):
-        club_validator(self.user, self.type, self.method, self.to)
-        user_balance_validator(self.user, self.amount, self.type, self.method)
-        super().clean()
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
-
-    def __str__(self):
-        return str(self.id)
-
-    class Meta:
-        ordering = ['-created_at']
 
 
 class Match(models.Model):
@@ -220,7 +176,7 @@ class Bet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        user_balance_validator(self.user, self.amount, TYPE_WITHDRAW, METHOD_BET)
+        user_balance_validator(self.user, self.amount)
         super().clean()
 
     class Meta:
@@ -231,3 +187,92 @@ class Announcement(models.Model):
     text = models.TextField()
     expired = models.BooleanField()
     created_at = models.DateTimeField(default=timezone.now)
+
+
+class Deposit(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
+                              help_text="method used to do transaction")
+    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
+                               help_text="how much money transacted in 2 point precession decimal number")
+    account = models.CharField(max_length=255, blank=True, null=True,
+                               help_text="bank account number. Used for deposit and withdraw")
+    transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    superuser_account = models.CharField(max_length=255, blank=True, null=True,
+                                         help_text="bank account number of the superuser")
+    description = models.TextField(blank=True, null=True)
+    verified = models.BooleanField(default=None, null=True, blank=True,
+                                   help_text="Status if admin had verified. After verification(for deposit), "
+                                             "user account will be deposited")
+    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Withdraw(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
+                              help_text="method used to do transaction")
+    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
+                               help_text="how much money transacted in 2 point precession decimal number")
+    account = models.CharField(max_length=255, blank=True, null=True,
+                               help_text="bank account number. Used for deposit and withdraw")
+    superuser_account = models.CharField(max_length=255, blank=True, null=True,
+                                         help_text="bank account number of the superuser")
+    transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    verified = models.BooleanField(default=None, null=True, blank=True,
+                                   help_text="Status if admin had verified. After verification(for deposit), "
+                                             "user account will be deposited")
+    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def clean(self):
+        user_balance_validator(self.user, self.amount, self.method)
+        super().clean()
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.full_clean()
+        super().save(force_insert, force_update, using, update_fields)
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class Transfer(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
+                           help_text="User id to whom money transferred")
+    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
+                               help_text="how much money transacted in 2 point precession decimal number")
+    description = models.TextField(blank=True, null=True)
+    verified = models.BooleanField(default=None, blank=True, null=True,
+                                   help_text="Status if admin had verified. After verification(for deposit), "
+                                             "user account will be deposited")
+    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def clean(self):
+        user_balance_validator(self.user, self.amount)
+        club_validator(self.user, self.to)
+        super().clean()
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.full_clean()
+        super().save(force_insert, force_update, using, update_fields)
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering = ['-created_at']

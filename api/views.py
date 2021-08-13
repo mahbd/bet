@@ -1,17 +1,18 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import viewsets, permissions, views, mixins, generics
-from rest_framework.decorators import action
+from rest_framework import viewsets, permissions, views, mixins
+from rest_framework.decorators import action, api_view
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, BetScope, Match, Transaction, DepositWithdrawMethod, Announcement
+from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUserOrSuperuser
-from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, TransactionSerializer, \
-    UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer
+from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
+    UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
+    WithdrawSerializer, TransferSerializer
 
 User: MainUser = get_user_model()
 
@@ -193,71 +194,112 @@ class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins
     permission_classes = [RegisterPermissionClass]
 
 
-class TransactionViewSet(mixins.CreateModelMixin,
-                         mixins.RetrieveModelMixin,
-                         mixins.ListModelMixin,
-                         viewsets.GenericViewSet):
+# class TransactionViewSet(mixins.CreateModelMixin,
+#                          mixins.RetrieveModelMixin,
+#                          mixins.ListModelMixin,
+#                          viewsets.GenericViewSet):
+#     """
+#     list:
+#     Returns list of transaction for current user. User must be logged in.
+#     retrieve:
+#     Returns selected transaction details. User must be the owner of that transaction.
+#     create:
+#     Create a transaction instance. You can deposit, withdraw and transfer money using this method.\n
+#     DEPOSIT\n
+#     To deposit money transfer money to the superuser and send the following details\n
+#     {\n
+#     "type": "deposit", // Don't change this\n
+#     "method": "bkash", // using which method you sent money. See below for details\n
+#     "amount": "1000", // Amount of money you sent to superuser\n
+#     "transaction_id": "fdksafkljdsfklj", // The transaction id when you sent money to superuser\n
+#     "account": "01735860134" // From which account you sent money\n
+#     }\n
+#     List of available methods: /api/transactions/available-methods/\n
+#     WITHDRAW\n
+#     {\n
+#     "type": "withdraw", // Don't change this\n
+#     "method": "bkash", // using which method you want to receive money. See below for details\n
+#     "amount": "1000", // Amount of money you want to withdraw\n
+#     "account": "01735860134" // In which account you want to get money\n
+#     }\n
+#     List of available methods: /api/transactions/available-methods/\n
+#     TRANSFER\n
+#     {\n
+#     "type": "withdraw", // Don't change this\n
+#     "method": "transfer", // Don't change this'\n
+#     "amount": "1000", // Amount of money you want to withdraw\n
+#     "to": "3" // To whom you want to send money\n
+#     }\n
+#     """
+
+
+@api_view(['GET'])
+def available_methods(request):
     """
-    list:
-    Returns list of transaction for current user. User must be logged in.
-    retrieve:
-    Returns selected transaction details. User must be the owner of that transaction.
+    get:
+    Returns a list of available methods for deposit and withdraw methods
+    """
+    methods = [{
+        "id": method.code,
+        "to_show": method.name,
+        "numbers": [
+            {
+                "id": 1,
+                "number": method.number1
+            },
+            {
+                "id": 2,
+                "number": method.number2
+            }
+        ]} for
+        method in DepositWithdrawMethod.objects.all()]
+    return Response({'methods': methods})
+
+
+class DepositViewSet(mixins.CreateModelMixin,
+                     mixins.RetrieveModelMixin,
+                     mixins.ListModelMixin,
+                     viewsets.GenericViewSet):
+    def get_queryset(self):
+        return Deposit.objects.filter(user=self.request.user)
+
+    serializer_class = DepositSerializer
+    permission_classes = [TransactionPermissionClass]
+
+
+class WithdrawViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    """
+    User must be logged in
     create:
-    Create a transaction instance. You can deposit, withdraw and transfer money using this method.\n
-    DEPOSIT\n
-    To deposit money transfer money to the superuser and send the following details\n
-    {\n
-    "type": "deposit", // Don't change this\n
-    "method": "bkash", // using which method you sent money. See below for details\n
-    "amount": "1000", // Amount of money you sent to superuser\n
-    "transaction_id": "fdksafkljdsfklj", // The transaction id when you sent money to superuser\n
-    "account": "01735860134" // From which account you sent money\n
-    }\n
-    List of available methods: /api/transactions/available-methods/\n
-    WITHDRAW\n
-    {\n
-    "type": "withdraw", // Don't change this\n
-    "method": "bkash", // using which method you want to receive money. See below for details\n
-    "amount": "1000", // Amount of money you want to withdraw\n
-    "account": "01735860134" // In which account you want to get money\n
-    }\n
-    List of available methods: /api/transactions/available-methods/\n
-    TRANSFER\n
-    {\n
-    "type": "withdraw", // Don't change this\n
-    "method": "transfer", // Don't change this'\n
-    "amount": "1000", // Amount of money you want to withdraw\n
-    "to": "3" // To whom you want to send money\n
-    }\n
+    Request will be denied if user doesn't have enough balance
     """
 
     def get_queryset(self):
-        return Transaction.objects.filter(user=self.request.user)
+        return Withdraw.objects.filter(user=self.request.user)
 
-    serializer_class = TransactionSerializer
+    serializer_class = WithdrawSerializer
     permission_classes = [TransactionPermissionClass]
 
-    @action(detail=False, methods=['GET'], permission_classes=[])
-    def available_methods(self, *args, **kwargs):
-        """
-        get:
-        Returns a list of available methods for deposit and withdraw methods
-        """
-        methods = [{
-            "id": method.code,
-            "to_show": method.name,
-            "numbers": [
-                {
-                    "id": 1,
-                    "number": method.number1
-                },
-                {
-                    "id": 2,
-                    "number": method.number2
-                }
-            ]} for
-            method in DepositWithdrawMethod.objects.all()]
-        return Response({'methods': methods})
+
+class TransferViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
+    """
+        User must be logged in
+        create:
+        Request will be denied if user doesn't have enough balance or at least one of them is not club admin
+        or both of them is not of same club
+    """
+
+    def get_queryset(self):
+        return Transfer.objects.filter(user=self.request.user)
+
+    serializer_class = TransferSerializer
+    permission_classes = [TransactionPermissionClass]
 
 
 class UserListViewSet(mixins.ListModelMixin,

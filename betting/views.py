@@ -1,76 +1,95 @@
 from datetime import datetime
-from decimal import Decimal, getcontext
 
-from django.db.models import F, Sum
+from django.db import transaction
+from django.db.models import Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.shortcuts import render
 
-from users.models import User, Club
-from .form import WithdrawForm
-from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_BET_ODD, METHOD_BET_EVEN, METHOD_CLUB
+from users.models import User
+from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, METHOD_BET, CHOICE_FIRST, \
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer
 
 
-def create_transaction(user, t_type, method, amount, verified=False):
-    transaction = Transaction()
-    transaction.user = user
-    transaction.type = t_type
-    transaction.method = method
-    transaction.amount = amount
-    transaction.verified = verified
-    transaction.save()
-    return transaction
+def create_deposit(user_id: User, amount, method=None, description=None, verified=False):
+    deposit = Deposit()
+    deposit.user_id = user_id
+    deposit.method = method
+    deposit.amount = amount
+    deposit.description = description
+    deposit.verified = verified
+    deposit.save()
+    return deposit
 
 
-def transfer_deposit(instance: Transaction):
-    try:
-        create_transaction(instance.to, TYPE_DEPOSIT, METHOD_TRANSFER, instance.amount, verified=True)
-    except Exception as e:
-        print(e)
-        instance.delete()
-
-
-@receiver(post_save, sender=Transaction)
-def post_process_transaction(instance: Transaction, created: bool, **kwargs):
-    if created:
-        if instance.type == TYPE_WITHDRAW and instance.method == METHOD_CLUB:
-            try:
-                club = Club.objects.get(pk=instance.user.club.id)
-                club.balance -= instance.amount
-                club.full_clean()
-                club.save()
-            except Exception as e:
-                print(e)
-                instance.delete()
-                raise ValueError('Failed to process Transaction')  # TODO: Implement error logging
-        elif instance.type == TYPE_WITHDRAW:
-            try:
-                user = User.objects.get(pk=instance.user.id)
-                user.balance -= instance.amount
-                user.full_clean()
-                user.save()
-            except Exception as e:
-                print(e)
-                instance.delete()
-                raise ValueError('Failed to process Transaction')  # TODO: Implement error logging
-    if instance.type == TYPE_WITHDRAW and instance.verified:
-        if instance.method == METHOD_TRANSFER:
-            transfer_deposit(instance)
-    if instance.type == TYPE_DEPOSIT and instance.verified and not instance.processed_internally:
-        instance.user.balance += instance.amount
+@receiver(post_save, sender=Deposit)
+def post_save_deposit(instance: Deposit, *args, **kwargs):
+    if instance.verified and not instance.processed_internally and instance.method == METHOD_CLUB:
         instance.processed_internally = True
-        instance.user.save()
-
-
-@receiver(post_delete, sender=Transaction)
-def post_delete_transaction(instance: Transaction, *args, **kwargs):
-    if instance.type == TYPE_WITHDRAW and instance.method == METHOD_CLUB:
         instance.user.club.balance += instance.amount
         instance.user.club.save()
-    elif instance.type == TYPE_WITHDRAW:
+
+    elif instance.verified and not instance.processed_internally:
+        instance.processed_internally = True
         instance.user.balance += instance.amount
         instance.user.save()
+        instance.save()
+
+
+@receiver(post_delete, sender=Deposit)
+def post_delete_deposit(instance: Deposit, *args, **kwargs):
+    if instance.verified and instance.method == METHOD_CLUB:
+        instance.user.club.balance -= instance.amount
+        instance.user.club.save()
+    elif instance.verified:
+        instance.user.balance -= instance.amount
+        instance.user.save()
+        # TODO: Implement to prevent from delete
+
+
+@receiver(post_save, sender=Withdraw)
+def post_save_withdraw(instance: Withdraw, created: bool, *args, **kwargs):
+    if created:
+        instance.user.balance -= instance.amount
+        instance.user.full_clean()
+        instance.user.save()
+        instance.save()
+
+
+@receiver(post_delete, sender=Deposit)
+def post_delete_withdraw(instance: Deposit, *args, **kwargs):
+    instance.user.balance += instance.amount
+    instance.user.save()
+
+
+@receiver(post_save, sender=Transfer)
+def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
+    if created:
+        instance.user.balance -= instance.amount
+        instance.user.full_clean()
+        instance.user.save()
+        instance.save()
+    if instance.verified and not instance.processed_internally:
+        deposit = Deposit()
+        deposit.user = instance.to
+        deposit.method = METHOD_TRANSFER
+        deposit.amount = instance.amount
+        deposit.description = f'From **{instance.user_id}**, with transaction id ##{instance.id}##'
+        deposit.verified = True
+        deposit.save()
+
+        instance.processed_internally = True
+        instance.save()
+
+
+@receiver(post_delete, sender=Transfer)
+def post_delete_transfer(instance: Transfer, *args, **kwargs):
+    if instance.verified:
+        instance.to.balance -= instance.amount
+        instance.to.full_clean()
+        instance.to.save()
+        # TODO: Implement to prevent delete
+    instance.user.balance += instance.amount
+    instance.user.save()
 
 
 @receiver(post_save, sender=Bet)
@@ -79,7 +98,13 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
         try:
             if instance.amount > instance.user.balance:
                 raise ValueError("Does not have enough balance.")
-            create_transaction(instance.user, TYPE_WITHDRAW, METHOD_BET, instance.amount, verified=True)
+            withdraw = Withdraw()
+            withdraw.user = instance.user
+            withdraw.method = METHOD_BET
+            withdraw.amount = instance.amount
+            withdraw.description = f'Balance used to bet on ##{instance.id}##'
+            withdraw.verified = True
+            withdraw.save()
         except Exception as e:
             print(e)
             instance.delete()
@@ -88,52 +113,45 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
 @receiver(post_save, sender=BetScope)
 def post_process_game(instance: BetScope, *args, **kwargs):
     if not instance.processed_internally and instance.winner:
-        getcontext().prec = 2
-        instance.processed_internally = True  # To avoid reprocessing the bet scope
+        with transaction.atomic():
+            instance.processed_internally = True  # To avoid reprocessing the bet scope
 
-        bet_winners = list(instance.bet_set.filter(choice=instance.winner))
-        bet_losers = instance.bet_set.exclude(choice=instance.winner)
-        if instance.winner == CHOICE_FIRST:
-            ratio = instance.option_1_rate
-        elif instance.winner == CHOICE_SECOND:
-            ratio = instance.option_2_rate
-        elif instance.winner == CHOICE_THIRD:
-            ratio = instance.option_3_rate
-        else:
-            ratio = instance.option_4_rate
+            bet_winners = list(instance.bet_set.filter(choice=instance.winner))
+            bet_losers = instance.bet_set.exclude(choice=instance.winner)
+            if instance.winner == CHOICE_FIRST:
+                ratio = instance.option_1_rate
+            elif instance.winner == CHOICE_SECOND:
+                ratio = instance.option_2_rate
+            elif instance.winner == CHOICE_THIRD:
+                ratio = instance.option_3_rate
+            else:
+                ratio = instance.option_4_rate
 
-        # Uncomment if auto complete rate
-        # total_winners = sum([x.amount for x in winners])
-        # total_losers = sum([x.amount for x in losers])
-        # if not winners:
-        #     ratio = 0
-        # elif not losers:
-        #     ratio = 1
-        # else:
-        #     ratio = (total_winners + total_losers) / total_winners
+            for winner in bet_winners:
+                win_amount = (winner.amount * ratio) * 0.975
+                refer_amount = (winner.amount * ratio) * 0.005
+                club_amount = (winner.amount * ratio) * 0.02
+                create_deposit(winner.user_id, win_amount, method=METHOD_BET, verified=True,
+                               description=f'User won on bet ##{winner.id}##')
 
-        for winner in bet_winners:
-            win_amount = (winner.amount * ratio) * Decimal(0.975)
-            refer_amount = (winner.amount * ratio) * Decimal(0.005)
-            create_transaction(winner.user, TYPE_DEPOSIT, f'{METHOD_BET_ODD if instance.id & 1 else METHOD_BET_EVEN}',
-                               win_amount, verified=True)
-            winner.status = 'Win %.2f' % win_amount
-            winner.save()
-            if winner.user.referred_by:
-                create_transaction(winner.user.referred_by, TYPE_DEPOSIT, f'{METHOD_BET}_{instance.id}', refer_amount,
-                                   verified=True)
-            if winner.user.user_club:
-                club = Club.objects.get(id=winner.user.user_club_id)
-                club.objects.update(balance=F('balance') + (winner.amount * ratio) * Decimal(0.02))
-        bet_losers.update(status='Loss')
-        instance.save()  # To avoid reprocessing the bet scope
+                winner.status = 'Win %.2f' % win_amount
+                winner.save()
+                if winner.user.referred_by:
+                    create_deposit(winner.user_id, refer_amount, METHOD_BET, verified=True,
+                                   description=f'User won **{refer_amount}** by referring ##{winner.id}##')
+
+                if winner.user.user_club:
+                    create_deposit(winner.user_id, club_amount, METHOD_CLUB, verified=True,
+                                   description=f'Club won **{club_amount}** from user ##{winner.id}##')
+            bet_losers.update(status='Loss')
+            instance.save()  # To avoid reprocessing the bet scope
 
 
 def total_transaction_amount(t_type=None, method=None, date: datetime = None) -> float:
-    all_transaction = Transaction.objects.all()
-    if t_type:
-        all_transaction = all_transaction.filter(type=t_type)
-        print("Filtering t_type", t_type)
+    if t_type == TYPE_WITHDRAW:
+        all_transaction = Withdraw.objects.filter(verified=True)
+    else:
+        all_transaction = Deposit.objects.all()
     if method:
         all_transaction = all_transaction.filter(method=method)
     if date:
@@ -142,17 +160,13 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
 
 
 def unverified_transaction_count(t_type=None, method=None, date: datetime = None) -> int:
-    all_transaction = Transaction.objects.filter(verified=False)
-    if t_type:
-        all_transaction = all_transaction.filter(type=t_type)
-        print("Filtering t_type", t_type)
+    if t_type == TYPE_WITHDRAW:
+        all_transaction = Withdraw.objects.filter(verified=True)
+    else:
+        all_transaction = Deposit.objects.all()
+
     if method:
         all_transaction = all_transaction.filter(method=method)
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return all_transaction.count()
-
-
-def test_form(request):
-    form = WithdrawForm(instance=Transaction.objects.get(id=8))
-    return render(request, 'api/testForm.html', context={'form': form})

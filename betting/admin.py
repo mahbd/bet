@@ -1,87 +1,12 @@
-from django.contrib.admin import TabularInline, StackedInline
-from django.forms import Form, modelform_factory
-from django.utils import timezone
-
-from bet import admin
+from django.contrib.admin import StackedInline
 from django.db.models import F
 from django.shortcuts import render
 from django.urls import path
+from django.utils import timezone
 from django.utils.html import format_html
 
-from .form import WithdrawForm
-from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod, TYPE_WITHDRAW, TYPE_DEPOSIT, \
-    METHOD_TRANSFER
-
-
-@admin.register(Transaction)
-class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['id', 'user', 'type', 'method', 'amount', 'verified']
-    autocomplete_fields = ['user', 'to']
-    list_editable = ['verified']
-    list_per_page = 50
-    list_filter = ['verified', 'type', 'method', 'created_at', 'user']
-    fieldsets = (
-        ('Verification Status', {
-            'fields': ['verified']
-        }),
-        ('Type and Method', {
-            'fields': ['type', 'method']
-        }),
-        ('Sensitive information', {
-            'fields': ['transaction_id', 'amount', 'account', 'superuser_account']
-        }),
-        ('Other information', {
-            'fields': ['user', 'to']
-        })
-    )
-
-    # noinspection PyMethodMayBeStatic
-    def user(self, transaction: Transaction):
-        return transaction.user.username
-
-    def deposit(self, request):
-        request.current_app = self.admin_site.name
-        context = dict(
-            self.admin_site.each_context(request),
-            unverified_deposits=Transaction.objects.filter(verified=False, type=TYPE_DEPOSIT),
-            model_url=self.get_urls()
-        )
-
-        return render(request, 'admin/deposit.html', context)
-
-    def withdraw(self, request):
-        request.current_app = self.admin_site.name
-        if request.method == 'POST':
-            form = WithdrawForm(data=request.POST)
-            form.verified = True
-            if form.is_valid():
-                form.save()
-        context = dict(
-            self.admin_site.each_context(request),
-            unverified_withdraws=[WithdrawForm(instance=w) for w in
-                                  Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW).exclude(
-                                      method=METHOD_TRANSFER)],
-        )
-
-        return render(request, 'admin/withdraw.html', context)
-
-    def transfer(self, request):
-        request.current_app = self.admin_site.name
-        context = dict(
-            self.admin_site.each_context(request),
-            unverified_transfers=Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW, method=METHOD_TRANSFER),
-        )
-
-        return render(request, 'admin/transfer.html', context)
-
-    def get_urls(self):
-        urls = super().get_urls()
-        my_urls = [
-            path('deposit/', self.deposit, name='deposit'),
-            path('withdraw/', self.withdraw, name='withdraw'),
-            path('transfer/', self.transfer, name='transfer'),
-        ]
-        return my_urls + urls
+from bet import admin
+from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer
 
 
 @admin.register(BetScope)
@@ -208,3 +133,23 @@ class BetAdmin(admin.ModelAdmin):
 @admin.register(DepositWithdrawMethod)
 class DepositWithdrawMethodAdmin(admin.ModelAdmin):
     list_display = ['code', 'name']
+
+
+@admin.register(Deposit)
+class DepositAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'method', 'verified')
+    list_filter = ('method', )
+    autocomplete_fields = ('user',)
+
+
+@admin.register(Withdraw)
+class WithdrawAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'method', 'verified')
+    list_filter = ('method',)
+    autocomplete_fields = ('user', )
+
+
+@admin.register(Transfer)
+class TransferAdmin(admin.ModelAdmin):
+    list_display = ('user', 'to', 'amount', )
+    autocomplete_fields = ('user', 'to', )

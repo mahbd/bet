@@ -1,25 +1,14 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from betting.models import Bet, BetScope, Match, Transaction, TYPE_WITHDRAW, club_validator, \
-    user_balance_validator, bet_scope_validator, METHOD_BET, Announcement
+from betting.models import Bet, BetScope, Match, club_validator, \
+    user_balance_validator, bet_scope_validator, METHOD_BET, Announcement, Deposit, Withdraw, Transfer
 from users.backends import jwt_writer
 from users.models import User, Club
 
 
-def bet_or_trans_validator(attrs):
-    sender: User = attrs.get('user')
-    receiver: User = attrs.get('to')
-    t_type = attrs.get('type', TYPE_WITHDRAW)
-    amount = attrs.get('amount')
-    method = attrs.get('method')
-    user_balance_validator(sender, amount, t_type, method)
-    club_validator(sender, t_type, method, receiver)
-    return attrs
-
-
 class RegisterSerializer(serializers.ModelSerializer):
-    is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+    is_club_admin = serializers.SerializerMethodField(read_only=True)
     jwt = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
@@ -72,7 +61,7 @@ class UserListSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    is_club_admin = serializers.SerializerMethodField(default=False, read_only=True)
+    is_club_admin = serializers.SerializerMethodField(read_only=True)
     refer_set = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
@@ -112,7 +101,7 @@ class BetSerializer(serializers.ModelSerializer):
         sender: User = attrs.get('user')
         amount = attrs.get('amount')
         bet_scope_validator(bet_scope)
-        user_balance_validator(sender, amount, TYPE_WITHDRAW, METHOD_BET)
+        user_balance_validator(sender, amount)
         return attrs
 
 
@@ -125,7 +114,7 @@ class MatchSerializer(serializers.ModelSerializer):
 
 
 class BetScopeSerializer(serializers.ModelSerializer):
-    is_locked = serializers.SerializerMethodField(default=False, read_only=True)
+    is_locked = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def get_is_locked(self, bet_scope: BetScope) -> bool:
@@ -138,18 +127,53 @@ class BetScopeSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
-class TransactionSerializer(serializers.ModelSerializer):
+class DepositSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Transaction
-        fields = (
-            'id', 'user', 'type', 'method', 'to', 'amount', 'transaction_id', 'account', 'superuser_account',
-            'verified')
+        model = Deposit
+        fields = '__all__'
+        read_only_fields = ('id', 'user', 'verified')
+        extra_kwargs = {'transaction_id': {'required': True}, 'account': {'required': True},
+                        'superuser_account': {'required': True}}
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        return attrs
+
+
+class WithdrawSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Withdraw
+        fields = '__all__'
+        read_only_fields = ('id', 'user', 'verified')
+        extra_kwargs = {'account': {'required': True}}
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        user = attrs.get('user')
+        amount = attrs.get('amount')
+        method = attrs.get('method')
+        user_balance_validator(user, amount, method)
+        return attrs
+
+
+class TransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transfer
+        fields = '__all__'
         read_only_fields = ('id', 'user', 'verified')
 
     def validate(self, attrs):
         if not self.instance:
             attrs['user'] = self.context['request'].user
-        return bet_or_trans_validator(attrs)
+        user = attrs.get('user')
+        receiver: User = attrs.get('to')
+        amount = attrs.get('amount')
+        method = attrs.get('method')
+        user_balance_validator(user, amount, method)
+        club_validator(user, receiver)
+        return attrs
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
