@@ -5,15 +5,20 @@ from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, BetScope, Match, Transaction, DepositWithdrawMethod
+from betting.models import Bet, BetScope, Match, Transaction, DepositWithdrawMethod, Announcement
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUserOrSuperuser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, TransactionSerializer, \
-    UserListSerializer, BetScopeSerializer, UserSerializer
+    UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer
 
 User: MainUser = get_user_model()
+
+
+class AnnouncementViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Announcement.objects.filter(expired=False)
+    serializer_class = AnnouncementSerializer
 
 
 class BetViewSet(mixins.CreateModelMixin,

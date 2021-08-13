@@ -18,6 +18,7 @@ router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
 router.register('transactions', views.TransactionViewSet, 'transactions')
 router.register('user', views.UserListViewSet, 'user'),
 router.register('user-detail-update', views.UserDetailsUpdateViewSet, 'user_detail_update')
+router.register('announcement', views.AnnouncementViewSet, 'announcement')
 
 app_name = 'api'
 

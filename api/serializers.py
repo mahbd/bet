@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from betting.models import Bet, BetScope, Match, Transaction, TYPE_WITHDRAW, club_validator, \
-    user_balance_validator, bet_scope_validator, METHOD_BET
+    user_balance_validator, bet_scope_validator, METHOD_BET, Announcement
 from users.backends import jwt_writer
 from users.models import User, Club
 
@@ -150,3 +150,9 @@ class TransactionSerializer(serializers.ModelSerializer):
         if not self.instance:
             attrs['user'] = self.context['request'].user
         return bet_or_trans_validator(attrs)
+
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
+        fields = '__all__'

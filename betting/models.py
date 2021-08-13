@@ -226,3 +226,8 @@ class Bet(models.Model):
     class Meta:
         ordering = ['bet_scope', '-created_at']
 
+
+class Announcement(models.Model):
+    text = models.TextField()
+    expired = models.BooleanField()
+    created_at = models.DateTimeField(default=timezone.now)
