@@ -1,40 +1,39 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
     <h1>Work in progress</h1>
-    {% for withdraw in unverified_withdraws %}
-        <form action="{% url 'admin:betting_transaction_change' withdraw.id %}" method="post">
+    {% for form in unverified_withdraws %}
+        <form method="post">
             {% csrf_token %}
-            <label>Username
-                <input type="text" value="{{ withdraw.user.username }}" class="form-control" disabled>
-            </label>
-            <label>Full Name
-                <input type="text" class="form-control" value="{{ withdraw.user.full_name|default:"Not provided" }}"
-                       disabled>
-            </label>
-            <label for="id_verified"><input type="checkbox" name="verified" id="id_verified" checked hidden></label>
-            <br>
-            <label for="id_transaction_id">Transaction id:</label>
-            <input value={{ withdraw.transaction_id }} type="text" name="transaction_id" class="form-control"
-                   maxlength="255" id="id_transaction_id">
-
-            <label class="required label" for="id_amount">Amount:</label>
-            <input type="number" name="amount" value={{ withdraw.amount }} step="0.01" required="" id="id_amount"
-                   class="form-control">
-
-            <label for="id_account">Account:</label>
-            <input value="{{ withdraw.account|default:"Not provided" }}" type="text" name="account" class="form-control"
-                   maxlength="255"
-                   id="id_account" disabled>
-
-            <label for="id_superuser_account">Superuser account:</label>
-            <input value="{{ withdraw.superuser_account|default:"" }}" type="text" name="superuser_account"
-                   class="form-control"
-                   maxlength="255" id="id_superuser_account">
+            {#            <label>Username#}
+            {#                <input type="text" value="{{ withdraw.user.username }}" class="form-control" disabled>#}
+            {#            </label>#}
+            {#            <label>Full Name#}
+            {#                <input type="text" class="form-control" value="{{ withdraw.user.full_name|default:"Not provided" }}"#}
+            {#                       disabled>#}
+            {#            </label>#}
+            {#            <label for="id_verified"><input type="checkbox" name="verified" id="id_verified" checked hidden></label>#}
+            {#            <br>#}
+            {#            <label for="id_transaction_id">Transaction id:</label>#}
+            {#            <input value={{ withdraw.transaction_id }} type="text" name="transaction_id" class="form-control"#}
+            {#                   maxlength="255" id="id_transaction_id">#}
+            {##}
+            {#            <label class="required label" for="id_amount">Amount:</label>#}
+            {#            <input type="number" name="amount" value={{ withdraw.amount }} step="0.01" required="" id="id_amount"#}
+            {#                   class="form-control">#}
+            {##}
+            {#            <label for="id_account">Account:</label>#}
+            {#            <input value="{{ withdraw.account|default:"Not provided" }}" type="text" name="account" class="form-control"#}
+            {#                   maxlength="255"#}
+            {#                   id="id_account" disabled>#}
+            {##}
+            {#            <label for="id_superuser_account">Superuser account:</label>#}
+            {#            <input value="{{ withdraw.superuser_account|default:"" }}" type="text" name="superuser_account"#}
+            {#                   class="form-control"#}
+            {#                   maxlength="255" id="id_superuser_account">#}
+            {{ form.as_p }}
             <input type="submit" value="Verify" class="btn btn-success" name="_save">
-
-
-            <a href="{% url 'admin:betting_transaction_delete' withdraw.id %}"
-               class="btn btn-danger float-end text-white">Cancel</a>
+                        <a href="{% url 'admin:betting_transaction_delete' form.instance.id %}"
+                           class="btn btn-danger float-end text-white">Cancel</a>
 
         </form>
     {% empty %}

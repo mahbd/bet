@@ -1,9 +1,14 @@
+from django.contrib.admin import TabularInline, StackedInline
+from django.forms import Form, modelform_factory
+from django.utils import timezone
+
 from bet import admin
 from django.db.models import F
 from django.shortcuts import render
 from django.urls import path
 from django.utils.html import format_html
 
+from .form import WithdrawForm
 from .models import Transaction, Bet, BetScope, Match, DepositWithdrawMethod, TYPE_WITHDRAW, TYPE_DEPOSIT, \
     METHOD_TRANSFER
 
@@ -46,10 +51,16 @@ class TransactionAdmin(admin.ModelAdmin):
 
     def withdraw(self, request):
         request.current_app = self.admin_site.name
+        if request.method == 'POST':
+            form = WithdrawForm(data=request.POST)
+            form.verified = True
+            if form.is_valid():
+                form.save()
         context = dict(
             self.admin_site.each_context(request),
-            unverified_withdraws=Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW).exclude(
-                method=METHOD_TRANSFER),
+            unverified_withdraws=[WithdrawForm(instance=w) for w in
+                                  Transaction.objects.filter(verified=False, type=TYPE_WITHDRAW).exclude(
+                                      method=METHOD_TRANSFER)],
         )
 
         return render(request, 'admin/withdraw.html', context)
@@ -71,26 +82,6 @@ class TransactionAdmin(admin.ModelAdmin):
             path('transfer/', self.transfer, name='transfer'),
         ]
         return my_urls + urls
-
-
-@admin.register(Match)
-class MatchAdmin(admin.ModelAdmin):
-    search_fields = ['game_name', 'title', 'start_time']
-    list_display = ['game_name', 'title', 'start_time', 'end_time', 'bet_scopes']
-    list_filter = ['game_name', 'start_time', 'end_time']
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ['game_name', 'title']
-        }),
-        ('Date Time information', {
-            'fields': ['start_time', 'end_time']
-        })
-    )
-
-    # noinspection PyMethodMayBeStatic
-    def bet_scopes(self, match: Match):
-        return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">{} scope(s)</a>', match.id,
-                           match.betscope_set.count())
 
 
 @admin.register(BetScope)
@@ -144,6 +135,56 @@ class BetScopeAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         my_urls = [
             path('bet_option/', self.bet_option, name='bet_option'),
+        ]
+        return my_urls + urls
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        form.base_fields['match'].initial = request.GET.get('match_id')
+        return form
+
+
+class BetScopeInline(StackedInline):
+    model = BetScope
+    extra = 0
+
+
+@admin.register(Match)
+class MatchAdmin(admin.ModelAdmin):
+    search_fields = ['game_name', 'title', 'start_time']
+    list_display = ['game_name', 'title', 'start_time', 'end_time', 'bet_scopes', 'add']
+    list_filter = ['game_name', 'start_time', 'end_time']
+    inlines = [BetScopeInline]
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ['game_name', 'title']
+        }),
+        ('Date Time information', {
+            'fields': ['start_time', 'end_time']
+        })
+    )
+
+    # noinspection PyMethodMayBeStatic
+    def bet_scopes(self, match: Match):
+        return format_html('<a href="/admin/betting/betscope/?match__id__exact={}">{} scope(s)</a>', match.id,
+                           match.betscope_set.count())
+
+    def match(self, request):
+        request.current_app = self.admin_site.name
+        context = dict(
+            self.admin_site.each_context(request),
+            match_list=Match.objects.filter(end_time__gte=timezone.now())
+        )
+
+        return render(request, 'admin/match.html', context)
+
+    def add(self, match):
+        return format_html('<a href="/admin/betting/betscope/add/?match_id={}">add</a>', match.id)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('match/', self.match, name='match'),
         ]
         return my_urls + urls
 

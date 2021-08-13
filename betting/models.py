@@ -225,3 +225,4 @@ class Bet(models.Model):
 
     class Meta:
         ordering = ['bet_scope', '-created_at']
+

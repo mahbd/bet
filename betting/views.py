@@ -4,8 +4,10 @@ from decimal import Decimal, getcontext
 from django.db.models import F, Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.shortcuts import render
 
 from users.models import User, Club
+from .form import WithdrawForm
 from .models import Transaction, TYPE_WITHDRAW, METHOD_TRANSFER, TYPE_DEPOSIT, Bet, METHOD_BET, CHOICE_FIRST, \
     CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_BET_ODD, METHOD_BET_EVEN, METHOD_CLUB
 
@@ -149,3 +151,8 @@ def unverified_transaction_count(t_type=None, method=None, date: datetime = None
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return all_transaction.count()
+
+
+def test_form(request):
+    form = WithdrawForm(instance=Transaction.objects.get(id=8))
+    return render(request, 'api/testForm.html', context={'form': form})
