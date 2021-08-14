@@ -127,8 +127,8 @@ class BetScopeAdmin(admin.ModelAdmin):
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
-    search_fields = ['game_name', 'title', 'start_time']
     list_display = ['game_name', 'title', 'start_time', 'live', 'bet_scopes', 'add']
+    search_fields = ['game_name', 'title', 'start_time']
     list_filter = ['game_name', 'start_time', 'end_time']
     fieldsets = (
         ('Basic Information', {
@@ -171,6 +171,9 @@ class MatchAdmin(admin.ModelAdmin):
             path('match/', self.match, name='match'),
         ]
         return my_urls + urls
+
+    def get_queryset(self, request):
+        return Match.objects.prefetch_related('betscope_set').all()
 
 
 @admin.register(Bet)
@@ -216,6 +219,9 @@ class DepositAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
+    def get_queryset(self, request):
+        return Deposit.objects.select_related('user').all()
+
 
 @admin.register(Withdraw)
 class WithdrawAdmin(admin.ModelAdmin):
@@ -239,6 +245,9 @@ class WithdrawAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
+    def get_queryset(self, request):
+        return Withdraw.objects.select_related('user').all()
+
 
 @admin.register(Transfer)
 class TransferAdmin(admin.ModelAdmin):
@@ -260,6 +269,9 @@ class TransferAdmin(admin.ModelAdmin):
             path('transfer/', self.transfer, name='transfer'),
         ]
         return my_urls + urls
+
+    def get_queryset(self, request):
+        return Transfer.objects.select_related('user', 'to').all()
 
 
 @admin.register(Announcement)

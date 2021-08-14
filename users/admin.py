@@ -23,6 +23,9 @@ class ClubAdmin(admin.ModelAdmin):
             return "None"
         return format_html('<a href=/admin/users/user/{}/change/>{}</a>', club.admin_id, club.admin.username)
 
+    def get_queryset(self, request):
+        return Club.objects.prefetch_related('user_set').select_related('admin').all()
+
 
 # noinspection PyMethodMayBeStatic
 @admin.register(User)

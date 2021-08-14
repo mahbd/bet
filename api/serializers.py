@@ -78,6 +78,7 @@ class UserSerializer(serializers.ModelSerializer):
                   'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'refer_set')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
         extra_kwargs = {'user_club': {'required': True}}
+        depth = 1
 
 
 class ClubSerializer(serializers.ModelSerializer):
