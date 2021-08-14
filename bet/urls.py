@@ -1,3 +1,5 @@
+import debug_toolbar
+
 from . import admin
 from django.urls import path, include
 
@@ -10,5 +12,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),
-    path('users/', include('users.urls'))
+    path('users/', include('users.urls')),
+    path('__debug__/', include(debug_toolbar.urls))
 ]

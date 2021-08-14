@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from bet import admin
 from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer, Announcement, \
     CHOICE_FIRST, CHOICE_SECOND, CHOICE_THIRD, CHOICE_FOURTH
+from .views import active_bet_scopes
 
 
 @admin.register(BetScope)
@@ -57,6 +58,7 @@ class BetScopeAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
+            live_bet_scope_list=active_bet_scopes(),
         )
 
         return render(request, 'admin/bet_option.html', context)

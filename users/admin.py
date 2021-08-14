@@ -45,6 +45,9 @@ class UserAdmin(admin.ModelAdmin):
         })
     )
 
+    def get_queryset(self, request):
+        return User.objects.select_related('club', 'user_club').all()
+
     @admin.display(boolean=True)
     def club_admin(self, user: User):
         return bool(user.club)

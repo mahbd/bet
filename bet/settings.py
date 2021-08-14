@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'corsheaders',
+    'debug_toolbar',
     # Apps
     'users',
     'betting',
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Corsheaders Middleware
@@ -183,3 +185,7 @@ SWAGGER_SETTINGS = {
         }
     }
 }
+
+INTERNAL_IPS = [
+    '127.0.0.1',
+]

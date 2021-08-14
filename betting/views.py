@@ -179,6 +179,11 @@ def active_matches():
     return Match.objects.filter(locked=False, end_time__gte=timezone.now())
 
 
+def active_bet_scopes():
+    return BetScope.objects.filter(locked=False, match__locked=False, match__end_time__gte=timezone.now(),
+                                   winner__isnull=True).exclude(end_time__lte=timezone.now())
+
+
 def test_post(request):
     if request.method == 'POST':
         print(request.POST)
