@@ -208,15 +208,15 @@ def get_file(request):
 
 
 def sum_aggregate(queryset: QuerySet, field='amount'):
-    return queryset.aggregate(Sum(field))[f'{field}__sum']
+    return queryset.aggregate(Sum(field))[f'{field}__sum'] or 0
 
 
 def generate_admin_dashboard_data():
     bet_or_club_q = Q(method=METHOD_BET) | Q(method=METHOD_CLUB)
     bet_or_club_or_transfer_q = bet_or_club_q | Q(method=METHOD_TRANSFER)
     bet_or_transfer = Q(method=METHOD_BET) | Q(method=METHOD_TRANSFER)
-    total_bet_deposit = Deposit.objects.filter(bet_or_club_q).aggregate(Sum('amount'))['amount__sum']
-    total_bet_withdraw = Withdraw.objects.filter(method=METHOD_BET).aggregate(Sum('amount'))['amount__sum']
+    total_bet_deposit = sum_aggregate(Deposit.objects.filter(bet_or_club_q))
+    total_bet_withdraw = sum_aggregate(Withdraw.objects.filter(method=METHOD_BET))
     total_revenue = total_bet_withdraw - total_bet_deposit
 
     q = Deposit.objects.filter(bet_or_club_q, created_at__gte=timezone.now() - timedelta(days=30))
