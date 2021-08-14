@@ -38,6 +38,7 @@ class BetScopeAdmin(admin.ModelAdmin):
             match_title=F('match__title')
         )
 
+    # noinspection PyMethodMayBeStatic
     def match_link(self, bet_scope):
         return format_html('<a href=/admin/betting/match/{}/change/>{}</a>', bet_scope.match_id, bet_scope.match_title)
 

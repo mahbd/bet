@@ -3,7 +3,7 @@ from django.shortcuts import render
 from django.urls import path
 
 from betting.models import TYPE_DEPOSIT, TYPE_WITHDRAW, METHOD_TRANSFER
-from betting.views import total_transaction_amount, unverified_transaction_count
+from betting.views import total_transaction_amount, unverified_transaction_count, active_matches
 from users.views import total_user_balance, total_club_balance
 
 
@@ -18,6 +18,7 @@ class AdminSite(MainAdminSite):
         contexts['unverified_deposit'] = unverified_transaction_count(t_type=TYPE_DEPOSIT)
         contexts['unverified_withdraw'] = unverified_transaction_count(t_type=TYPE_WITHDRAW)
         contexts['unverified_transfer'] = unverified_transaction_count(t_type=TYPE_WITHDRAW, method=METHOD_TRANSFER)
+        contexts['active_matches'] = active_matches().count()
         return contexts
 
     def home(self, request):

@@ -4,10 +4,11 @@ from django.db import transaction
 from django.db.models import Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.utils import timezone
 
 from users.models import User
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, METHOD_BET, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match
 
 
 def create_deposit(user_id: User, amount, method=None, description=None, verified=False):
@@ -169,3 +170,7 @@ def unverified_transaction_count(t_type=None, method=None, date: datetime = None
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return all_transaction.count()
+
+
+def active_matches():
+    return Match.objects.filter(locked=False, end_time__gte=timezone.now())
