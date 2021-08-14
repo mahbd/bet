@@ -61,6 +61,7 @@ class UserListSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    referred_by = serializers.SerializerMethodField(read_only=True)
     is_club_admin = serializers.SerializerMethodField(read_only=True)
     refer_set = serializers.SerializerMethodField(read_only=True)
 
@@ -70,14 +71,17 @@ class UserSerializer(serializers.ModelSerializer):
 
     # noinspection PyMethodMayBeStatic
     def get_refer_set(self, user: User):
-        return [user.id for user in user.refer_set.all()]
+        return UserListSerializer(user.refer_set.all(), many=True).data
+
+    # noinspection PyMethodMayBeStatic
+    def get_referred_by(self, user: User) -> dict:
+        return UserListSerializer(user.referred_by).data
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'phone', 'balance', 'first_name', 'last_name', 'user_club',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'refer_set')
-        read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'referred_by')
-        extra_kwargs = {'user_club': {'required': True}}
+        exclude = ('groups', 'user_permissions')
+        read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'is_staff', 'referred_by')
+        extra_kwargs = {'user_club': {'required': True}, 'password': {'write_only': True}}
         depth = 1
 
     def update(self, instance, validated_data):

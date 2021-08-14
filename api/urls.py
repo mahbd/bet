@@ -15,7 +15,6 @@ router.register('bet', views.BetViewSet, 'bet')
 router.register('match', views.MatchViewSet, 'match')
 router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
 router.register('user', views.UserListViewSet, 'user'),
-router.register('user-detail-update', views.UserDetailsUpdateViewSet, 'user_detail_update')
 router.register('announcement', views.AnnouncementViewSet, 'announcement')
 router.register('deposit', views.DepositViewSet, 'deposit')
 router.register('withdraw', views.WithdrawViewSet, 'withdraw')
@@ -44,4 +43,5 @@ urlpatterns = [
     path('all_transactions/', views.AllTransaction.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', views.Login.as_view(), name='api_login'),
+    path('user-detail-update/', views.UserDetailsUpdateRetrieveDestroy.as_view())
 ]

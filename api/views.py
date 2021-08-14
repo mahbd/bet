@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from rest_framework import viewsets, permissions, views, mixins
+from rest_framework import viewsets, permissions, views, mixins, generics
 from rest_framework.decorators import action, api_view
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
@@ -339,8 +339,7 @@ class TransferViewSet(mixins.CreateModelMixin,
     permission_classes = [TransactionPermissionClass]
 
 
-class UserListViewSet(mixins.ListModelMixin,
-                      viewsets.GenericViewSet):
+class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     """
     list:
     Return list of users.
@@ -349,10 +348,7 @@ class UserListViewSet(mixins.ListModelMixin,
     serializer_class = UserListSerializer
 
 
-class UserDetailsUpdateViewSet(mixins.RetrieveModelMixin,
-                               mixins.UpdateModelMixin,
-                               mixins.DestroyModelMixin,
-                               viewsets.GenericViewSet):
+class UserDetailsUpdateRetrieveDestroy(generics.RetrieveUpdateDestroyAPIView):
     """
     retrieve:
     Return user of that id or username. Example: \n
@@ -365,9 +361,4 @@ class UserDetailsUpdateViewSet(mixins.RetrieveModelMixin,
     permission_classes = [IsUserOrSuperuser]
 
     def get_object(self):
-        primary_key = self.kwargs[self.lookup_field]
-        try:
-            primary_key = int(primary_key)
-            return get_object_or_404(self.queryset, pk=primary_key)
-        except ValueError:
-            return get_object_or_404(self.queryset, username=primary_key)
+        return self.request.user
