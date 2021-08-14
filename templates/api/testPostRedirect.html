@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="{% url 'betting:post_test' %}" method="post" id="myForm">
+    {% csrf_token %}
+    <label>Name: <input name="name" type="text" value="Mahmudul Alam"></label>
+</form>
+</body>
+<script>
+    window.onload  = () => {
+        document.getElementById("myForm").submit();
+    }
+</script>
+</html>

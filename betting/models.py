@@ -121,7 +121,7 @@ class Match(models.Model):
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
 
     def is_live(self):
-        return not self.locked and self.start_time >= timezone.now() >= self.end_time
+        return not self.locked and self.start_time <= timezone.now() <= self.end_time
 
     def is_locked(self):
         return self.locked or self.end_time < timezone.now()

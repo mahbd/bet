@@ -4,6 +4,8 @@ from django.db import transaction
 from django.db.models import Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from django.http import HttpResponse
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 
 from users.models import User
@@ -174,3 +176,24 @@ def unverified_transaction_count(t_type=None, method=None, date: datetime = None
 
 def active_matches():
     return Match.objects.filter(locked=False, end_time__gte=timezone.now())
+
+
+def test_post(request):
+    if request.method == 'POST':
+        print(request.POST)
+        return HttpResponse("Successfully made post request.")
+    else:
+        return HttpResponse("Failed to made post request.")
+
+
+def get_file(request):
+    return render(request, 'api/testPostRedirect.html')
+
+
+def lock_bet_scope(request, bet_scope_id, rm=False):
+    bet_scope = get_object_or_404(BetScope, pk=bet_scope_id)
+    bet_scope.locked = True
+    bet_scope.save()
+    if rm:
+        return redirect('admin:match')
+    return redirect('admin:bet_option')

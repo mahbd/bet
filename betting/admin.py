@@ -29,6 +29,7 @@ class BetScopeAdmin(admin.ModelAdmin):
                        'option_3', 'option_3_rate', 'option_4', 'option_4_rate']
         }),
         ('Date Time information', {
+            'classes': ('collapse',),
             'fields': ['start_time', 'end_time']
         })
     )
@@ -71,25 +72,27 @@ class BetScopeAdmin(admin.ModelAdmin):
         return form
 
 
-class BetScopeInline(StackedInline):
-    model = BetScope
-    extra = 0
-
-
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
     search_fields = ['game_name', 'title', 'start_time']
-    list_display = ['game_name', 'title', 'start_time', 'end_time', 'bet_scopes', 'add']
+    list_display = ['game_name', 'title', 'start_time', 'live', 'bet_scopes', 'add']
     list_filter = ['game_name', 'start_time', 'end_time']
-    inlines = [BetScopeInline]
     fieldsets = (
         ('Basic Information', {
             'fields': ['game_name', 'title']
         }),
         ('Date Time information', {
             'fields': ['start_time', 'end_time']
+        }),
+        ('Extra Info', {
+            'classes': ('collapse',),
+            'fields': ('locked',)
         })
     )
+
+    @admin.display(boolean=True)
+    def live(self, match: Match) -> bool:
+        return not match.is_locked()
 
     # noinspection PyMethodMayBeStatic
     def bet_scopes(self, match: Match):
