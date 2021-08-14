@@ -1,10 +1,11 @@
 from datetime import datetime
 
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Sum
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 
@@ -187,13 +188,7 @@ def test_post(request):
 
 
 def get_file(request):
-    return render(request, 'api/testPostRedirect.html')
-
-
-def lock_bet_scope(request, bet_scope_id, rm=False):
-    bet_scope = get_object_or_404(BetScope, pk=bet_scope_id)
-    bet_scope.locked = True
-    bet_scope.save()
-    if rm:
-        return redirect('admin:match')
-    return redirect('admin:bet_option')
+    link = request.META['HTTP_HOST']
+    for key, value in request.META.items():
+        print(value)
+    return HttpResponse(link)

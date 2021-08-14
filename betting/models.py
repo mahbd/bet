@@ -35,7 +35,7 @@ DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_BET_ODD, 'Odd bet id'),
     (METHOD_BET_EVEN, 'Even bet id'),
     (METHOD_TRANSFER, 'Transfer'),
-    (METHOD_CLUB, 'Club withdraw'),
+    (METHOD_CLUB, 'Club W/D'),
 )
 CHOICE_FIRST = 'option_1'
 CHOICE_SECOND = 'option_2'
@@ -138,19 +138,19 @@ class BetScope(models.Model):
     question = models.CharField(max_length=1023, help_text="Question of bet")
 
     option_1 = models.CharField(max_length=255)
-    option_1_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                        validators=[MinValueValidator(0)])
+    option_1_rate = models.FloatField(default=1,
+                                      validators=[MinValueValidator(1)])
     option_2 = models.CharField(max_length=255)
-    option_2_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                        validators=[MinValueValidator(0)])
+    option_2_rate = models.FloatField(default=1,
+                                      validators=[MinValueValidator(1)])
     option_3 = models.CharField(max_length=255, blank=True, null=True)
-    option_3_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                        validators=[MinValueValidator(0)],
-                                        blank=True, null=True)
+    option_3_rate = models.FloatField(default=1,
+                                      validators=[MinValueValidator(1)],
+                                      blank=True, null=True)
     option_4 = models.CharField(max_length=255, blank=True, null=True)
-    option_4_rate = models.DecimalField(max_digits=15, decimal_places=2, default=0,
-                                        validators=[MinValueValidator(0)],
-                                        blank=True, null=True)
+    option_4_rate = models.FloatField(default=1,
+                                      validators=[MinValueValidator(1)],
+                                      blank=True, null=True)
     winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True,
                               help_text="Which option is the winner. Be careful. As soon as you select winner,"
                                         " bet winner receive money. This can not be reverted")
