@@ -123,6 +123,9 @@ class Match(models.Model):
     def is_live(self):
         return not self.locked and self.start_time >= timezone.now() >= self.end_time
 
+    def is_locked(self):
+        return self.locked or self.end_time < timezone.now()
+
     def __str__(self):
         return f'{self.title} {self.start_time.strftime("%d %b %y")}'
 

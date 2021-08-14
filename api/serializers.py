@@ -107,15 +107,20 @@ class BetSerializer(serializers.ModelSerializer):
 
 class MatchSerializer(serializers.ModelSerializer):
     is_live = serializers.SerializerMethodField(read_only=True)
+    is_locked = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
-    def get_is_live(self, match: Match):
+    def get_is_live(self, match: Match) -> bool:
         return match.is_live()
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_locked(self, match: Match) -> bool:
+        return match.is_locked()
 
     class Meta:
         model = Match
         fields = (
-            'id', 'game_name', 'title', 'locked', 'is_live', 'start_time', 'end_time')
+            'id', 'game_name', 'title', 'is_locked', 'is_live', 'start_time', 'end_time')
         read_only_fields = ('id',)
 
 
