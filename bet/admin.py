@@ -3,9 +3,8 @@ from django.shortcuts import render
 from django.urls import path
 
 from betting.models import TYPE_DEPOSIT, TYPE_WITHDRAW, METHOD_TRANSFER
-from betting.views import total_transaction_amount, unverified_transaction_count, active_matches, \
-    active_bet_scopes_count
-from users.views import total_user_balance, total_club_balance
+from betting.views import unverified_transaction_count, active_matches, \
+    active_bet_scopes_count, generate_admin_dashboard_data
 
 
 class ModelAdmin(MainModelAdmin):
@@ -27,10 +26,7 @@ class AdminSite(MainAdminSite):
         request.current_app = self.name
         context = dict(
             self.each_context(request),
-            total_deposit=total_transaction_amount(t_type=TYPE_DEPOSIT),
-            total_withdraw=total_transaction_amount(t_type=TYPE_WITHDRAW),
-            total_user_balance=total_user_balance(),
-            total_club_balance=total_club_balance(),
+            data=generate_admin_dashboard_data(),
         )
 
         return render(request, 'admin/home.html', context)

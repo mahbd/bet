@@ -7,19 +7,19 @@
         </caption>
         <tr>
             <td>Total Deposit</td>
-            <td>{{ total_deposit }}</td>
+            <td>{{ data.total_deposit }}</td>
         </tr>
         <tr>
             <td>Total Withdraw</td>
-            <td>{{ total_withdraw }}</td>
+            <td>{{ data.total_withdraw }}</td>
         </tr>
         <tr>
             <td>Total user balance</td>
-            <td>{{ total_user_balance }}</td>
+            <td>{{ data.total_user_balance }}</td>
         </tr>
         <tr>
             <td>Total club balance</td>
-            <td>{{ total_club_balance }}</td>
+            <td>{{ data.total_club_balance }}</td>
         </tr>
     </table>
 
@@ -29,61 +29,55 @@
         </caption>
         <tr>
             <td>Total Revenue(approx.)</td>
-            <td>{{ 10 }}10</td>
+            <td>{{ data.total_revenue }}</td>
         </tr>
         <tr>
             <td>Last month Revenue(approx.)</td>
-            <td>{{ 20 }}20.0000000000</td>
-        </tr>
-        <tr>
-            <td>Last week Revenue(approx.)</td>
-            <td>{{ 40 }}40</td>
+            <td>{{ data.last_month_revenue }}</td>
         </tr>
     </table>
 
     <table class="table table-bordered table-striped table-light">
         <caption>
-            <p class="h5">Counting</p>
+            <p class="h5">Betting</p>
         </caption>
         <tr>
-            <td>Total bet count</td>
-            <td>100</td>
+            <td>Total betting</td>
+            <td>{{ data.total_bet_withdraw }}</td>
         </tr>
         <tr>
-            <td>This month bet count</td>
-            <td>120</td>
+            <td>This month betting</td>
+            <td>{{ data.month_bet_withdraw }}</td>
         </tr>
         <tr>
-            <td>This week bet count</td>
-            <td>400</td>
+            <td>Total bet win</td>
+            <td>{{ data.total_bet_deposit }}</td>
         </tr>
         <tr>
-            <td>Total bet amount</td>
-            <td>45454554</td>
+            <td>This month bet win</td>
+            <td>{{ data.month_bet_deposit }}</td>
         </tr>
-        <tr>
-            <td>This week bet amount</td>
-            <td>454545</td>
-        </tr>
-        <tr>
-            <td>This month bet amount</td>
-            <td>454545</td>
-        </tr>
+    </table>
+
+    <table class="table table-bordered table-striped table-light">
+        <caption>
+            <p class="h5">Transaction</p>
+        </caption>
         <tr>
             <td>Total deposit</td>
-            <td>48784</td>
+            <td>{{ data.total_deposit }}</td>
         </tr>
         <tr>
-            <td>This month deposit count</td>
-            <td>45454</td>
+            <td>This month deposit</td>
+            <td>{{ data.last_month_deposit }}</td>
         </tr>
         <tr>
-            <td>This week deposit count</td>
-            <td>445</td>
+            <td>Total withdraw</td>
+            <td>{{ data.total_withdraw }}</td>
         </tr>
         <tr>
-            <td>Total withdraw count</td>
-            <td>4545</td>
+            <td>This month withdraw</td>
+            <td>{{ data.last_month_withdraw }}</td>
         </tr>
     </table>
 {% endblock %}

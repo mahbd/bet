@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Sum, Q, QuerySet
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.http import HttpResponse, Http404
@@ -10,8 +10,9 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 
 from users.models import User
+from users.views import total_user_balance, total_club_balance
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, METHOD_BET, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, TYPE_DEPOSIT
 
 
 def create_deposit(user_id: User, amount, method=None, description=None, verified=False):
@@ -158,6 +159,8 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
         all_transaction = Withdraw.objects.filter(verified=True)
     else:
         all_transaction = Deposit.objects.filter(verified=True)
+    if method and method != METHOD_TRANSFER:
+        all_transaction.filter(method=method)
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return float(all_transaction.aggregate(Sum('amount'))['amount__sum'])
@@ -202,3 +205,46 @@ def get_file(request):
     for key, value in request.META.items():
         print(value)
     return HttpResponse(link)
+
+
+def sum_aggregate(queryset: QuerySet, field='amount'):
+    return queryset.aggregate(Sum(field))[f'{field}__sum']
+
+
+def generate_admin_dashboard_data():
+    bet_or_club_q = Q(method=METHOD_BET) | Q(method=METHOD_CLUB)
+    bet_or_club_or_transfer_q = bet_or_club_q | Q(method=METHOD_TRANSFER)
+    bet_or_transfer = Q(method=METHOD_BET) | Q(method=METHOD_TRANSFER)
+    total_bet_deposit = Deposit.objects.filter(bet_or_club_q).aggregate(Sum('amount'))['amount__sum']
+    total_bet_withdraw = Withdraw.objects.filter(method=METHOD_BET).aggregate(Sum('amount'))['amount__sum']
+    total_revenue = total_bet_withdraw - total_bet_deposit
+
+    q = Deposit.objects.filter(bet_or_club_q, created_at__gte=timezone.now() - timedelta(days=30))
+    month_bet_deposit = sum_aggregate(q)
+    q = Withdraw.objects.filter(method=METHOD_BET, created_at__gte=timezone.now() - timedelta(days=30))
+    month_bet_withdraw = sum_aggregate(q)
+    last_month_revenue = month_bet_withdraw - month_bet_deposit
+
+    total_deposit = sum_aggregate(Deposit.objects.exclude(bet_or_club_or_transfer_q))
+    q = Deposit.objects.exclude(bet_or_club_or_transfer_q).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    last_month_deposit = sum_aggregate(q)
+
+    total_withdraw = sum_aggregate(Withdraw.objects.exclude(bet_or_transfer))
+    q = Withdraw.objects.exclude(bet_or_transfer).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    last_month_withdraw = sum_aggregate(q)
+
+    data = {
+        'total_user_balance': total_user_balance(),
+        'total_club_balance': total_club_balance(),
+        'total_bet_deposit': total_bet_deposit,
+        'total_bet_withdraw': total_bet_withdraw,
+        'total_revenue': total_revenue,
+        'month_bet_deposit': month_bet_deposit,
+        'month_bet_withdraw': month_bet_withdraw,
+        'last_month_revenue': last_month_revenue,
+        'total_deposit': total_deposit,
+        'last_month_deposit': last_month_deposit,
+        'total_withdraw': total_withdraw,
+        'last_month_withdraw': last_month_withdraw
+    }
+    return data
