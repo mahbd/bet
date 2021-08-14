@@ -80,6 +80,13 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'user_club': {'required': True}}
         depth = 1
 
+    def update(self, instance, validated_data):
+        user = super().update(instance, validated_data)
+        if validated_data.get('password'):
+            user.set_password(validated_data.get('password'))
+            user.save()
+        return user
+
 
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:

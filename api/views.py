@@ -74,10 +74,10 @@ class BetScopeViewSet(viewsets.ModelViewSet):
         match_id = self.request.GET.get('match_id')
         game_name = self.request.GET.get('game_name')
         if match_id:
-            return BetScope.objects.filter(match_id=match_id)
+            return BetScope.objects.select_related('match').filter(match_id=match_id)
         if game_name:
-            return BetScope.objects.filter(match__game_name=game_name)
-        return BetScope.objects.all()
+            return BetScope.objects.select_related('match').filter(match__game_name=game_name)
+        return BetScope.objects.select_related('match').all()
 
     serializer_class = BetScopeSerializer
     permission_classes = [MatchPermissionClass]
@@ -279,7 +279,7 @@ class UserListViewSet(mixins.ListModelMixin,
     list:
     Return list of users.
     """
-    queryset = User.objects.all()
+    queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
     serializer_class = UserListSerializer
 
 

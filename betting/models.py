@@ -127,7 +127,7 @@ class Match(models.Model):
         return self.locked or self.end_time < timezone.now()
 
     def __str__(self):
-        return f'{self.title} {self.start_time.strftime("%d %b %y")}'
+        return f'{self.title}'
 
     class Meta:
         ordering = ['-end_time', '-start_time', 'game_name']
@@ -161,11 +161,10 @@ class BetScope(models.Model):
 
     def is_locked(self):
         return bool(
-            self.locked or self.match.locked or self.winner or (
-                    self.end_time and self.end_time <= timezone.now()) or self.match.end_time <= timezone.now())
+            self.locked or self.match.is_locked() or self.winner or (self.end_time and self.end_time <= timezone.now()))
 
     def __str__(self):
-        return f'{self.match.title} {self.question} {not self.is_locked()}'
+        return f'{self.question}'
 
     class Meta:
         verbose_name_plural = 'Bet Options'

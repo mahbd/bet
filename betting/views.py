@@ -184,6 +184,11 @@ def active_bet_scopes():
                                    winner__isnull=True).exclude(end_time__lte=timezone.now())
 
 
+def active_bet_scopes_count() -> int:
+    return BetScope.objects.filter(locked=False, match__locked=False, match__end_time__gte=timezone.now(),
+                                   winner__isnull=True).exclude(end_time__lte=timezone.now()).count()
+
+
 def test_post(request):
     if request.method == 'POST':
         print(request.POST)

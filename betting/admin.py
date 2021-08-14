@@ -38,7 +38,7 @@ class BetScopeAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return super().get_queryset(request).annotate(
+        return BetScope.objects.select_related('match').all().annotate(
             match_title=F('match__title')
         )
 
@@ -58,7 +58,7 @@ class BetScopeAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            live_bet_scope_list=active_bet_scopes(),
+            live_bet_scope_list=active_bet_scopes().select_related('match'),
         )
 
         return render(request, 'admin/bet_option.html', context)
@@ -189,7 +189,10 @@ class BetAdmin(admin.ModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def bet_scope_link(self, bet: Bet):
-        return format_html('<a href=/admin/betting/betscope/{}/change/>{}</a>', bet.bet_scope_id, bet.bet_scope)
+        return format_html('<a href=/admin/betting/betscope/{}/change/>{}</a>', bet.bet_scope.id, bet.bet_scope)
+
+    def get_queryset(self, request):
+        return Bet.objects.select_related('user', 'bet_scope').all()
 
 
 @admin.register(DepositWithdrawMethod)
@@ -207,7 +210,7 @@ class DepositAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            unverified_deposits=Deposit.objects.exclude(verified=True)
+            unverified_deposits=Deposit.objects.select_related('user').exclude(verified=True)
         )
 
         return render(request, 'admin/deposit.html', context)
@@ -233,7 +236,7 @@ class WithdrawAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            unverified_withdraws=Withdraw.objects.exclude(verified=True)
+            unverified_withdraws=Withdraw.objects.select_related('user').exclude(verified=True)
         )
 
         return render(request, 'admin/withdraw.html', context)
@@ -258,7 +261,7 @@ class TransferAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            unverified_transfers=Transfer.objects.exclude(verified=True)
+            unverified_transfers=Transfer.objects.select_related('user', 'to').exclude(verified=True)
         )
 
         return render(request, 'admin/transfer.html', context)
