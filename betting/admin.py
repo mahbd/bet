@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from bet import admin
-from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer
+from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer, Announcement
 
 
 @admin.register(BetScope)
@@ -207,3 +207,8 @@ class TransferAdmin(admin.ModelAdmin):
             path('transfer/', self.transfer, name='transfer'),
         ]
         return my_urls + urls
+
+
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ('id', 'text', 'expired')
