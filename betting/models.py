@@ -117,7 +117,7 @@ class Match(models.Model):
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
     title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
     locked = models.BooleanField(default=False)
-    start_time = models.DateTimeField(help_text="When match will be unlocked for betting.")
+    start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
 
     def is_live(self):
@@ -154,7 +154,8 @@ class BetScope(models.Model):
     winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True,
                               help_text="Which option is the winner. Be careful. As soon as you select winner,"
                                         " bet winner receive money. This can not be reverted")
-    start_time = models.DateTimeField(help_text="when this question will be available for bet", blank=True, null=True)
+    start_time = models.DateTimeField(default=timezone.now, help_text="when this question will be available for bet",
+                                      blank=True, null=True)
     end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
     locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
     processed_internally = models.BooleanField(default=False)

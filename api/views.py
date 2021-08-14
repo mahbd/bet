@@ -17,6 +17,72 @@ from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, Matc
 User: MainUser = get_user_model()
 
 
+class AllTransaction(views.APIView):
+    """
+    get:
+    User must be logged in
+    """
+    def get(self, *args, **kwargs):
+        all_deposit = Deposit.objects.filter(user=self.request.user)[:40]
+        all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
+        all_transfer = Transfer.objects.select_related('to').filter(user=self.request.user)[:40]
+        all_transaction = []
+        for deposit in all_deposit:
+            if deposit.verified is None:
+                status = 'pending'
+            elif deposit.verified:
+                status = 'accepted'
+            else:
+                status = 'denied'
+            all_transaction.append({
+                'type': 'deposit',
+                'method': deposit.method,
+                'to': 'None',
+                'account': deposit.account,
+                'superuser_account': deposit.superuser_account,
+                'amount': deposit.amount,
+                'transaction_id': deposit.transaction_id,
+                'status': status
+            })
+
+        for withdraw in all_withdraw:
+            if withdraw.verified is None:
+                status = 'pending'
+            elif withdraw.verified:
+                status = 'accepted'
+            else:
+                status = 'denied'
+            all_transaction.append({
+                'type': 'withdraw',
+                'method': withdraw.method,
+                'to': 'None',
+                'account': withdraw.account,
+                'superuser_account': withdraw.superuser_account,
+                'amount': withdraw.amount,
+                'transaction_id': withdraw.transaction_id,
+                'status': status
+            })
+
+        for transfer in all_transfer:
+            if transfer.verified is None:
+                status = 'pending'
+            elif transfer.verified:
+                status = 'accepted'
+            else:
+                status = 'denied'
+            all_transaction.append({
+                'type': 'transfer',
+                'method': None,
+                'to': transfer.to.username,
+                'account': None,
+                'superuser_account': None,
+                'amount': transfer.amount,
+                'transaction_id': None,
+                'status': status
+            })
+        return Response({'results': all_transaction})
+
+
 class AnnouncementViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Announcement.objects.filter(expired=False)
     serializer_class = AnnouncementSerializer

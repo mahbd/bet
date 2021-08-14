@@ -53,4 +53,4 @@ class UserAdmin(admin.ModelAdmin):
 
     @admin.display(boolean=True)
     def club_admin(self, user: User):
-        return bool(user.club)
+        return user.is_club_admin()
