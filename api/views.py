@@ -58,7 +58,7 @@ class AllTransaction(views.APIView):
                 'id': withdraw.id,
                 'type': 'withdraw',
                 'method': withdraw.method,
-                'to': 'None',
+                'to': None,
                 'account': withdraw.account,
                 'superuser_account': withdraw.superuser_account,
                 'amount': withdraw.amount,
@@ -314,6 +314,7 @@ class DepositViewSet(mixins.CreateModelMixin,
 class WithdrawViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.ListModelMixin,
+                      mixins.DestroyModelMixin,
                       viewsets.GenericViewSet):
     """
     User must be logged in
