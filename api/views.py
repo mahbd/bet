@@ -35,6 +35,7 @@ class AllTransaction(views.APIView):
             else:
                 status = 'denied'
             all_transaction.append({
+                'id': deposit.id,
                 'type': 'deposit',
                 'method': deposit.method,
                 'to': 'None',
@@ -54,6 +55,7 @@ class AllTransaction(views.APIView):
             else:
                 status = 'denied'
             all_transaction.append({
+                'id': withdraw.id,
                 'type': 'withdraw',
                 'method': withdraw.method,
                 'to': 'None',
@@ -73,6 +75,7 @@ class AllTransaction(views.APIView):
             else:
                 status = 'denied'
             all_transaction.append({
+                'id': transfer.id,
                 'type': 'transfer',
                 'method': None,
                 'to': transfer.to.username,
