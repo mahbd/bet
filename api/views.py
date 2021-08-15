@@ -299,6 +299,7 @@ def available_methods(request):
 class DepositViewSet(mixins.CreateModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.ListModelMixin,
+                     mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
     def get_queryset(self):
         return Deposit.objects.filter(user=self.request.user)
