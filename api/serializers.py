@@ -164,8 +164,6 @@ class DepositSerializer(serializers.ModelSerializer):
         model = Deposit
         fields = '__all__'
         read_only_fields = ('id', 'user', 'verified')
-        extra_kwargs = {'transaction_id': {'required': True}, 'account': {'required': True},
-                        'superuser_account': {'required': True}}
 
     def validate(self, attrs):
         if not self.instance:
