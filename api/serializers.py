@@ -100,6 +100,15 @@ class ClubSerializer(serializers.ModelSerializer):
 
 
 class BetSerializer(serializers.ModelSerializer):
+    match_name = serializers.SerializerMethodField(read_only=True)
+    match_start_time = serializers.SerializerMethodField(read_only=True)
+
+    def get_match_name(self, bet: Bet):
+        return bet.bet_scope.match.title
+
+    def get_match_start_time(self, bet: Bet):
+        return str(bet.bet_scope.match.start_time)
+
     class Meta:
         model = Bet
         fields = ('id', 'user', 'bet_scope', 'choice', 'amount')
