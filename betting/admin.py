@@ -95,7 +95,7 @@ class BetScopeAdmin(admin.ModelAdmin):
         bet_scope.save()
         if red:
             return redirect(red)
-        return redirect('admin:bet_option')
+        return redirect('admin:bet_scope_detail', bet_scope_id)
 
     # noinspection PyMethodMayBeStatic
     def set_bet_winner(self, request, bet_scope_id, winner, red=False):
@@ -211,7 +211,7 @@ class BetAdmin(admin.ModelAdmin):
 
 @admin.register(DepositWithdrawMethod)
 class DepositWithdrawMethodAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name']
+    list_display = ['code', 'number1', 'number2']
 
 
 @admin.register(Deposit)
@@ -261,7 +261,7 @@ class WithdrawAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            unverified_withdraws=Withdraw.objects.select_related('user').exclude(verified=True)
+            unverified_withdraws=Withdraw.objects.select_related('user').filter(verified__isnull=True)
         )
 
         return render(request, 'admin/withdraw.html', context)
@@ -290,7 +290,7 @@ class WithdrawAdmin(admin.ModelAdmin):
 
 @admin.register(Transfer)
 class TransferAdmin(admin.ModelAdmin):
-    list_display = ('user', 'to', 'amount', 'verified')
+    list_display = ('id', 'user', 'to', 'amount', 'verified')
     autocomplete_fields = ('user', 'to',)
 
     def transfer(self, request):

@@ -42,7 +42,8 @@ class AllTransaction(views.APIView):
                 'superuser_account': deposit.superuser_account,
                 'amount': deposit.amount,
                 'transaction_id': deposit.transaction_id,
-                'status': status
+                'status': status,
+                'created_at': deposit.created_at
             })
 
         for withdraw in all_withdraw:
@@ -60,7 +61,8 @@ class AllTransaction(views.APIView):
                 'superuser_account': withdraw.superuser_account,
                 'amount': withdraw.amount,
                 'transaction_id': withdraw.transaction_id,
-                'status': status
+                'status': status,
+                'created_at': withdraw.created_at,
             })
 
         for transfer in all_transfer:
@@ -78,7 +80,8 @@ class AllTransaction(views.APIView):
                 'superuser_account': None,
                 'amount': transfer.amount,
                 'transaction_id': None,
-                'status': status
+                'status': status,
+                'created_at': transfer.created_at
             })
         return Response({'results': all_transaction})
 

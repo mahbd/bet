@@ -1,4 +1,5 @@
-import debug_toolbar
+from django.contrib.staticfiles import views
+from django.urls import re_path
 
 from . import admin
 from django.urls import path, include
@@ -13,5 +14,6 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),
     path('users/', include('users.urls')),
-    path('__debug__/', include(debug_toolbar.urls))
+    # path('__debug__/', include(debug_toolbar.urls)),
+    re_path(r'^static/(?P<path>.*)$', views.serve)
 ]

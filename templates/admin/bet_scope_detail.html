@@ -126,7 +126,7 @@
     <a class="btn btn-primary text-white" href="/admin/betting/bet/?bet_scope__id={{ bet_scope.id }}">
         Bet list</a>
     {% if not bet_scope.is_locked %}
-        <a href="{% url 'admin:lock_bet_scope' bet_scope.id "true" %}"
+        <a href="{% url 'admin:lock_bet_scope' bet_scope.id %}"
            class="btn btn-danger rounded-3 text-white float-end">Lock</a>
     {% else %}
         <button class="btn btn btn-success float-end" disabled>Locked

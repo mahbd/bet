@@ -58,12 +58,21 @@ def post_save_withdraw(instance: Withdraw, created: bool, *args, **kwargs):
         instance.user.full_clean()
         instance.user.save()
         instance.save()
+    if instance.verified is False and instance.verified is not None and not instance.processed_internally:
+        instance.processed_internally = True
+        instance.user.balance += instance.amount
+        instance.user.save()
+        instance.save()
+        instance.user.save()
 
 
-@receiver(post_delete, sender=Deposit)
+@receiver(post_delete, sender=Withdraw)
 def post_delete_withdraw(instance: Deposit, *args, **kwargs):
-    instance.user.balance += instance.amount
-    instance.user.save()
+    if instance.verified:
+        user = User.objects.get(pk=instance.user_id)
+        user.balance += instance.amount
+        user.full_clean()
+        user.save()
 
 
 @receiver(post_save, sender=Transfer)
