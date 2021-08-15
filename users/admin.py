@@ -7,9 +7,10 @@ from .models import Club, User
 # noinspection PyMethodMayBeStatic
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
-    search_fields = ['name']
-    list_display = ['id', 'name', 'balance', 'club_admin', 'total_users']
     autocomplete_fields = ['admin']
+    list_display = ['id', 'name', 'balance', 'club_admin', 'total_users']
+    list_per_page = 20
+    search_fields = ['name']
 
     def admin(self, club: Club):
         return club.admin.username
@@ -44,7 +45,7 @@ class UserAdmin(admin.ModelAdmin):
         }),
         ('Advance Options', {
             'classes': ('collapse',),
-            'fields': ['password', 'last_login', 'groups', 'user_permissions', 'is_superuser', 'referred_by']
+            'fields': ['password', 'last_login', 'groups', 'is_superuser', 'referred_by']
         })
     )
 

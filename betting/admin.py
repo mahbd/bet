@@ -105,6 +105,18 @@ class BetScopeAdmin(admin.ModelAdmin):
         bet_scope.save()
         if red:
             return redirect(red)
+        return redirect('admin:bet_scope_detail', bet_scope_id)
+
+    def refund_and_delete(self, request, bet_scope_id, red=False):
+        request.current_app = self.admin_site.name
+        try:
+            bet_scope = BetScope.objects.get(pk=bet_scope_id)
+            bet_scope.bet_set.all().delete()
+            bet_scope.delete()
+        except BetScope.DoesNotExist:
+            raise Http404
+        if red:
+            return redirect(red)
         return redirect('admin:bet_option')
 
     def get_urls(self):
@@ -114,6 +126,8 @@ class BetScopeAdmin(admin.ModelAdmin):
             path('bet_option_detail/<int:bet_scope_id>/', self.bet_scope_detail, name='bet_scope_detail'),
             path('lock_betscope/<int:bet_scope_id>/', self.lock_bet_scope, name='lock_bet_scope'),
             path('lock_betscope/<int:bet_scope_id>/<str:red>/', self.lock_bet_scope, name='lock_bet_scope'),
+            path('refund_and_delete/<int:bet_scope_id>/', self.refund_and_delete, name='refund_and_delete'),
+            path('refund_and_delete/<int:bet_scope_id>/<str:red>/', self.refund_and_delete, name='refund_and_delete'),
             path('set_winner/<int:bet_scope_id>/<str:winner>/', self.set_bet_winner, name='set_winner'),
             path('set_winner/<int:bet_scope_id>/<str:winner>/<str:red>/', self.set_bet_winner, name='set_winner'),
         ]
@@ -180,7 +194,7 @@ class MatchAdmin(admin.ModelAdmin):
 class BetAdmin(admin.ModelAdmin):
     list_display = ['id', 'bet_by', 'bet_scope_link', 'choice', 'amount', 'status', 'created_at']
     readonly_fields = ['status', 'created_at']
-    list_filter = ['choice', 'bet_scope', 'user']
+    list_filter = ['choice', 'bet_scope', 'user__club', 'user']
     autocomplete_fields = ['bet_scope', 'user']
 
     # noinspection PyMethodMayBeStatic
@@ -202,7 +216,7 @@ class DepositWithdrawMethodAdmin(admin.ModelAdmin):
 
 @admin.register(Deposit)
 class DepositAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'method', 'amount', 'verified')
+    list_display = ('id', 'user', 'method', 'amount', 'description', 'verified', )
     list_filter = ('method',)
     autocomplete_fields = ('user',)
 
@@ -210,15 +224,26 @@ class DepositAdmin(admin.ModelAdmin):
         request.current_app = self.admin_site.name
         context = dict(
             self.admin_site.each_context(request),
-            unverified_deposits=Deposit.objects.select_related('user').exclude(verified=True)
+            unverified_deposits=Deposit.objects.select_related('user').filter(verified__isnull=True)
         )
 
         return render(request, 'admin/deposit.html', context)
+
+    def deny_deposit(self, request, deposit_id, red=False):
+        request.current_app = self.admin_site.name
+        deposit = get_object_or_404(Deposit, pk=deposit_id)
+        deposit.verified = False
+        deposit.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:deposit')
 
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('deposit/', self.deposit, name='deposit'),
+            path('deny_deposit/<int:deposit_id>/', self.deny_deposit, name='deny_deposit'),
+            path('deny_deposit/<int:deposit_id>/<str:red>/', self.deny_deposit, name='deny_deposit'),
         ]
         return my_urls + urls
 
@@ -241,10 +266,21 @@ class WithdrawAdmin(admin.ModelAdmin):
 
         return render(request, 'admin/withdraw.html', context)
 
+    def deny_withdraw(self, request, w_id, red=False):
+        request.current_app = self.admin_site.name
+        w = get_object_or_404(Withdraw, pk=w_id)
+        w.verified = False
+        w.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:withdraw')
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('withdraw/', self.withdraw, name='withdraw'),
+            path('deny_withdraw/<int:w_id>/', self.deny_withdraw, name='deny_withdraw'),
+            path('deny_withdraw/<int:w_id>/<str:red>/', self.deny_withdraw, name='deny_withdraw'),
         ]
         return my_urls + urls
 
@@ -266,10 +302,32 @@ class TransferAdmin(admin.ModelAdmin):
 
         return render(request, 'admin/transfer.html', context)
 
+    def verify_transfer(self, request, tra_id, red=False):
+        request.current_app = self.admin_site.name
+        t = get_object_or_404(Transfer, pk=tra_id)
+        t.verified = True
+        t.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:transfer')
+
+    def deny_transfer(self, request, tra_id, red=False):
+        request.current_app = self.admin_site.name
+        t = get_object_or_404(Transfer, pk=tra_id)
+        t.verified = False
+        t.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:transfer')
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('transfer/', self.transfer, name='transfer'),
+            path('verify_transfer/<int:tra_id>/', self.verify_transfer, name='verify_transfer'),
+            path('verify_transfer/<int:tra_id>/<str:red>/', self.verify_transfer, name='verify_transfer'),
+            path('deny_transfer/<int:tra_id>/', self.deny_transfer, name='deny_transfer'),
+            path('deny_transfer/<int:tra_id>/<str:red>/', self.deny_transfer, name='deny_transfer'),
         ]
         return my_urls + urls
 

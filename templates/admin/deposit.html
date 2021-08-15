@@ -66,10 +66,10 @@
             </div>
             <br>
 
-            <input type="submit" value="Verify" class="btn btn-success" name="_save">
+            <input type="submit" value="Accept" class="btn btn-success" name="_save">
 
-            <a href="{% url 'admin:betting_deposit_delete' deposit.id %}"
-               class="btn btn-danger float-end text-white">Cancel</a>
+            <a href="{% url 'admin:deny_deposit' deposit.id 'admin:deposit' %}"
+               class="btn btn-danger float-end text-white">Deny</a>
 
         </form>
     {% empty %}

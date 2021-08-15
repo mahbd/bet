@@ -15,7 +15,7 @@ from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, METHOD_BET, CHOICE_FIRS
     CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, TYPE_DEPOSIT
 
 
-def create_deposit(user_id: User, amount, method=None, description=None, verified=False):
+def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
     deposit = Deposit()
     deposit.user_id = user_id
     deposit.method = method
@@ -115,6 +115,13 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
             instance.delete()
 
 
+@receiver(post_delete, sender=Bet)
+def post_delete_bet(instance: Bet, *args, **kwargs):
+    create_deposit(user_id=int(instance.user_id), amount=instance.amount, method=METHOD_BET, verified=True,
+                   description=f'Refund for match **{instance.bet_scope.match.title}** '
+                               f'on ##{instance.bet_scope.question}##')
+
+
 @receiver(post_save, sender=BetScope)
 def post_process_game(instance: BetScope, *args, **kwargs):
     if not instance.processed_internally and instance.winner:
@@ -168,11 +175,11 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
 
 def unverified_transaction_count(t_type=None, method=None, date: datetime = None) -> int:
     if method == METHOD_TRANSFER and t_type == TYPE_WITHDRAW:
-        all_transaction = Transfer.objects.exclude(verified=True)
+        all_transaction = Transfer.objects.filter(verified__isnull=True)
     elif t_type == TYPE_WITHDRAW:
-        all_transaction = Withdraw.objects.exclude(verified=True)
+        all_transaction = Withdraw.objects.filter(verified__isnull=True)
     else:
-        all_transaction = Deposit.objects.exclude(verified=True)
+        all_transaction = Deposit.objects.filter(verified__isnull=True)
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
     return all_transaction.count()

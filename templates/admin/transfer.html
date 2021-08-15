@@ -1,54 +1,51 @@
 {% extends 'admin/base_site.html' %}
 {% block content %}
     {% for transfer in unverified_transfers %}
-        <form action="{% url 'admin:betting_transfer_change' transfer.id %}" method="post" class="border-danger"
+        <form action="{% url 'admin:betting_transfer_change' transfer.id %}" method="post"
               style="margin-bottom: 100px; border: 10px red;">
             {% csrf_token %}
-            <div class="border border-primary border-3  rounded-3">
-            <label>From
-                <label> Username
-                    <input type="text" value="{{ transfer.user.username }}" class="form-control" readonly>
-                </label>
-                <label>
-                    <input name="user" type="number" value="{{ transfer.user_id }}" hidden>
-                </label>
-                <label>Full Name
-                    <input type="text" class="form-control" value="{{ transfer.user.full_name|default:"Not given" }}"
-                           disabled>
-                </label>
-            </label>
-
-            <label>To
-                <label> Username
-                    <input type="text" value="{{ transfer.to.username }}" class="form-control" readonly>
-                </label>
-                <label>
-                    <input name="to" type="number" value="{{ transfer.to_id }}" hidden>
-                </label>
-                <label>Full Name
-                    <input type="text" class="form-control" value="{{ transfer.to.full_name|default:"Not given" }}"
-                           disabled>
-                </label>
-            </label>
+            <input name="user" type="number" value="{{ transfer.user_id }}" hidden>
+            <input name="to" type="number" value="{{ transfer.to_id }}" hidden>
+            <div class="row">
+                <div class="col-sm">
+                    <label for="from_user"> From User</label>
+                    <input id="from_user" type="text" value="{{ transfer.user.username }}" class="form-control"
+                           readonly>
+                </div>
+                <div class="col-sm">
+                    <label for="to_user"> To User</label>
+                    <input id="to_user" type="text" value="{{ transfer.to.username }}" class="form-control" readonly>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    <label for="id_amount"> Amount</label>
+                    <input id="id_amount" type="text" value="{{ transfer.amount }}" class="form-control"
+                           readonly>
+                </div>
+                <div class="col-sm">
+                    <label for="to_user"> Date</label>
+                    <input id="to_user" type="text" value="{{ transfer.created_at }}" class="form-control" readonly>
+                </div>
+            </div>
 
             <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
             <br>
 
-            <label class="required label" for="id_amount">Amount:</label>
-            <input type="number" name="amount" value={{ transfer.amount }} step="0.01" required="" id="id_amount"
-                   class="form-control">
-
-            <label>Date:<input type="date" name="created_at_0" value={{ transfer.created_at|date:"Y-m-d" }}
-                    class="form-control" readonly> </label>
-            <label>Time:<input type="time" name="created_at_1" value="{{ transfer.created_at|time:"H:i:s" }}"
-                               class="form-control" readonly></label>
+{#            <label class="required label" for="id_amount">Amount:</label>#}
+{#            <input type="number" name="amount" value={{ transfer.amount }} step="0.01" required="" id="id_amount"#}
+{#                   class="form-control" readonly>#}
+{##}
+{#            <label>Date:<input type="date" name="created_at_0" value={{ transfer.created_at|date:"Y-m-d" }}#}
+{#                    class="form-control" readonly> </label>#}
+{#            <label>Time:<input type="time" name="created_at_1" value="{{ transfer.created_at|time:"H:i:s" }}"#}
+{#                               class="form-control" readonly></label>#}
             <br>
 
-            <input type="submit" value="Verify" class="btn btn-success" name="_save">
+            <a href="{% url 'admin:verify_transfer' transfer.id %}" class="btn btn-success text-white">Accept</a>
 
-            <a href="{% url 'admin:betting_transfer_delete' transfer.id %}"
-               class="btn btn-danger float-end text-white">Cancel</a>
-            </div>
+            <a href="{% url 'admin:deny_transfer' transfer.id %}"
+               class="btn btn-danger float-end text-white">Deny</a>
         </form>
     {% empty %}
         <p>There is no unverified transfer</p>
