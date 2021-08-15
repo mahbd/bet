@@ -111,7 +111,7 @@ class BetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bet
-        fields = ('id', 'user', 'bet_scope', 'choice', 'amount')
+        fields = ('id', 'user', 'bet_scope', 'choice', 'amount', 'match_name', 'match_start_time')
         read_only_fields = ('id', 'user')
         extra_kwargs = {'user': {'required': False}}
 
