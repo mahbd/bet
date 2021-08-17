@@ -96,10 +96,6 @@ class RegisterPermissionClass(permissions.BasePermission):
 
 class TransactionPermissionClass(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
-        if request.method == 'DELETE' and obj.verified:
-            return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
-        return bool(
-            request.user and
-            request.user.is_authenticated and
-            (request.user.id == obj.user.id or request.user.is_superuser)
-        )
+        if request.method in SAFE_METHODS or not obj.verified:
+            return True
+        return False
