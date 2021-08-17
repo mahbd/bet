@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer
 from users.backends import jwt_writer
-from users.models import Club, User as MainUser
+from users.models import Club, User as MainUser, login_key
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
@@ -22,6 +22,7 @@ class AllTransaction(views.APIView):
     get:
     User must be logged in
     """
+
     def get(self, *args, **kwargs):
         all_deposit = Deposit.objects.filter(user=self.request.user)[:40]
         all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
@@ -158,6 +159,22 @@ class BetScopeViewSet(viewsets.ModelViewSet):
     permission_classes = [MatchPermissionClass]
 
 
+class ChangePassword(views.APIView):
+    def post(self, *args, **kwargs):
+        user = self.request.user
+        password = self.request.POST.get('password')
+        if password and user.is_authenticated:
+            user.set_password(password)
+            user.last_login = timezone.now()
+            user.login_key = login_key()
+            user.save()
+            data = RegisterSerializer(user).data
+            data.pop('jwt')
+            jwt_str = jwt_writer(**data)
+            return Response({'jwt': jwt_str})
+        return Response({'detail': 'Password is not supplied or user is not logged in.'}, status=400)
+
+
 class ClubViewSet(mixins.ListModelMixin,
                   mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
@@ -230,8 +247,7 @@ class Login(views.APIView):
 
     def get(self, *args, **kwargs):
         if self.request.user and self.request.user.is_authenticated:
-            data = RegisterSerializer(self.request.user).data
-            data['refer_set'] = [x.id for x in self.request.user.refer_set.all()]
+            data = UserSerializer(self.request.user).data
             return Response(data)
         return Response({'detail': 'User must be logged in'}, status=403)
 
@@ -273,7 +289,7 @@ class MatchViewSet(viewsets.ModelViewSet):
     permission_classes = [MatchPermissionClass]
 
 
-class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin,
+class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
                       mixins.DestroyModelMixin, viewsets.GenericViewSet):
     """
     partial_update:

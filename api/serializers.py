@@ -142,12 +142,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-    def update(self, instance, validated_data):
-        user = super().update(instance, validated_data)
-        user.set_password(validated_data.get('password'))
-        user.save()
-        return user
-
 
 class TransferSerializer(serializers.ModelSerializer):
     class Meta:
@@ -193,17 +187,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        exclude = ('groups', 'user_permissions')
+        exclude = ('groups', 'user_permissions', 'password')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'is_staff', 'referred_by')
-        extra_kwargs = {'user_club': {'required': True}, 'password': {'write_only': True}}
+        extra_kwargs = {'user_club': {'required': True}}
         depth = 1
-
-    def update(self, instance, validated_data):
-        user = super().update(instance, validated_data)
-        if validated_data.get('password'):
-            user.set_password(validated_data.get('password'))
-            user.save()
-        return user
 
 
 class WithdrawSerializer(serializers.ModelSerializer):

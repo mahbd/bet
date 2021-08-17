@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles import views
+from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.urls import re_path
 
 from . import admin
@@ -10,7 +12,9 @@ admin.site.site_header = 'SuperBetting Admin Panel'
 admin.site.index_title = 'Admin Site'
 
 urlpatterns = [
+    path('', lambda x: HttpResponse(f'Hey {x.user}, This is home'), name='home'),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('accounts/profile/', lambda x: redirect('home')),
     path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),

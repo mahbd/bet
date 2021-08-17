@@ -43,10 +43,6 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-    def save(self, *args, **kwargs):
-        self.login_key = login_key()
-        super().save(*args, **kwargs)
-
 
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
