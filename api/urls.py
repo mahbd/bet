@@ -15,6 +15,7 @@ router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
 router.register('club', views.ClubViewSet, 'club')
 router.register('deposit', views.DepositViewSet, 'deposit')
 router.register('match', views.MatchViewSet, 'match')
+router.register('notification', views.NotificationViewSet, 'notification')
 router.register('transfer', views.TransferViewSet, 'transfer')
 router.register('register', views.RegisterViewSet, 'register')
 router.register('user', views.UserListViewSet, 'user'),

@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from betting.views import value_from_option
 from users.backends import jwt_writer
-from users.models import User, Club
+from users.models import User, Club, Notification
 from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
     club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES
 
@@ -108,6 +108,12 @@ class MatchSerializer(serializers.ModelSerializer):
         model = Match
         fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'start_time', 'title',)
         read_only_fields = ('id',)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
 
 
 class RegisterSerializer(serializers.ModelSerializer):

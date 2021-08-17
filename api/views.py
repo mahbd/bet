@@ -8,12 +8,12 @@ from rest_framework.response import Response
 from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
     METHOD_CLUB
 from users.backends import jwt_writer
-from users.models import Club, User as MainUser, login_key
+from users.models import Club, User as MainUser, login_key, Notification
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
-    WithdrawSerializer, TransferSerializer
+    WithdrawSerializer, TransferSerializer, NotificationSerializer
 
 User: MainUser = get_user_model()
 
@@ -288,6 +288,14 @@ class MatchViewSet(viewsets.ModelViewSet):
 
     serializer_class = MatchSerializer
     permission_classes = [MatchPermissionClass]
+
+
+class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
 
 
 class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,

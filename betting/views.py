@@ -189,11 +189,17 @@ def post_process_game(instance: BetScope, *args, **kwargs):
                 if winner.user.referred_by:
                     winner.user.referred_by.balance += winner.winning * refer_commission
                     winner.user.referred_by.earn_from_refer += winner.winning * refer_commission
+                    notify_user(winner.user.referred_by, f"You earned {winner.winning * refer_commission} from user "
+                                                         f"{winner.user.username}. Keep referring and "
+                                                         f"earn {refer_commission}% commission from each bet")
                     winner.user.referred_by.save()
 
                 if winner.user.user_club:
                     winner.user.user_club.balance += winner.winning * club_commission
                     winner.user.user_club.save()
+                    notify_user(winner.user.user_club.admin, f"{winner.user.user_club.name} has "
+                                                             f"earned {winner.winning * club_commission} from "
+                                                             f"{winner.user.username}")
             for loser in bet_losers:
                 loser.is_winner = False
                 loser.winning = 0
