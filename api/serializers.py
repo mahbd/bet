@@ -53,7 +53,7 @@ class BetSerializer(serializers.ModelSerializer):
         user: User = attrs.get('user')
         bet_scope_validator(bet_scope)
         Config().config_validator(user, amount, Bet, 'des')
-        user_balance_validator(user, amount)
+        user_balance_validator(user, amount + Config().get_config('min_balance'))
         return attrs
 
 
@@ -153,7 +153,7 @@ class TransferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transfer
         fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified')
+        read_only_fields = ('id', 'user', 'verified', 'user_balance')
 
     def validate(self, attrs):
         if not self.instance:
@@ -161,8 +161,7 @@ class TransferSerializer(serializers.ModelSerializer):
         user = attrs.get('user')
         receiver: User = attrs.get('to')
         amount = attrs.get('amount')
-        method = attrs.get('method')
-        user_balance_validator(user, amount, method)
+        user_balance_validator(user, amount + Config().get_config('min_balance'))
         club_validator(user, receiver)
         Config().config_validator(user, amount, Transfer, 'transfer')
         return attrs
@@ -211,7 +210,7 @@ class WithdrawSerializer(serializers.ModelSerializer):
     class Meta:
         model = Withdraw
         fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified')
+        read_only_fields = ('id', 'user', 'verified', 'user_balance')
         extra_kwargs = {'account': {'required': True}}
 
     def validate(self, attrs):
@@ -220,6 +219,6 @@ class WithdrawSerializer(serializers.ModelSerializer):
         user = attrs.get('user')
         amount = attrs.get('amount')
         method = attrs.get('method')
-        user_balance_validator(user, amount, method)
+        user_balance_validator(user, amount + Config().get_config('min_balance'), method)
         Config().config_validator(user, amount, Withdraw, 'withdraw')
         return attrs

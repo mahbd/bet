@@ -259,7 +259,7 @@ class Deposit(models.Model):
     account = models.CharField(max_length=255, blank=True, null=True,
                                help_text="bank account number. Used for deposit and withdraw")
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
-    user_balance = models.FloatField(default=0)
+    user_balance = models.FloatField(default=0, blank=True, null=True)
     superuser_account = models.CharField(max_length=255, blank=True, null=True,
                                          help_text="bank account number of the superuser")
     description = models.TextField(blank=True, null=True)
@@ -291,7 +291,7 @@ class Transfer(models.Model):
                            help_text="User id to whom money transferred")
     amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
                                help_text="how much money transacted in 2 point precession decimal number")
-    user_balance = models.FloatField(default=0)
+    user_balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     verified = models.BooleanField(default=None, blank=True, null=True,
                                    help_text="Status if admin had verified. After verification(for deposit), "
@@ -328,7 +328,7 @@ class Withdraw(models.Model):
     superuser_account = models.CharField(max_length=255, blank=True, null=True,
                                          help_text="bank account number of the superuser")
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
-    user_balance = models.FloatField(default=0)
+    user_balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     verified = models.BooleanField(default=None, null=True, blank=True,
                                    help_text="Status if admin had verified. After verification(for deposit), "

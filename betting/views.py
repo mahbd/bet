@@ -36,6 +36,7 @@ def post_save_deposit(instance: Deposit, *args, **kwargs):
         instance.processed_internally = True
         instance.user.balance += instance.amount
         instance.user.save()
+        instance.user_balance = instance.user.balance
         instance.save()
 
 
@@ -56,6 +57,7 @@ def post_save_withdraw(instance: Withdraw, created: bool, *args, **kwargs):
         instance.user.balance -= instance.amount
         instance.user.full_clean()
         instance.user.save()
+        instance.user_balance = instance.user.balance
         instance.save()
     if instance.verified is False and instance.verified is not None and not instance.processed_internally:
         instance.processed_internally = True
@@ -80,6 +82,14 @@ def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
         if instance.amount > instance.user.balance - Config().get_config('min_balance'):
             raise ValueError("Does not have enough balance.")
         instance.user.balance -= instance.amount
+        instance.user.save()
+        instance.user_balance = instance.user.balance
+        instance.save()
+    if instance.verified is False and instance.verified is not None and not instance.processed_internally:
+        instance.processed_internally = True
+        instance.user.balance += instance.amount
+        instance.user.save()
+        instance.save()
         instance.user.save()
     if instance.verified and not instance.processed_internally:
         deposit = Deposit()

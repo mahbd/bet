@@ -42,6 +42,7 @@ class AllTransaction(views.APIView):
                 'account': deposit.account,
                 'superuser_account': deposit.superuser_account,
                 'amount': deposit.amount,
+                'user_balance': deposit.user_balance,
                 'transaction_id': deposit.transaction_id,
                 'status': status,
                 'created_at': deposit.created_at
@@ -61,6 +62,7 @@ class AllTransaction(views.APIView):
                 'to': None,
                 'account': withdraw.account,
                 'superuser_account': withdraw.superuser_account,
+                'user_balance': withdraw.user_balance,
                 'amount': withdraw.amount,
                 'transaction_id': withdraw.transaction_id,
                 'status': status,
@@ -82,6 +84,7 @@ class AllTransaction(views.APIView):
                 'account': None,
                 'superuser_account': None,
                 'amount': transfer.amount,
+                'user_balance': transfer.user_balance,
                 'transaction_id': None,
                 'status': status,
                 'created_at': transfer.created_at
