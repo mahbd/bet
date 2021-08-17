@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from django.db import transaction
 from django.db.models import Sum, QuerySet
-from django.db.models.signals import post_save, post_delete, pre_delete
+from django.db.models.signals import post_save, post_delete, pre_delete, pre_save
 from django.dispatch import receiver
 from django.http import HttpResponse
 from django.utils import timezone
@@ -152,7 +152,7 @@ def pre_delete_bet(instance: Bet, *args, **kwargs):
                                f'changed by {instance.winning - instance.amount} bdt')
 
 
-@receiver(post_save, sender=BetScope)
+@receiver(pre_save, sender=BetScope)
 def post_process_game(instance: BetScope, *args, **kwargs):
     if not instance.processed_internally and instance.winner:
         with transaction.atomic():
@@ -174,9 +174,8 @@ def post_process_game(instance: BetScope, *args, **kwargs):
                     winner.user.referred_by.save()
 
                 if winner.user.user_club:
-                    club_amount = winner.winning * club_commission
-                    create_deposit(winner.user_id, club_amount, METHOD_CLUB, verified=True,
-                                   description=f'Club won **{club_amount}** from user ##{winner.user.username}##')
+                    winner.user.user_club.balance += winner.winning * club_commission
+                    winner.user.user_club.save()
             bet_losers.update(status='Loss', winning=0)
             instance.save()  # To avoid reprocessing the bet scope
 
