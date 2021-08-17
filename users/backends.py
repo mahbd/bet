@@ -29,9 +29,10 @@ def validate_jwt(jwt_str):
     try:
         st = jwt.JWT(key=jwk_key(), jwt=jwt_str)
         data = json.loads(st.claims)
+        login_key = data.get("login_key", "none")
         try:
             return UserModel.objects.get(username=data.get('username'), email=data.get('email'),
-                                         login_key=data["login_key"])
+                                         login_key=login_key)
         except UserModel.DoesNotExist:
             return None
     except (jws.InvalidJWSSignature, jws.InvalidJWSObject, ValueError):
