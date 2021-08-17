@@ -11,7 +11,7 @@ from log.views import custom_log
 from users.models import User
 from users.views import total_user_balance, total_club_balance, notify_user
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config, config
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config, config, BET_CHOICES
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -23,6 +23,18 @@ def create_deposit(user_id: int, amount, method=None, description=None, verified
     deposit.verified = verified
     deposit.save()
     return deposit
+
+
+def value_from_option(option: str, bet_scope: BetScope) -> str:
+    if option == BET_CHOICES[0]:
+        return bet_scope.option_1
+    if option == BET_CHOICES[1]:
+        return bet_scope.option_2
+    if option == BET_CHOICES[2]:
+        return bet_scope.option_3
+    if option == BET_CHOICES[3]:
+        return bet_scope.option_4
+    return "Invalid option"
 
 
 @receiver(post_save, sender=Deposit)
@@ -131,7 +143,7 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
                 ratio = instance.bet_scope.option_3_rate
             else:
                 ratio = instance.bet_scope.option_4_rate
-
+            instance.return_rate = ratio
             instance.winning = instance.amount * ratio
             instance.save()
         except ValueError:
@@ -166,7 +178,8 @@ def post_process_game(instance: BetScope, *args, **kwargs):
             for winner in bet_winners:
                 winner.user.balance += winner.winning * (1 - club_commission - refer_commission)
                 winner.user.save()
-                winner.status = f'User won on bet ##{winner.id}##'
+                winner.is_winner = True
+                winner.answer = value_from_option(winner.choice, instance)
                 winner.save()
                 if winner.user.referred_by:
                     winner.user.referred_by.balance += winner.winning * refer_commission
@@ -176,7 +189,11 @@ def post_process_game(instance: BetScope, *args, **kwargs):
                 if winner.user.user_club:
                     winner.user.user_club.balance += winner.winning * club_commission
                     winner.user.user_club.save()
-            bet_losers.update(status='Loss', winning=0)
+            for loser in bet_losers:
+                loser.is_winner = False
+                loser.winning = 0
+                loser.answer = value_from_option(winner.choice, instance)
+                loser.save()
             instance.save()  # To avoid reprocessing the bet scope
 
 

@@ -221,14 +221,16 @@ class BetScope(models.Model):
 
 
 class Bet(models.Model):
+    answer = models.CharField(max_length=255, default="Unknown", blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
     bet_scope = models.ForeignKey(BetScope, on_delete=models.PROTECT, validators=[bet_scope_validator],
                                   help_text="For which question bet is done")
     choice = models.CharField(max_length=10, choices=BET_CHOICES, help_text="List of bet choices")
     amount = models.IntegerField(help_text='How much he bet')
+    return_rate = models.FloatField(default=1.00, blank=True, null=True)
     winning = models.FloatField(default=0, help_text='How much will get if wins')
+    is_winner = models.BooleanField(default=None, blank=True, null=True)
     paid = models.BooleanField(default=False)
-    status = models.CharField(max_length=255, default='No result', help_text='Result of the bet. Win/Loss')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):

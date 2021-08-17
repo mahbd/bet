@@ -1,10 +1,11 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from betting.views import value_from_option
 from users.backends import jwt_writer
 from users.models import User, Club
 from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator
+    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
@@ -27,28 +28,30 @@ class BetScopeSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 
+# noinspection PyMethodMayBeStatic
 class BetSerializer(serializers.ModelSerializer):
     match_start_time = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     question = serializers.SerializerMethodField(read_only=True)
+    your_answer = serializers.SerializerMethodField(read_only=True)
 
-    # noinspection PyMethodMayBeStatic
     def get_match_name(self, bet: Bet):
         return bet.bet_scope.match.title
 
-    # noinspection PyMethodMayBeStatic
     def get_match_start_time(self, bet: Bet):
         return str(bet.bet_scope.match.start_time)
 
-    # noinspection PyMethodMayBeStatic
     def get_question(self, bet: Bet):
         return bet.bet_scope.question
 
+    def get_your_answer(self, bet: Bet):
+        return value_from_option(bet.choice, bet.bet_scope)
+
     class Meta:
         model = Bet
-        fields = ('amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question', 'status', 'user',
-                  'winning')
-        read_only_fields = ('id', 'user',)
+        fields = ('answer', 'amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question',
+                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning')
+        read_only_fields = ('id', 'user', 'answer', 'return_rate', 'is_winner')
 
     def validate(self, attrs):
         if not self.instance:

@@ -195,8 +195,8 @@ class MatchAdmin(admin.ModelAdmin):
 
 @admin.register(Bet)
 class BetAdmin(admin.ModelAdmin):
-    list_display = ['id', 'bet_by', 'bet_scope_link', 'choice', 'amount', 'status', 'created_at']
-    readonly_fields = ['status', 'created_at']
+    list_display = ['id', 'bet_by', 'bet_scope_link', 'choice', 'amount', 'created_at']
+    readonly_fields = ['created_at']
     list_filter = ['choice', 'bet_scope', 'user__club', 'user']
     autocomplete_fields = ['bet_scope', 'user']
 
