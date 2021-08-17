@@ -126,8 +126,8 @@ class Config:
             'limit_bet': 50,
             'min_bet': 10,
             'max_bet': 25000,
-            'club_commission': 0.02,
-            'refer_commission': 0.005,
+            'club_commission': 2,
+            'refer_commission': 0.5,
         }
 
     def get_from_model(self, name, default=False):
@@ -140,6 +140,9 @@ class Config:
 
     def get_config(self, name):
         return int(self.get_from_model(name))
+
+    def get_config_str(self, name):
+        return str(self.get_from_model(name))
 
     def config_validator(self, user: User, amount, model, des, md=0):
         limit_count = int(self.get_from_model(f'limit_{des}'))

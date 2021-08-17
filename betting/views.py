@@ -160,8 +160,8 @@ def post_process_game(instance: BetScope, *args, **kwargs):
 
             bet_winners = list(instance.bet_set.filter(choice=instance.winner))
             bet_losers = instance.bet_set.exclude(choice=instance.winner)
-            club_commission = config.get_config('club_commission') / 100
-            refer_commission = config.get_config('refer_commission') / 100
+            club_commission = float(config.get_config_str('club_commission')) / 100
+            refer_commission = float(config.get_config_str('refer_commission')) / 100
 
             for winner in bet_winners:
                 winner.user.balance += winner.winning * (1 - club_commission - refer_commission)
