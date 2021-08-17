@@ -237,11 +237,6 @@ class Bet(models.Model):
         Config().config_validator(self.user, self.amount, Bet, 'bet', md=1)
         super().clean()
 
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
-
     class Meta:
         ordering = ['bet_scope', '-created_at']
 
