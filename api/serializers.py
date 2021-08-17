@@ -30,6 +30,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
 class BetSerializer(serializers.ModelSerializer):
     match_start_time = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
+    question = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def get_match_name(self, bet: Bet):
@@ -39,11 +40,15 @@ class BetSerializer(serializers.ModelSerializer):
     def get_match_start_time(self, bet: Bet):
         return str(bet.bet_scope.match.start_time)
 
+    # noinspection PyMethodMayBeStatic
+    def get_question(self, bet: Bet):
+        return bet.bet_scope.question
+
     class Meta:
         model = Bet
-        fields = ('amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'user', 'winning')
-        read_only_fields = ('id', 'user', 'winning')
-        extra_kwargs = {'user': {'required': False}}
+        fields = ('amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question', 'status', 'user',
+                  'winning')
+        read_only_fields = ('id', 'user',)
 
     def validate(self, attrs):
         if not self.instance:
