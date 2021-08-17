@@ -57,10 +57,18 @@ def post_delete_deposit(instance: Deposit, *args, **kwargs):
     if instance.verified and instance.method == METHOD_CLUB:
         instance.user.club.balance -= instance.amount
         instance.user.club.save()
+        notify_user(instance.user, f"Deposit request has been canceled placed on {instance.created_at}."
+                                   f"Contact admin if you think it was wrong. Transaction id: {instance.transaction_id}"
+                                   f" Amount: {instance.amount} From account: {instance.account} To account "
+                                   f"{instance.superuser_account} Method: {instance.method}")
     elif instance.verified:
-        instance.user.balance -= instance.amount
-        instance.user.save()
-        # TODO: Implement to prevent from delete
+        try:
+            instance.user.balance -= instance.amount
+            instance.user.full_clean()
+            instance.user.save()
+        except Exception as e:
+            custom_log(e, f"Failed to reduce balance of {instance.user.username} of {instance.amount} BDT due lack of "
+                          f"balance.")
 
 
 @receiver(post_save, sender=Withdraw)
@@ -71,16 +79,12 @@ def post_save_withdraw(instance: Withdraw, created: bool, *args, **kwargs):
         instance.user.save()
         instance.user_balance = instance.user.balance
         instance.save()
-    if instance.verified is False and instance.verified is not None and not instance.processed_internally:
-        instance.processed_internally = True
-        instance.user.balance += instance.amount
-        instance.user.save()
-        instance.save()
-        instance.user.save()
 
 
 @receiver(post_delete, sender=Withdraw)
 def post_delete_withdraw(instance: Deposit, *args, **kwargs):
+    notify_user(instance.user, f"Withdraw of {instance.amount}BDT via {instance.method} to number {instance.account} "
+                               f"placed on {instance.created_at} has been canceled and refunded")
     if instance.verified:
         user = User.objects.get(pk=instance.user_id)
         user.balance += instance.amount
@@ -97,12 +101,6 @@ def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
         instance.user.save()
         instance.user_balance = instance.user.balance
         instance.save()
-    if instance.verified is False and instance.verified is not None and not instance.processed_internally:
-        instance.processed_internally = True
-        instance.user.balance += instance.amount
-        instance.user.save()
-        instance.save()
-        instance.user.save()
     if instance.verified and not instance.processed_internally:
         deposit = Deposit()
         deposit.user = instance.to
@@ -116,13 +114,17 @@ def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
         instance.save()
 
 
-@receiver(post_delete, sender=Transfer)
+@receiver(pre_delete, sender=Transfer)
 def post_delete_transfer(instance: Transfer, *args, **kwargs):
+    notify_user(instance.user, f"Transfer of {instance.amount}BDT to user {instance.to.username} placed on "
+                               f"{instance.created_at} has been canceled and refunded")
     if instance.verified:
-        instance.to.balance -= instance.amount
-        instance.to.full_clean()
-        instance.to.save()
-        # TODO: Implement to prevent delete
+        try:
+            instance.to.balance -= instance.amount
+            instance.to.full_clean()
+            instance.to.save()
+        except Exception as e:
+            custom_log(e, "Failed to reduce balance of user for transfer")
     instance.user.balance += instance.amount
     instance.user.save()
 
@@ -156,12 +158,15 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
 @receiver(pre_delete, sender=Bet)
 def pre_delete_bet(instance: Bet, *args, **kwargs):
     if instance.winning - instance.amount > instance.user.balance:
-        raise ValueError("Does not have enough balance.")
-    instance.user.balance -= instance.winning - instance.amount
+        raise ValueError("User does not have enough balance.")
+    change = instance.winning - instance.amount
+    if not instance.paid:
+        change = instance.amount
+    instance.user.balance -= change
     instance.user.save()
     notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
                                f'on ##{instance.bet_scope.question}##. Balance '
-                               f'changed by {instance.winning - instance.amount} bdt')
+                               f'refunded by {instance.winning - instance.amount} BDT')
 
 
 @receiver(pre_save, sender=BetScope)

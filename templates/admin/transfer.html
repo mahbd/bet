@@ -31,20 +31,11 @@
 
             <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
             <br>
-
-{#            <label class="required label" for="id_amount">Amount:</label>#}
-{#            <input type="number" name="amount" value={{ transfer.amount }} step="0.01" required="" id="id_amount"#}
-{#                   class="form-control" readonly>#}
-{##}
-{#            <label>Date:<input type="date" name="created_at_0" value={{ transfer.created_at|date:"Y-m-d" }}#}
-{#                    class="form-control" readonly> </label>#}
-{#            <label>Time:<input type="time" name="created_at_1" value="{{ transfer.created_at|time:"H:i:s" }}"#}
-{#                               class="form-control" readonly></label>#}
             <br>
 
             <a href="{% url 'admin:verify_transfer' transfer.id %}" class="btn btn-success text-white">Accept</a>
 
-            <a href="{% url 'admin:deny_transfer' transfer.id %}"
+            <a href="{% url 'admin:betting_transfer_delete' transfer.id %}"
                class="btn btn-danger float-end text-white">Deny</a>
         </form>
     {% empty %}
