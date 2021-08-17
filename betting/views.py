@@ -11,7 +11,7 @@ from log.views import custom_log
 from users.models import User
 from users.views import total_user_balance, total_club_balance, notify_user
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config, config
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -160,19 +160,21 @@ def post_process_game(instance: BetScope, *args, **kwargs):
 
             bet_winners = list(instance.bet_set.filter(choice=instance.winner))
             bet_losers = instance.bet_set.exclude(choice=instance.winner)
+            club_commission = config.get_config('club_commission')
+            refer_commission = config.get_config('refer_commission')
 
             for winner in bet_winners:
-                winner.user.balance += winner.winning * 0.975
+                winner.user.balance += winner.winning * (1 - club_commission - refer_commission)
                 winner.user.save()
                 winner.status = f'User won on bet ##{winner.id}##'
                 winner.save()
                 if winner.user.referred_by:
-                    winner.user.referred_by.balance += winner.winning * 0.005
-                    winner.user.referred_by.earn_from_refer += winner.winning * 0.005
+                    winner.user.referred_by.balance += winner.winning * refer_commission
+                    winner.user.referred_by.earn_from_refer += winner.winning * refer_commission
                     winner.user.referred_by.save()
 
                 if winner.user.user_club:
-                    club_amount = winner.winning * 0.02
+                    club_amount = winner.winning * club_commission
                     create_deposit(winner.user_id, club_amount, METHOD_CLUB, verified=True,
                                    description=f'Club won **{club_amount}** from user ##{winner.user.username}##')
             bet_losers.update(status='Loss', winning=0)

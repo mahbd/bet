@@ -125,7 +125,9 @@ class Config:
             'max_transfer': 25000,
             'limit_bet': 50,
             'min_bet': 10,
-            'max_bet': 25000
+            'max_bet': 25000,
+            'club_commission': 0.02,
+            'refer_commission': 0.005,
         }
 
     def get_from_model(self, name, default=False):
@@ -151,6 +153,9 @@ class Config:
             raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_per_day}")
         if minimum > amount or amount > maximum:
             raise ValidationError(f"Amount limit {minimum} - {maximum} does not match.")
+
+
+config = Config()
 
 
 class Match(models.Model):
