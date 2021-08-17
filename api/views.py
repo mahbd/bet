@@ -5,7 +5,8 @@ from rest_framework.decorators import action, api_view
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer
+from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
+    METHOD_CLUB
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser, login_key
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
@@ -24,7 +25,7 @@ class AllTransaction(views.APIView):
     """
 
     def get(self, *args, **kwargs):
-        all_deposit = Deposit.objects.filter(user=self.request.user)[:40]
+        all_deposit = Deposit.objects.exclude(method=METHOD_CLUB).filter(user=self.request.user)[:40]
         all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
         all_transfer = Transfer.objects.select_related('to').filter(user=self.request.user)[:40]
         all_transaction = []
