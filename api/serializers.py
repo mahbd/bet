@@ -52,7 +52,7 @@ class BetSerializer(serializers.ModelSerializer):
         bet_scope: BetScope = attrs.get('bet_scope')
         user: User = attrs.get('user')
         bet_scope_validator(bet_scope)
-        Config().config_validator(user, amount, Bet, 'des')
+        Config().config_validator(user, amount, Bet, 'bet')
         user_balance_validator(user, amount + Config().get_config('min_balance'))
         return attrs
 

@@ -117,7 +117,7 @@ class Config:
             'limit_deposit': 50,
             'min_deposit': 100,
             'max_deposit': 25000,
-            'limit_withdraw': 1,
+            'limit_withdraw': 10,
             'min_withdraw': 500,
             'max_withdraw': 25000,
             'limit_transfer': 50,
@@ -139,16 +139,16 @@ class Config:
     def get_config(self, name):
         return int(self.get_from_model(name))
 
-    def config_validator(self, user: User, amount, model, des):
+    def config_validator(self, user: User, amount, model, des, md=0):
         limit_count = int(self.get_from_model(f'limit_{des}'))
         minimum = int(self.get_from_model(f'min_{des}'))
         maximum = int(self.get_from_model(f'max_{des}'))
         total_per_day = model.objects.filter(user=user,
                                              created_at__gte=timezone.now().replace(hour=0, minute=0,
                                                                                     second=0)).count()
-        print(amount, minimum, maximum, limit_count, des)
-        if total_per_day >= limit_count:
-            raise ValidationError(f"Maximum limit of {limit_count} per day exceed")
+        print('Total today', total_per_day)
+        if total_per_day >= limit_count + md:
+            raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_per_day}")
         if minimum > amount or amount > maximum:
             raise ValidationError(f"Amount limit {minimum} - {maximum} does not match.")
 
@@ -226,7 +226,7 @@ class Bet(models.Model):
     def clean(self):
         bet_scope_validator(self.bet_scope)
         user_balance_validator(self.user, self.amount)
-        Config().config_validator(self.user, self.amount, Bet, 'bet')
+        Config().config_validator(self.user, self.amount, Bet, 'bet', md=1)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -273,7 +273,7 @@ class Deposit(models.Model):
         return str(self.id)
 
     def clean(self):
-        Config().config_validator(self.user, self.amount, Deposit, 'deposit')
+        Config().config_validator(self.user, self.amount, Deposit, 'deposit', md=1)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -302,7 +302,7 @@ class Transfer(models.Model):
     def clean(self):
         user_balance_validator(self.user, self.amount)
         club_validator(self.user, self.to)
-        Config().config_validator(self.user, self.amount, Transfer, 'transfer')
+        Config().config_validator(self.user, self.amount, Transfer, 'transfer', md=1)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
@@ -338,7 +338,7 @@ class Withdraw(models.Model):
 
     def clean(self):
         user_balance_validator(self.user, self.amount, self.method)
-        Config().config_validator(self.user, self.amount, Withdraw, 'withdraw')
+        Config().config_validator(self.user, self.amount, Withdraw, 'withdraw', md=1)
         super().clean()
 
     def save(self, force_insert=False, force_update=False, using=None,
