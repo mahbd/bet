@@ -9,22 +9,22 @@ from . import views
 
 router = DefaultRouter()
 
-router.register('register', views.RegisterViewSet, 'register')
-router.register('club', views.ClubViewSet, 'club')
-router.register('bet', views.BetViewSet, 'bet')
-router.register('match', views.MatchViewSet, 'match')
-router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
-router.register('user', views.UserListViewSet, 'user'),
 router.register('announcement', views.AnnouncementViewSet, 'announcement')
+router.register('bet', views.BetViewSet, 'bet')
+router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
+router.register('club', views.ClubViewSet, 'club')
 router.register('deposit', views.DepositViewSet, 'deposit')
-router.register('withdraw', views.WithdrawViewSet, 'withdraw')
+router.register('match', views.MatchViewSet, 'match')
 router.register('transfer', views.TransferViewSet, 'transfer')
+router.register('register', views.RegisterViewSet, 'register')
+router.register('user', views.UserListViewSet, 'user'),
+router.register('withdraw', views.WithdrawViewSet, 'withdraw')
 
 app_name = 'api'
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Snippets API",
+        title="Bet24 API Documentation",
         default_version='v1',
         description="Test description",
         terms_of_service="https://www.google.com/policies/terms/",

@@ -1,18 +1,17 @@
 from datetime import datetime, timedelta
 
-from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Sum, Q, QuerySet
-from django.db.models.signals import post_save, post_delete
+from django.db.models import Sum, QuerySet
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
-from django.http import HttpResponse, Http404
-from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse
 from django.utils import timezone
 
+from log.views import custom_log
 from users.models import User
-from users.views import total_user_balance, total_club_balance
-from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, METHOD_BET, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, TYPE_DEPOSIT
+from users.views import total_user_balance, total_club_balance, notify_user
+from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, CHOICE_FIRST, \
+    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -78,16 +77,16 @@ def post_delete_withdraw(instance: Deposit, *args, **kwargs):
 @receiver(post_save, sender=Transfer)
 def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
     if created:
+        if instance.amount > instance.user.balance - Config().get_config('min_balance'):
+            raise ValueError("Does not have enough balance.")
         instance.user.balance -= instance.amount
-        instance.user.full_clean()
         instance.user.save()
-        instance.save()
     if instance.verified and not instance.processed_internally:
         deposit = Deposit()
         deposit.user = instance.to
         deposit.method = METHOD_TRANSFER
         deposit.amount = instance.amount
-        deposit.description = f'From **{instance.user_id}**, with transaction id ##{instance.id}##'
+        deposit.description = f'From ##{instance.user.username}##, with transfer id ##{instance.id}##'
         deposit.verified = True
         deposit.save()
 
@@ -110,25 +109,37 @@ def post_delete_transfer(instance: Transfer, *args, **kwargs):
 def post_process_bet(instance: Bet, created, *args, **kwargs):
     if created:
         try:
-            if instance.amount > instance.user.balance:
+            if instance.amount > instance.user.balance - Config().get_config('min_balance'):
                 raise ValueError("Does not have enough balance.")
-            withdraw = Withdraw()
-            withdraw.user = instance.user
-            withdraw.method = METHOD_BET
-            withdraw.amount = instance.amount
-            withdraw.description = f'Balance used to bet on ##{instance.id}##'
-            withdraw.verified = True
-            withdraw.save()
+            instance.user.balance -= instance.amount
+            instance.user.save()
+            if instance.bet_scope.winner == CHOICE_FIRST:
+                ratio = instance.bet_scope.option_1_rate
+            elif instance.bet_scope.winner == CHOICE_SECOND:
+                ratio = instance.bet_scope.option_2_rate
+            elif instance.bet_scope.winner == CHOICE_THIRD:
+                ratio = instance.bet_scope.option_3_rate
+            else:
+                ratio = instance.bet_scope.option_4_rate
+
+            instance.winning = instance.amount * ratio
+            instance.save()
+        except ValueError:
+            instance.delete()
         except Exception as e:
-            print(e)
+            custom_log(e)
             instance.delete()
 
 
-@receiver(post_delete, sender=Bet)
-def post_delete_bet(instance: Bet, *args, **kwargs):
-    create_deposit(user_id=int(instance.user_id), amount=instance.amount, method=METHOD_BET, verified=True,
-                   description=f'Refund for match **{instance.bet_scope.match.title}** '
-                               f'on ##{instance.bet_scope.question}##')
+@receiver(pre_delete, sender=Bet)
+def pre_delete_bet(instance: Bet, *args, **kwargs):
+    if instance.winning - instance.amount > instance.user.balance:
+        raise ValueError("Does not have enough balance.")
+    instance.user.balance -= instance.winning - instance.amount
+    instance.user.save()
+    notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
+                               f'on ##{instance.bet_scope.question}##. Balance '
+                               f'changed by {instance.winning - instance.amount} bdt')
 
 
 @receiver(post_save, sender=BetScope)
@@ -139,32 +150,22 @@ def post_process_game(instance: BetScope, *args, **kwargs):
 
             bet_winners = list(instance.bet_set.filter(choice=instance.winner))
             bet_losers = instance.bet_set.exclude(choice=instance.winner)
-            if instance.winner == CHOICE_FIRST:
-                ratio = instance.option_1_rate
-            elif instance.winner == CHOICE_SECOND:
-                ratio = instance.option_2_rate
-            elif instance.winner == CHOICE_THIRD:
-                ratio = instance.option_3_rate
-            else:
-                ratio = instance.option_4_rate
 
             for winner in bet_winners:
-                win_amount = (winner.amount * ratio) * 0.975
-                refer_amount = (winner.amount * ratio) * 0.005
-                club_amount = (winner.amount * ratio) * 0.02
-                create_deposit(winner.user_id, win_amount, method=METHOD_BET, verified=True,
-                               description=f'User won on bet ##{winner.id}##')
-
-                winner.status = 'Win %.2f' % win_amount
+                winner.user.balance += winner.winning * 0.975
+                winner.user.save()
+                winner.status = f'User won on bet ##{winner.id}##'
                 winner.save()
                 if winner.user.referred_by:
-                    create_deposit(winner.user_id, refer_amount, METHOD_BET, verified=True,
-                                   description=f'User won **{refer_amount}** by referring ##{winner.id}##')
+                    winner.user.referred_by.balance += winner.winning * 0.005
+                    winner.user.referred_by.earn_from_refer += winner.winning * 0.005
+                    winner.user.referred_by.save()
 
                 if winner.user.user_club:
+                    club_amount = winner.winning * 0.02
                     create_deposit(winner.user_id, club_amount, METHOD_CLUB, verified=True,
-                                   description=f'Club won **{club_amount}** from user ##{winner.id}##')
-            bet_losers.update(status='Loss')
+                                   description=f'Club won **{club_amount}** from user ##{winner.user.username}##')
+            bet_losers.update(status='Loss', winning=0)
             instance.save()  # To avoid reprocessing the bet scope
 
 
@@ -228,35 +229,32 @@ def sum_aggregate(queryset: QuerySet, field='amount'):
 
 
 def generate_admin_dashboard_data():
-    bet_or_club_q = Q(method=METHOD_BET) | Q(method=METHOD_CLUB)
-    bet_or_club_or_transfer_q = bet_or_club_q | Q(method=METHOD_TRANSFER)
-    bet_or_transfer = Q(method=METHOD_BET) | Q(method=METHOD_TRANSFER)
-    total_bet_deposit = sum_aggregate(Deposit.objects.filter(bet_or_club_q))
-    total_bet_withdraw = sum_aggregate(Withdraw.objects.filter(method=METHOD_BET))
-    total_revenue = total_bet_withdraw - total_bet_deposit
+    total_bet_win = sum_aggregate(Bet.objects.exclude(status='No result'), 'winning')
+    total_bet = sum_aggregate(Bet.objects.exclude(status='No result'))
+    total_revenue = total_bet - total_bet_win
 
-    q = Deposit.objects.filter(bet_or_club_q, created_at__gte=timezone.now() - timedelta(days=30))
-    month_bet_deposit = sum_aggregate(q)
-    q = Withdraw.objects.filter(method=METHOD_BET, created_at__gte=timezone.now() - timedelta(days=30))
-    month_bet_withdraw = sum_aggregate(q)
-    last_month_revenue = month_bet_withdraw - month_bet_deposit
+    q = Bet.objects.exclude(status='No result').filter(created_at__gte=timezone.now() - timedelta(days=30))
+    month_bet_win = sum_aggregate(q, 'winning')
+    q = Bet.objects.exclude(status='No result').filter(created_at__gte=timezone.now() - timedelta(days=30))
+    month_bet = sum_aggregate(q)
+    last_month_revenue = month_bet - month_bet_win
 
-    total_deposit = sum_aggregate(Deposit.objects.exclude(bet_or_club_or_transfer_q))
-    q = Deposit.objects.exclude(bet_or_club_or_transfer_q).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    total_deposit = sum_aggregate(Deposit.objects.exclude(method=METHOD_CLUB))
+    q = Deposit.objects.exclude(method=METHOD_CLUB).filter(created_at__gte=timezone.now() - timedelta(days=30))
     last_month_deposit = sum_aggregate(q)
 
-    total_withdraw = sum_aggregate(Withdraw.objects.exclude(bet_or_transfer))
-    q = Withdraw.objects.exclude(bet_or_transfer).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    total_withdraw = sum_aggregate(Withdraw.objects.all())
+    q = Withdraw.objects.all().filter(created_at__gte=timezone.now() - timedelta(days=30))
     last_month_withdraw = sum_aggregate(q)
 
     data = {
         'total_user_balance': total_user_balance(),
         'total_club_balance': total_club_balance(),
-        'total_bet_deposit': total_bet_deposit,
-        'total_bet_withdraw': total_bet_withdraw,
+        'total_bet_deposit': total_bet_win,
+        'total_bet_withdraw': total_bet,
         'total_revenue': total_revenue,
-        'month_bet_deposit': month_bet_deposit,
-        'month_bet_withdraw': month_bet_withdraw,
+        'month_bet_deposit': month_bet_win,
+        'month_bet_withdraw': month_bet,
         'last_month_revenue': last_month_revenue,
         'total_deposit': total_deposit,
         'last_month_deposit': last_month_deposit,

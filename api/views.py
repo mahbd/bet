@@ -9,7 +9,7 @@ from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announce
 from users.backends import jwt_writer
 from users.models import Club, User as MainUser
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
-    ClubPermissionClass, TransactionPermissionClass, IsUserOrSuperuser
+    ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer
@@ -186,6 +186,18 @@ class ClubViewSet(mixins.ListModelMixin,
         return Response({"results": UserListSerializer(users, many=True).data})
 
 
+class DepositViewSet(mixins.CreateModelMixin,
+                     mixins.RetrieveModelMixin,
+                     mixins.ListModelMixin,
+                     mixins.DestroyModelMixin,
+                     viewsets.GenericViewSet):
+    def get_queryset(self):
+        return Deposit.objects.filter(user=self.request.user)
+
+    serializer_class = DepositSerializer
+    permission_classes = [TransactionPermissionClass]
+
+
 class Login(views.APIView):
     """
     post:
@@ -208,6 +220,7 @@ class Login(views.APIView):
             user.last_login = timezone.now()
             user.save()
             data = RegisterSerializer(user).data
+            data.pop('jwt')
             jwt_str = jwt_writer(**data)
             return Response({'jwt': jwt_str})
         return Response({'detail': 'Username or Password is wrong.'}, status=400)
@@ -299,18 +312,6 @@ def available_methods(request):
     return Response({'methods': methods})
 
 
-class DepositViewSet(mixins.CreateModelMixin,
-                     mixins.RetrieveModelMixin,
-                     mixins.ListModelMixin,
-                     mixins.DestroyModelMixin,
-                     viewsets.GenericViewSet):
-    def get_queryset(self):
-        return Deposit.objects.filter(user=self.request.user)
-
-    serializer_class = DepositSerializer
-    permission_classes = [TransactionPermissionClass]
-
-
 class WithdrawViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.ListModelMixin,
@@ -366,7 +367,7 @@ class UserDetailsUpdateRetrieveDestroy(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsUserOrSuperuser]
+    permission_classes = [IsUser]
 
     def get_object(self):
         return self.request.user

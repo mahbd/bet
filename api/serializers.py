@@ -1,10 +1,105 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from betting.models import Bet, BetScope, Match, club_validator, \
-    user_balance_validator, bet_scope_validator, METHOD_BET, Announcement, Deposit, Withdraw, Transfer
 from users.backends import jwt_writer
 from users.models import User, Club
+from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
+    club_validator, bet_scope_validator, user_balance_validator
+
+
+class AnnouncementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Announcement
+        fields = '__all__'
+
+
+class BetScopeSerializer(serializers.ModelSerializer):
+    is_locked = serializers.SerializerMethodField(read_only=True)
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_locked(self, bet_scope: BetScope) -> bool:
+        return bet_scope.is_locked()
+
+    class Meta:
+        model = BetScope
+        fields = ('end_time', 'id', 'is_locked', 'match', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate',
+                  'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
+        read_only_fields = ('id',)
+
+
+class BetSerializer(serializers.ModelSerializer):
+    match_start_time = serializers.SerializerMethodField(read_only=True)
+    match_name = serializers.SerializerMethodField(read_only=True)
+
+    # noinspection PyMethodMayBeStatic
+    def get_match_name(self, bet: Bet):
+        return bet.bet_scope.match.title
+
+    # noinspection PyMethodMayBeStatic
+    def get_match_start_time(self, bet: Bet):
+        return str(bet.bet_scope.match.start_time)
+
+    class Meta:
+        model = Bet
+        fields = ('amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'user', 'winning')
+        read_only_fields = ('id', 'user', 'winning')
+        extra_kwargs = {'user': {'required': False}}
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        amount = attrs.get('amount')
+        bet_scope: BetScope = attrs.get('bet_scope')
+        user: User = attrs.get('user')
+        bet_scope_validator(bet_scope)
+        Config().config_validator(user, amount, Bet, 'des')
+        user_balance_validator(user, amount)
+        return attrs
+
+
+class ClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ('admin', 'balance', 'id', 'name',)
+        read_only_fields = ('admin', 'id',)
+
+
+class DepositSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Deposit
+        fields = '__all__'
+        read_only_fields = ('id', 'user', 'user_balance', 'verified')
+        extra_kwargs = {
+            'account': {'required': True},
+            'superuser_account': {'required': True},
+            'transaction_id': {'required': True},
+        }
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        amount = attrs.get('amount')
+        user = attrs.get('user')
+        Config().config_validator(user, amount, Deposit, 'deposit')
+        return attrs
+
+
+class MatchSerializer(serializers.ModelSerializer):
+    is_live = serializers.SerializerMethodField(read_only=True)
+    is_locked = serializers.SerializerMethodField(read_only=True)
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_live(self, match: Match) -> bool:
+        return match.is_live()
+
+    # noinspection PyMethodMayBeStatic
+    def get_is_locked(self, match: Match) -> bool:
+        return match.is_locked()
+
+    class Meta:
+        model = Match
+        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'start_time', 'title',)
+        read_only_fields = ('id',)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -14,7 +109,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'first_name', 'last_name', 'user_club', 'password',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'jwt')
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'login_key', 'jwt')
         read_only_fields = ('id', 'game_editor', 'is_club_admin', 'is_superuser')
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 
@@ -25,15 +120,16 @@ class RegisterSerializer(serializers.ModelSerializer):
     # noinspection PyMethodMayBeStatic
     def get_jwt(self, user) -> str:
         data = {
-            'id': user.id,
-            'username': user.username,
             'email': user.email,
-            'phone': user.phone,
-            'last_name': user.last_name,
             'first_name': user.first_name,
             'game_editor': user.game_editor,
+            'id': user.id,
             'is_superuser': user.is_superuser,
+            'login_key': user.login_key,
+            'last_name': user.last_name,
+            'phone': user.phone,
             'referred_by': user.referred_by,
+            'username': user.username,
         }
         diff = (timezone.now() - user.date_joined).total_seconds()
         if diff > 60:
@@ -51,6 +147,25 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data.get('password'))
         user.save()
         return user
+
+
+class TransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transfer
+        fields = '__all__'
+        read_only_fields = ('id', 'user', 'verified')
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['user'] = self.context['request'].user
+        user = attrs.get('user')
+        receiver: User = attrs.get('to')
+        amount = attrs.get('amount')
+        method = attrs.get('method')
+        user_balance_validator(user, amount, method)
+        club_validator(user, receiver)
+        Config().config_validator(user, amount, Transfer, 'transfer')
+        return attrs
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -92,87 +207,6 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class ClubSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Club
-        fields = ('id', 'name', 'admin', 'balance')
-        read_only_fields = ('id', 'admin')
-
-
-class BetSerializer(serializers.ModelSerializer):
-    match_name = serializers.SerializerMethodField(read_only=True)
-    match_start_time = serializers.SerializerMethodField(read_only=True)
-
-    def get_match_name(self, bet: Bet):
-        return bet.bet_scope.match.title
-
-    def get_match_start_time(self, bet: Bet):
-        return str(bet.bet_scope.match.start_time)
-
-    class Meta:
-        model = Bet
-        fields = ('id', 'user', 'bet_scope', 'choice', 'amount', 'match_name', 'match_start_time')
-        read_only_fields = ('id', 'user')
-        extra_kwargs = {'user': {'required': False}}
-
-    def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        bet_scope: BetScope = attrs.get('bet_scope')
-        sender: User = attrs.get('user')
-        amount = attrs.get('amount')
-        bet_scope_validator(bet_scope)
-        user_balance_validator(sender, amount)
-        return attrs
-
-
-class MatchSerializer(serializers.ModelSerializer):
-    is_live = serializers.SerializerMethodField(read_only=True)
-    is_locked = serializers.SerializerMethodField(read_only=True)
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_live(self, match: Match) -> bool:
-        return match.is_live()
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_locked(self, match: Match) -> bool:
-        return match.is_locked()
-
-    class Meta:
-        model = Match
-        fields = (
-            'id', 'game_name', 'title', 'is_locked', 'is_live', 'start_time', 'end_time')
-        read_only_fields = ('id',)
-
-
-class BetScopeSerializer(serializers.ModelSerializer):
-    is_locked = serializers.SerializerMethodField(read_only=True)
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_locked(self, bet_scope: BetScope) -> bool:
-        return bet_scope.is_locked()
-
-    class Meta:
-        model = BetScope
-        fields = ('id', 'match', 'question', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate', 'option_3',
-                  'option_3_rate', 'option_4', 'option_4_rate', 'winner', 'start_time', 'end_time', 'is_locked')
-        read_only_fields = ('id',)
-
-
-class DepositSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Deposit
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified')
-        extra_kwargs = {'transaction_id': {'required': True}, 'account': {'required': True},
-                        'superuser_account': {'required': True}}
-
-    def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        return attrs
-
-
 class WithdrawSerializer(serializers.ModelSerializer):
     class Meta:
         model = Withdraw
@@ -187,28 +221,5 @@ class WithdrawSerializer(serializers.ModelSerializer):
         amount = attrs.get('amount')
         method = attrs.get('method')
         user_balance_validator(user, amount, method)
+        Config().config_validator(user, amount, Withdraw, 'withdraw')
         return attrs
-
-
-class TransferSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Transfer
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified')
-
-    def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        user = attrs.get('user')
-        receiver: User = attrs.get('to')
-        amount = attrs.get('amount')
-        method = attrs.get('method')
-        user_balance_validator(user, amount, method)
-        club_validator(user, receiver)
-        return attrs
-
-
-class AnnouncementSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Announcement
-        fields = '__all__'

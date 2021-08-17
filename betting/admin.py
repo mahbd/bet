@@ -1,4 +1,3 @@
-from django.contrib.admin import StackedInline
 from django.db.models import F, Sum
 from django.http import Http404
 from django.shortcuts import render, get_object_or_404, redirect
@@ -8,7 +7,7 @@ from django.utils.html import format_html
 
 from bet import admin
 from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer, Announcement, \
-    CHOICE_FIRST, CHOICE_SECOND, CHOICE_THIRD, CHOICE_FOURTH
+    CHOICE_FIRST, CHOICE_SECOND, CHOICE_THIRD, CHOICE_FOURTH, ConfigModel
 from .views import active_bet_scopes
 
 
@@ -63,21 +62,25 @@ class BetScopeAdmin(admin.ModelAdmin):
 
         return render(request, 'admin/bet_option.html', context)
 
+    # noinspection PyMethodMayBeStatic
+    def sum_filter_bet_set(self, bet_scope, choice, field='winning'):
+        return bet_scope.bet_set.filter(choice=choice).aggregate(Sum(field))[f'{field}__sum'] or 0
+
     def bet_scope_detail(self, request, bet_scope_id):
         request.current_app = self.admin_site.name
         try:
-            bet_scope = BetScope.objects.get(pk=bet_scope_id)
+            bet_scope = BetScope.objects.prefetch_related('bet_set').get(pk=bet_scope_id)
         except BetScope.DoesNotExist:
             raise Http404
-        option1_bet = bet_scope.bet_set.filter(choice=CHOICE_FIRST).aggregate(Sum('amount'))['amount__sum'] or 0
-        option2_bet = bet_scope.bet_set.filter(choice=CHOICE_SECOND).aggregate(Sum('amount'))['amount__sum'] or 0
-        option3_bet = bet_scope.bet_set.filter(choice=CHOICE_THIRD).aggregate(Sum('amount'))['amount__sum'] or 0
-        option4_bet = bet_scope.bet_set.filter(choice=CHOICE_FOURTH).aggregate(Sum('amount'))['amount__sum'] or 0
+        option1_bet = self.sum_filter_bet_set(bet_scope, CHOICE_FIRST, 'amount')
+        option2_bet = self.sum_filter_bet_set(bet_scope, CHOICE_SECOND, 'amount')
+        option3_bet = self.sum_filter_bet_set(bet_scope, CHOICE_THIRD, 'amount')
+        option4_bet = self.sum_filter_bet_set(bet_scope, CHOICE_FOURTH, 'amount')
         total_bet = option1_bet + option2_bet + option3_bet + option4_bet
-        option1_benefit = total_bet - option1_bet * bet_scope.option_1_rate
-        option2_benefit = total_bet - option2_bet * bet_scope.option_2_rate
-        option3_benefit = total_bet - option3_bet * bet_scope.option_3_rate
-        option4_benefit = total_bet - option4_bet * bet_scope.option_4_rate
+        option1_benefit = total_bet - self.sum_filter_bet_set(bet_scope, CHOICE_FIRST)
+        option2_benefit = total_bet - self.sum_filter_bet_set(bet_scope, CHOICE_SECOND)
+        option3_benefit = total_bet - self.sum_filter_bet_set(bet_scope, CHOICE_THIRD)
+        option4_benefit = total_bet - self.sum_filter_bet_set(bet_scope, CHOICE_FOURTH)
         context = dict(
             self.admin_site.each_context(request),
             bet_scope=bet_scope,
@@ -216,7 +219,7 @@ class DepositWithdrawMethodAdmin(admin.ModelAdmin):
 
 @admin.register(Deposit)
 class DepositAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'method', 'amount', 'description', 'verified', )
+    list_display = ('id', 'user', 'method', 'amount', 'description', 'verified',)
     list_filter = ('method',)
     autocomplete_fields = ('user',)
 
@@ -338,3 +341,8 @@ class TransferAdmin(admin.ModelAdmin):
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
     list_display = ('id', 'text', 'expired')
+
+
+@admin.register(ConfigModel)
+class ConfigModelAdmin(admin.ModelAdmin):
+    list_display = ('name', 'value', 'description')

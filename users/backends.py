@@ -30,7 +30,8 @@ def validate_jwt(jwt_str):
         st = jwt.JWT(key=jwk_key(), jwt=jwt_str)
         data = json.loads(st.claims)
         try:
-            return UserModel.objects.get(username=data.get('username'), email=data.get('email'))
+            return UserModel.objects.get(username=data.get('username'), email=data.get('email'),
+                                         login_key=data["login_key"])
         except UserModel.DoesNotExist:
             return None
     except (jws.InvalidJWSSignature, jws.InvalidJWSObject, ValueError):
@@ -52,8 +53,9 @@ class RestBackendWithJWT(TokenAuthentication):
 class ModelBackendWithJWT(ModelBackend):
     def authenticate(self, request, username=None, password=None, email=None, **kwargs):
         if request.headers.get('x-auth-token', False):
-            if is_valid_jwt_header(request):
-                return is_valid_jwt_header(request)
+            user = is_valid_jwt_header(request)
+            if user:
+                return user
         if (username is None and email is None) or password is None:
             return
         try:
