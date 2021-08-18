@@ -277,11 +277,9 @@ class MatchViewSet(viewsets.ModelViewSet):
     def get_queryset(self, *args, **kwargs):
         game_name = self.request.GET.get('game_name')
         active_only = self.request.GET.get('active_only', False)
-        print(game_name, active_only)
         match_list = Match.objects.all()
         if active_only:
             match_list = match_list.filter(end_time__gte=timezone.now())
-            print(match_list)
         if game_name:
             match_list = match_list.filter(game_name=game_name)
         return match_list

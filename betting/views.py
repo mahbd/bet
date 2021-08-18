@@ -26,13 +26,14 @@ def create_deposit(user_id: int, amount, method=None, description=None, verified
 
 
 def value_from_option(option: str, bet_scope: BetScope) -> str:
-    if option == BET_CHOICES[0]:
+    print(option)
+    if option == BET_CHOICES[0][0]:
         return bet_scope.option_1
-    if option == BET_CHOICES[1]:
+    if option == BET_CHOICES[1][0]:
         return bet_scope.option_2
-    if option == BET_CHOICES[2]:
+    if option == BET_CHOICES[2][0]:
         return bet_scope.option_3
-    if option == BET_CHOICES[3]:
+    if option == BET_CHOICES[3][0]:
         return bet_scope.option_4
     return "Invalid option"
 
