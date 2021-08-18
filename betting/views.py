@@ -10,8 +10,8 @@ from django.utils import timezone
 from log.views import custom_log
 from users.models import User
 from users.views import total_user_balance, total_club_balance, notify_user
-from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, CHOICE_FIRST, \
-    CHOICE_SECOND, BetScope, CHOICE_THIRD, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, Config, config, BET_CHOICES
+from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, BetScope, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, \
+    config, BET_CHOICES
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -95,7 +95,7 @@ def post_delete_withdraw(instance: Deposit, *args, **kwargs):
 @receiver(post_save, sender=Transfer)
 def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
     if created:
-        if instance.amount > instance.user.balance - Config().get_config('min_balance'):
+        if instance.amount > instance.user.balance - config.get_config('min_balance'):
             raise ValueError("Does not have enough balance.")
         instance.user.balance -= instance.amount
         instance.user.save()
@@ -133,7 +133,7 @@ def post_delete_transfer(instance: Transfer, *args, **kwargs):
 def post_process_bet(instance: Bet, created, *args, **kwargs):
     if created:
         try:
-            if instance.amount > instance.user.balance - Config().get_config('min_balance'):
+            if instance.amount > instance.user.balance - config.get_config('min_balance'):
                 raise ValueError("Does not have enough balance.")
             instance.user.balance -= instance.amount
             instance.user.save()
@@ -162,7 +162,7 @@ def pre_delete_bet(instance: Bet, *args, **kwargs):
     change = instance.winning - instance.amount
     if not instance.paid:
         change = instance.amount
-    instance.user.balance -= change
+    instance.user.balance += change
     instance.user.save()
     notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
                                f'on ##{instance.bet_scope.question}##. Balance '
