@@ -50,7 +50,7 @@ class BetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bet
         fields = ('answer', 'amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question',
-                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning')
+                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning', 'created_at')
         read_only_fields = ('id', 'user', 'answer', 'return_rate', 'is_winner')
 
     def validate(self, attrs):
