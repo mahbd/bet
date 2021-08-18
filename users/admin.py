@@ -1,7 +1,7 @@
 from django.utils.html import format_html
 
 from bet import admin
-from .models import Club, User
+from .models import Club, User, Notification
 
 
 # noinspection PyMethodMayBeStatic
@@ -26,6 +26,11 @@ class ClubAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return Club.objects.prefetch_related('user_set').select_related('admin').all()
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ['user', 'message']
 
 
 # noinspection PyMethodMayBeStatic
