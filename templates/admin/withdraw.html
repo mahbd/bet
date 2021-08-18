@@ -3,10 +3,6 @@
     <h1>Pending withdraws</h1>
     {% for withdraw in unverified_withdraws %}
         {% csrf_token %}
-        <label>
-            <input name="user" type="number" value="{{ withdraw.user_id }}" hidden>
-        </label>
-        <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
 
         <div class="row">
             <div class="col-sm">
@@ -68,6 +64,7 @@
 
         <a href="{% url 'admin:betting_withdraw_delete' withdraw.id %}"
            class="btn btn-danger float-end text-white">Deny</a>
+        <br><br><br><br>
     {% empty %}
         <p>There is no unverified withdraw</p>
     {% endfor %}

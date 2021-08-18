@@ -2,11 +2,6 @@
 {% block content %}
     <h1>Pending Deposits</h1>
     {% for deposit in unverified_deposits %}
-        <label>
-            <input name="user" type="number" value="{{ deposit.user_id }}" hidden>
-        </label>
-        <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
-
         <div class="row">
             <div class="col-sm">
                 <label for="id_username">Username</label>
@@ -66,6 +61,7 @@
         <button class="btn btn-success text-white" onclick="acceptDeposit({{ deposit.id }})">Accept</button>
         <a href="{% url 'admin:betting_deposit_delete' deposit.id %}"
            class="btn btn-danger float-end text-white">Deny</a>
+        <br><br><br><br>
     {% empty %}
         <p>There is no unverified deposit</p>
     {% endfor %}
