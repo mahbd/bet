@@ -137,11 +137,11 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
                 raise ValueError("Does not have enough balance.")
             instance.user.balance -= instance.amount
             instance.user.save()
-            if instance.bet_scope.winner == CHOICE_FIRST:
+            if instance.choice == BET_CHOICES[0][0]:
                 ratio = instance.bet_scope.option_1_rate
-            elif instance.bet_scope.winner == CHOICE_SECOND:
+            elif instance.choice == BET_CHOICES[1][0]:
                 ratio = instance.bet_scope.option_2_rate
-            elif instance.bet_scope.winner == CHOICE_THIRD:
+            elif instance.choice == BET_CHOICES[2][0]:
                 ratio = instance.bet_scope.option_3_rate
             else:
                 ratio = instance.bet_scope.option_4_rate
