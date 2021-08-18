@@ -4,7 +4,7 @@
     <h1>Work in progress</h1>
     {% for match in match_list %}
         <div style="margin-bottom: 100px">
-            <form action="{% url 'admin:betting_match_change' match.id %}" method="post">
+            <div>
                 {% csrf_token %}
                 <label>
                     <input type="text" name="locked" value="true" hidden>
@@ -45,8 +45,18 @@
                     Add new bet Option
                 </a>
                 <a href="{% url 'admin:betting_match_change' match.id %}" class="btn btn-info text-white">Edit Match</a>
-                <button type="submit" name="_save" class="btn btn-danger float-end">Lock Match</button>
-            </form>
+                {% if not match.is_locked %}
+                    <a class="btn btn-danger float-end text-white" href="{% url 'admin:lock_match' match.id %}">Lock
+                        Match</a>
+                {% else %}
+                    <button class="btn btn-danger float-end text-white disabled" disabled>Locked
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                             class="bi bi-lock-fill" viewBox="0 0 16 16">
+                            <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        </svg>
+                    </button>
+                {% endif %}
+            </div>
             <div class="container">
                 <h2>Bet option list</h2>
                 {% for bet_scope in match.betscope_set.all %}

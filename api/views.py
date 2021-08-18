@@ -125,7 +125,11 @@ class BetViewSet(mixins.CreateModelMixin,
     permission_classes = [BetPermissionClass]
 
 
-class BetScopeViewSet(viewsets.ModelViewSet):
+class BetScopeViewSet(mixins.CreateModelMixin,
+                      mixins.RetrieveModelMixin,
+                      mixins.UpdateModelMixin,
+                      mixins.ListModelMixin,
+                      viewsets.GenericViewSet):
     """
     This is the place where user can bet.
     list:
@@ -253,7 +257,11 @@ class Login(views.APIView):
         return Response({'detail': 'User must be logged in'}, status=403)
 
 
-class MatchViewSet(viewsets.ModelViewSet):
+class MatchViewSet(mixins.CreateModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.UpdateModelMixin,
+                   mixins.ListModelMixin,
+                   viewsets.GenericViewSet):
     """
     list:
     Return a list of matches\n

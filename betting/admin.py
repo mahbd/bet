@@ -182,10 +182,21 @@ class MatchAdmin(admin.ModelAdmin):
 
         return render(request, 'admin/match.html', context)
 
+    def lock_match(self, request, match_id, red=False):
+        request.current_app = self.admin_site.name
+        match = get_object_or_404(Match, pk=match_id)
+        match.locked = True
+        match.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:match')
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('match/', self.match, name='match'),
+            path('lock_match/<int:match_id>/', self.lock_match, name='lock_match'),
+            path('lock_match/<int:match_id>/<str:red>/', self.lock_match, name='lock_match'),
         ]
         return my_urls + urls
 

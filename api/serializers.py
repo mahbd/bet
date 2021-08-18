@@ -25,7 +25,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
         model = BetScope
         fields = ('end_time', 'id', 'is_locked', 'match', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate',
                   'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'winner')
 
 
 # noinspection PyMethodMayBeStatic
