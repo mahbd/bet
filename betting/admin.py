@@ -241,12 +241,24 @@ class DepositAdmin(admin.ModelAdmin):
             return redirect(red)
         return redirect('admin:deposit')
 
+    def accept_deposit(self, request, deposit_id, amount, red=False):
+        request.current_app = self.admin_site.name
+        amount = float(amount)
+        deposit = get_object_or_404(Deposit, pk=deposit_id)
+        deposit.verified = True
+        deposit.amount = amount
+        deposit.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:deposit')
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('deposit/', self.deposit, name='deposit'),
             path('deny_deposit/<int:deposit_id>/', self.deny_deposit, name='deny_deposit'),
             path('deny_deposit/<int:deposit_id>/<str:red>/', self.deny_deposit, name='deny_deposit'),
+            path('accept_deposit/<int:deposit_id>/<amount>/', self.accept_deposit, name='accept_deposit'),
         ]
         return my_urls + urls
 
@@ -278,12 +290,24 @@ class WithdrawAdmin(admin.ModelAdmin):
             return redirect(red)
         return redirect('admin:withdraw')
 
+    def accept_withdraw(self, request, w_id, tran_id, sup_ac, red=False):
+        request.current_app = self.admin_site.name
+        w = get_object_or_404(Withdraw, pk=w_id)
+        w.verified = True
+        w.transaction_id = tran_id
+        w.superuser_account = sup_ac
+        w.save()
+        if red:
+            return redirect(red)
+        return redirect('admin:withdraw')
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
             path('withdraw/', self.withdraw, name='withdraw'),
             path('deny_withdraw/<int:w_id>/', self.deny_withdraw, name='deny_withdraw'),
             path('deny_withdraw/<int:w_id>/<str:red>/', self.deny_withdraw, name='deny_withdraw'),
+            path('accept_withdraw/<int:w_id>/<tran_id>/<sup_ac>/', self.accept_withdraw, name='accept_withdraw'),
         ]
         return my_urls + urls
 

@@ -28,6 +28,7 @@ DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_MYCASH, 'My Cash'),
     (METHOD_SURECASH, 'Sure Cash'),
     (METHOD_TRUSTPAY, 'Trust Axiata Pay'),
+    (METHOD_TRANSFER, 'Transfer'),
     (METHOD_CLUB, 'Club W/D'),
 )
 CHOICE_FIRST = 'option_1'
@@ -151,7 +152,6 @@ class Config:
         total_per_day = model.objects.filter(user=user,
                                              created_at__gte=timezone.now().replace(hour=0, minute=0,
                                                                                     second=0)).count()
-        print('Total today', total_per_day)
         if total_per_day >= limit_count + md:
             raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_per_day}")
         if minimum > amount or amount > maximum:

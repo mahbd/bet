@@ -2,77 +2,82 @@
 {% block content %}
     <h1>Pending withdraws</h1>
     {% for withdraw in unverified_withdraws %}
-        <form action="{% url 'admin:betting_withdraw_change' withdraw.id %}" method="post"
-              style="margin-bottom: 100px;" >
-            {% csrf_token %}
-            <label>
-                <input name="user" type="number" value="{{ withdraw.user_id }}" hidden>
-            </label>
-            <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
+        {% csrf_token %}
+        <label>
+            <input name="user" type="number" value="{{ withdraw.user_id }}" hidden>
+        </label>
+        <label for="id_verified"><input type="text" name="verified" id="id_verified" value="true" hidden></label>
 
-            <div class="row">
-                <div class="col-sm">
-                    <label for="id_username">Username</label>
-                    <input type="text" id="id_username" value="{{ withdraw.user.username }}" class="form-control"
-                           readonly>
-                </div>
-                <div class="col-sm">
-                    <label for="full-name">Full Name </label>
-                    <input id="full-name" type="text" class="form-control"
-                           value="{{ withdraw.user.full_name|default:"Not given" }}"
-                           disabled>
-                </div>
-                <div class="col-sm"><label class="required" for="id_method">Method:</label>
-                    <input name="method" required="" value="{{ withdraw.method }}" id="id_method" class="form-control"
-                           readonly>
-                </div>
+        <div class="row">
+            <div class="col-sm">
+                <label for="id_username">Username</label>
+                <input type="text" id="id_username" value="{{ withdraw.user.username }}" class="form-control"
+                       readonly>
             </div>
-            <div class="row">
-                <div class="col-sm-4">
-                    <label class="required label" for="id_amount">Amount:</label>
-                    <input type="number" name="amount" value={{ withdraw.amount }} step="0.01" required=""
-                           id="id_amount" class="form-control" readonly>
-                </div>
-                <div class="col-sm-8">
-                    <label for="id_transaction_id">Transaction id:</label>
-                    <input value="{{ withdraw.transaction_id|default:"" }}" type="text" name="transaction_id"
-                           class="form-control" maxlength="255" id="id_transaction_id">
-                </div>
+            <div class="col-sm">
+                <label for="full-name">Full Name </label>
+                <input id="full-name" type="text" class="form-control"
+                       value="{{ withdraw.user.full_name|default:"Not given" }}"
+                       disabled>
             </div>
-
-            <div class="row">
-                <div class="col-sm">
-                    <label for="id_superuser_account">Superuser account:</label>
-                    <input value="{{ withdraw.superuser_account|default:"" }}" type="text" name="superuser_account"
-                           class="form-control" maxlength="255" id="id_superuser_account">
-                </div>
-                <div class="col-sm">
-                    <label for="id_account">Account:</label>
-                    <input value="{{ withdraw.account|default:"" }}" type="text" name="account" class="form-control"
-                           maxlength="255" id="id_account" readonly>
-                </div>
+            <div class="col-sm"><label class="required" for="id_method">Method:</label>
+                <input name="method" required="" value="{{ withdraw.method }}" id="id_method" class="form-control"
+                       readonly>
             </div>
-
-            <div class="row">
-                <div class="col-sm">
-                    <label for="id_created_at_0">Date</label>
-                    <input type="date" id="id_created_at_0" name="created_at_0" class="form-control"
-                           value="{{ withdraw.created_at|date:"Y-m-d" }}" readonly>
-                </div>
-                <div class="col-sm">
-                    <label for="id_created_at_1">Time</label>
-                    <input type="time" id="id_created_at_1" name="created_at_1" class="form-control"
-                           value="{{ withdraw.created_at|time:"H:i:s" }}" readonly></div>
+        </div>
+        <div class="row">
+            <div class="col-sm-4">
+                <label class="required label" for="id_amount">Amount:</label>
+                <input type="number" name="amount" value={{ withdraw.amount }} step="0.01" required=""
+                       id="id_amount" class="form-control" readonly>
             </div>
-            <br>
+            <div class="col-sm-8">
+                <label for="tran_id_{{ withdraw.id }}">Transaction id:</label>
+                <input value="{{ withdraw.transaction_id|default:"None" }}" type="text" name="transaction_id"
+                       class="form-control" maxlength="255" id="tran_id_{{ withdraw.id }}">
+            </div>
+        </div>
 
-            <input type="submit" value="Verify" class="btn btn-success" name="_save">
+        <div class="row">
+            <div class="col-sm">
+                <label for="id_sup_ac_{{ withdraw.id }}">Superuser account:</label>
+                <input value="{{ withdraw.superuser_account|default:"01" }}" type="text" name="superuser_account"
+                       class="form-control" maxlength="255" id="id_sup_ac_{{ withdraw.id }}">
+            </div>
+            <div class="col-sm">
+                <label for="id_account">Account:</label>
+                <input value="{{ withdraw.account|default:"01" }}" type="text" name="account" class="form-control"
+                       maxlength="255" id="id_account" readonly>
+            </div>
+        </div>
 
-             <a href="{% url 'admin:betting_withdraw_delete' withdraw.id %}"
-               class="btn btn-danger float-end text-white">Deny</a>
+        <div class="row">
+            <div class="col-sm">
+                <label for="id_created_at_0">Date</label>
+                <input type="date" id="id_created_at_0" name="created_at_0" class="form-control"
+                       value="{{ withdraw.created_at|date:"Y-m-d" }}" readonly>
+            </div>
+            <div class="col-sm">
+                <label for="id_created_at_1">Time</label>
+                <input type="time" id="id_created_at_1" name="created_at_1" class="form-control"
+                       value="{{ withdraw.created_at|time:"H:i:s" }}" readonly></div>
+        </div>
+        <br>
 
-        </form>
+        <button class="btn btn-success text-white" onclick="acceptWithdraw({{ withdraw.id }})">Accept</button>
+
+        <a href="{% url 'admin:betting_withdraw_delete' withdraw.id %}"
+           class="btn btn-danger float-end text-white">Deny</a>
     {% empty %}
         <p>There is no unverified withdraw</p>
     {% endfor %}
+    <script>
+        const baseUrl = "/admin/betting/withdraw/accept_withdraw/";
+
+        function acceptWithdraw(withdraw_id) {
+            const tran_id = document.getElementById("tran_id_" + withdraw_id.toString()).value
+            const sup_ac = document.getElementById("id_sup_ac_" + withdraw_id.toString()).value
+            window.location = baseUrl + withdraw_id.toString() + "/" + tran_id + "/" + sup_ac + "/";
+        }
+    </script>
 {% endblock %}
