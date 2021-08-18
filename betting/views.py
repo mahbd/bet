@@ -270,12 +270,12 @@ def sum_aggregate(queryset: QuerySet, field='amount'):
 
 def generate_admin_dashboard_data():
     total_bet_win = sum_aggregate(Bet.objects.filter(paid=True), 'winning')
-    total_bet = sum_aggregate(Bet.objects.exclude(paid=True))
+    total_bet = sum_aggregate(Bet.objects.filter(paid=True))
     total_revenue = total_bet - total_bet_win
 
-    q = Bet.objects.exclude(paid=True).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    q = Bet.objects.filter(paid=True).filter(created_at__gte=timezone.now() - timedelta(days=30))
     month_bet_win = sum_aggregate(q, 'winning')
-    q = Bet.objects.exclude(paid=True).filter(created_at__gte=timezone.now() - timedelta(days=30))
+    q = Bet.objects.filter(paid=True).filter(created_at__gte=timezone.now() - timedelta(days=30))
     month_bet = sum_aggregate(q)
     last_month_revenue = month_bet - month_bet_win
 
