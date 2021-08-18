@@ -65,7 +65,7 @@
                             <td>{{ bet_scope.option_2 }}</td>
                             <td>{{ bet_scope.option_3 }}</td>
                             <td>{{ bet_scope.option_4 }}</td>
-                            {% if not bet_scope.locked %}
+                            {% if not bet_scope.is_locked %}
                                 <td>
                                     <a href="{% url 'admin:lock_bet_scope' bet_scope.id "admin:match" %}"
                                        class="btn-sm btn-danger rounded-pill text-white">Lock</a>
