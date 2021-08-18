@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Sum, QuerySet, F
+from django.db.models import Sum, QuerySet
 from django.db.models.signals import post_save, post_delete, pre_delete, pre_save
 from django.dispatch import receiver
 from django.http import HttpResponse
@@ -86,7 +86,9 @@ def post_delete_withdraw(instance: Deposit, *args, **kwargs):
     notify_user(instance.user, f"Withdraw of {instance.amount}BDT via {instance.method} to number {instance.account} "
                                f"placed on {instance.created_at} has been canceled and refunded")
     if not instance.verified:
-        User.objects.update(id=instance.user_id, balance=F('balance') + instance.amount)
+        user = User.objects.get(pk=instance.user_id)
+        user.balance += instance.amount
+        user.save()
 
 
 @receiver(post_save, sender=Transfer)
