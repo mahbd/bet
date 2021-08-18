@@ -166,7 +166,7 @@ def pre_delete_bet(instance: Bet, *args, **kwargs):
     instance.user.save()
     notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
                                f'on ##{instance.bet_scope.question}##. Balance '
-                               f'refunded by {instance.winning - instance.amount} BDT')
+                               f'refunded by {change} BDT')
 
 
 @receiver(pre_save, sender=BetScope)
