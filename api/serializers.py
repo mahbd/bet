@@ -9,6 +9,10 @@ from users.models import User, Club, Notification
 
 
 def jwt_from_user(user: User):
+    if user.referred_by:
+        referred_by = user.referred_by.username
+    else:
+        referred_by = ""
     data = {
         'email': user.email,
         'first_name': user.first_name,
@@ -18,7 +22,7 @@ def jwt_from_user(user: User):
         'login_key': user.login_key,
         'last_name': user.last_name,
         'phone': user.phone,
-        'referred_by': user.referred_by,
+        'referred_by': referred_by,
         'username': user.username,
     }
     return jwt_writer(**data)
@@ -135,12 +139,18 @@ class NotificationSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     is_club_admin = serializers.SerializerMethodField(read_only=True)
     jwt = serializers.SerializerMethodField(read_only=True)
+    referer_username = serializers.CharField(default='no_data', required=False, trim_whitespace=True)
+    referred_by = serializers.SerializerMethodField(read_only=True)
+
+    def get_referred_by(self, user: User):
+        return UserListSerializer(user).data
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'first_name', 'last_name', 'user_club', 'password',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'login_key', 'jwt')
-        read_only_fields = ('id', 'game_editor', 'is_club_admin', 'is_superuser')
+                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'login_key', 'jwt',
+                  'referer_username')
+        read_only_fields = ('id', 'game_editor', 'is_club_admin', 'is_superuser',)
         extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
 
     # noinspection PyMethodMayBeStatic
@@ -149,24 +159,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     # noinspection PyMethodMayBeStatic
     def get_jwt(self, user) -> str:
-        data = {
-            'email': user.email,
-            'first_name': user.first_name,
-            'game_editor': user.game_editor,
-            'id': user.id,
-            'is_superuser': user.is_superuser,
-            'login_key': user.login_key,
-            'last_name': user.last_name,
-            'phone': user.phone,
-            'referred_by': user.referred_by,
-            'username': user.username,
-        }
+        jwt = jwt_from_user(user)
         diff = (timezone.now() - user.date_joined).total_seconds()
         if diff > 60:
             return "Not allowed jwt. Please login to get JWT"
-        return jwt_writer(**data)
+        return jwt
+
+    def validate(self, attrs):
+        if not self.instance:
+            u = attrs.get('referer_username', None)
+            user = User.objects.filter(username=u)
+            if user:
+                attrs['referred_by'] = user[0]
+        return attrs
 
     def create(self, validated_data):
+        validated_data.pop('referer_username')
         user = super().create(validated_data)
         user.set_password(validated_data.get('password'))
         user.save()
@@ -219,9 +227,6 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_jwt(self, user) -> str:
         jwt = jwt_from_user(user)
-        diff = (timezone.now() - user.date_joined).total_seconds()
-        if diff > 60:
-            return "Not allowed jwt. Please login to get JWT"
         return jwt
 
     def get_club_detail(self, user: User) -> dict:
