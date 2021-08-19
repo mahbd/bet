@@ -167,8 +167,8 @@ class BetScopeViewSet(mixins.CreateModelMixin,
 class ChangePassword(views.APIView):
     def post(self, *args, **kwargs):
         user = self.request.user
-        password = self.request.POST.get('password')
-        if password and user.is_authenticated:
+        password = self.request.POST.get('password') or self.request.data.get('password')
+        if password and user and user.is_authenticated:
             user.set_password(password)
             user.last_login = timezone.now()
             user.login_key = login_key()
