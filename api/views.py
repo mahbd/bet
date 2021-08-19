@@ -204,8 +204,6 @@ class ClubViewSet(mixins.ListModelMixin,
         get:
         Returns list of club users. User must be a member of that club
         """
-        if pk != request.user.user_club_id:
-            return Response({"errors": "You must be member of this club"}, status=400)
         club = get_object_or_404(Club, id=pk)
         users = User.objects.filter(user_club=club)
         return Response({"results": UserListSerializer(users, many=True).data})
