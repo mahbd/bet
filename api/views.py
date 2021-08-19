@@ -390,6 +390,8 @@ class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
     serializer_class = UserListSerializer
 
+    lookup_field = 'username'
+
 
 class UserDetailsUpdateRetrieveDestroy(generics.RetrieveUpdateDestroyAPIView):
     """
