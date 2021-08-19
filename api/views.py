@@ -404,4 +404,7 @@ class UserDetailsUpdateRetrieveDestroy(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsUser]
 
     def get_object(self):
+        print(self.request.data)
+        print(self.request.POST)
+        print(UserSerializer(self.request.user).data)
         return self.request.user
