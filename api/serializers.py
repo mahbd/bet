@@ -1,11 +1,27 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
+    club_validator, bet_scope_validator, user_balance_validator
 from betting.views import value_from_option
 from users.backends import jwt_writer
 from users.models import User, Club, Notification
-from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES
+
+
+def jwt_from_user(user: User):
+    data = {
+        'email': user.email,
+        'first_name': user.first_name,
+        'game_editor': user.game_editor,
+        'id': user.id,
+        'is_superuser': user.is_superuser,
+        'login_key': user.login_key,
+        'last_name': user.last_name,
+        'phone': user.phone,
+        'referred_by': user.referred_by,
+        'username': user.username,
+    }
+    return jwt_writer(**data)
 
 
 class AnnouncementSerializer(serializers.ModelSerializer):
@@ -186,6 +202,8 @@ class UserSerializer(serializers.ModelSerializer):
     referred_by = serializers.SerializerMethodField(read_only=True)
     is_club_admin = serializers.SerializerMethodField(read_only=True)
     refer_set = serializers.SerializerMethodField(read_only=True)
+    club_detail = serializers.SerializerMethodField(read_only=True)
+    jwt = serializers.SerializerMethodField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def get_is_club_admin(self, user) -> bool:
@@ -199,12 +217,20 @@ class UserSerializer(serializers.ModelSerializer):
     def get_referred_by(self, user: User) -> dict:
         return UserListSerializer(user.referred_by).data
 
+    def get_jwt(self, user) -> str:
+        jwt = jwt_from_user(user)
+        diff = (timezone.now() - user.date_joined).total_seconds()
+        if diff > 60:
+            return "Not allowed jwt. Please login to get JWT"
+        return jwt
+
+    def get_club_detail(self, user: User) -> dict:
+        return ClubSerializer(user.user_club).data
+
     class Meta:
         model = User
         exclude = ('groups', 'user_permissions', 'password')
         read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'is_staff', 'referred_by')
-        extra_kwargs = {'user_club': {'required': True}}
-        depth = 1
 
 
 class WithdrawSerializer(serializers.ModelSerializer):
