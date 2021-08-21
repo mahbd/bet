@@ -1,0 +1,76 @@
+{% load tags %}
+<form action="{% url 'ea:withdraws' %}" method="post">
+    {% csrf_token %}
+    <input type="text" name="id" value="{{ withdraw.id }}" hidden>
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_username">Username</label>
+            <input type="text" id="id_username" value="{{ withdraw.user.username }}" class="form-control"
+                   disabled>
+        </div>
+        <div class="col-sm">
+            <label for="full-name">Full Name </label>
+            <input id="full-name" type="text" class="form-control"
+                   value="{{ withdraw.user.full_name|default:"Not given" }}"
+                   disabled>
+        </div>
+        <div class="col-sm">
+            <label for="id_method_{{ withdraw.id }}"></label>
+            <div class="input-group">
+                <select id="id_method_{{ withdraw.id }}" class="form-select" name="method" disabled>
+                    <option value="">Select Method</option>
+                    {% for option in method_list %}
+                        <option value="{{ option.0 }}"
+                                {% if withdraw.method == option.0 %}selected="selected"{% endif %}>
+                            {{ option.1 }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% enable_f_button "id_method_"|join_s:withdraw.id %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-4">
+            <label class="required label" for="id_amount_{{ withdraw.id }}">Amount:</label>
+            <input type="number" name="amount" value={{ withdraw.amount }} step="0.01" required=""
+                   id="id_amount_{{ withdraw.id }}" class="form-control" disabled>
+        </div>
+        <div class="col-sm-8">
+            <label for="id_trans_{{ withdraw.id }}">Transaction id:</label>
+            <div class="input-group">
+                <input value="{{ withdraw.transaction_id|default:"" }}" type="text" name="transaction_id"
+                       class="form-control" maxlength="255" id="id_trans_{{ withdraw.id }}">
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_sup_{{ withdraw.id }}">Your account:</label>
+            <div class="input-group">
+                <input value="{{ withdraw.superuser_account|default:"" }}" type="text" name="superuser_account"
+                       class="form-control" maxlength="255" id="id_sup_{{ withdraw.id }}">
+            </div>
+        </div>
+        <div class="col-sm">
+            <label for="id_account_{{ withdraw.id }}">User Account:</label>
+            <div class="input-group">
+                <input value="{{ withdraw.account|default:"" }}" type="text" name="account" class="form-control"
+                       maxlength="255" id="id_account_{{ withdraw.id }}" disabled>
+                {% enable_f_button "id_account_"|join_s:withdraw.id %}
+            </div>
+        </div>
+    </div>
+    <div class="form-outline datetimepicker" data-mdb-inline="true">
+        <label for="date-time" class="form-label">Date time</label>
+        <input type="text" class="form-control datetime" value="{{ withdraw.created_at|date:'Y-m-d h:i A' }}"
+               id="date-time" name="created_at"/>
+    </div>
+
+
+    <br>
+    <input class="btn btn-success text-white" type="submit" value="Submit">
+    <a href="{% url 'admin:betting_withdraw_delete' withdraw.id %}" class="btn btn-danger float-end me-1">Deny</a>
+</form>

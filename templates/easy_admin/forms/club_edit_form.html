@@ -1,0 +1,60 @@
+{% load tags %}
+<form action="{% url 'ea:clubs' %}" method="post">
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_name">Club Name</label>
+            <div class="input-group">
+                <input id="id_name" type="text" name="name" class="form-control" value="{{ club.name }}" disabled>
+                {% enable_f_button "id_name" %}
+            </div>
+        </div>
+        <div class="col-sm">
+            <div class="col-sm">
+                <label for="id_admin">Club Admin</label>
+                <div class="input-group">
+                    <input id="id_admin" type="text" name="admin" class="form-control"
+                           value="{{ club.admin.username }}" disabled>
+                    {% enable_f_button "id_admin" %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_balance">Club Balance</label>
+            <div class="input-group">
+                <input id="id_balance" type="text" name="balance" class="form-control" value="{{ club.balance }}"
+                       disabled>
+                {% enable_f_button "id_balance" %}
+            </div>
+        </div>
+        <div class="col-sm">
+            <div class="col-sm">
+                <label for="total_users">Total Users</label>
+                <div class="input-group">
+                    <input id="total_users" type="text" class="form-control" value="{{ club.total_user|default:"0" }}"
+                           disabled>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_username">Username</label>
+            <div class="input-group">
+                <input id="id_username" type="text" name="username" class="form-control" disabled>
+                {% enable_f_button "id_username" %}
+            </div>
+        </div>
+        <div class="col-sm">
+            <div class="col-sm">
+                <label for="id_password">Password</label>
+                <div class="input-group">
+                    <input id="id_password" type="text" name="password" class="form-control" disabled>
+                    {% enable_f_button "id_password" %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <button class="btn btn-success mt-2" type="submit">Save</button>
+</form>

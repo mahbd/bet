@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load tags %}
+{% block content %}
+    <div class="container">
+        <h1>Club List</h1>
+        {% for club in club_list %}
+            {% include 'easy_admin/forms/club_edit_form.html' %}
+            <h2>Club User List</h2>
+            {% for user in club.user_set.all %}
+            {% empty %}
+                <p>This club has no user</p>
+            {% endfor %}
+            <div class="mb-5"></div>
+        {% empty %}
+            <p>No club available</p>
+        {% endfor %}
+    </div>
+{% endblock content %}

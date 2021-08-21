@@ -43,7 +43,8 @@ class BetScopeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BetScope
-        fields = ('end_time', 'id', 'is_locked', 'locked', 'match', 'option_1', 'option_1_rate', 'option_2', 'option_2_rate',
+        fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match', 'option_1', 'option_1_rate', 'option_2',
+                  'option_2_rate',
                   'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
         read_only_fields = ('id', 'winner')
 
@@ -126,7 +127,7 @@ class MatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Match
-        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'locked', 'start_time', 'title',)
+        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'locked', 'hide', 'start_time', 'title',)
         read_only_fields = ('id',)
 
 

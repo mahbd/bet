@@ -1,0 +1,22 @@
+{% with id=match.id %}
+    <form action="{% url 'ea:deposits' %}" method="post" class="mb-5">
+        {% csrf_token %}
+        <label class="required" for="id_gn_{{ id }}">Game name:</label>
+        <select id="id_gn_{{ id }}" class="form-select" name="game_name">
+            <option value="">Select Game</option>
+            {% for option in game_list %}
+                <option value="{{ option.0 }}">
+                    {{ option.1 }}
+                </option>
+            {% endfor %}
+        </select>
+        <label class="required" for="id_title_{{ id }}">Match Title:</label>
+        <input type="text" name="title" value="{{ match.title }}" class="form-control" maxlength="255">
+
+        <label for="end_time_{{ id }}">Start date</label>
+        <input type="text" class="form-control datetime bg-white" id="end_time_{{ id }}" name="start_time"/>
+        <label for="end_time_{{ id }}">End date</label>
+        <input type="text" class="form-control datetime bg-white" id="end_time_{{ id }}" name="end_time"/>
+        <a href="#" class="btn btn-success text-white">Add Now</a>
+    </form>
+{% endwith %}

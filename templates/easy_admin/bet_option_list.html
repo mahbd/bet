@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Bet Option List{% endblock title %}
+{% block content %}
+    <div class="container">
+        <h2 id="running">Running Options</h2>
+        {% for bet_scope in bet_scope_list %}
+            {% include 'easy_admin/bet_option_sm.html' %}
+        {% empty %}
+            <p>No bet options to select winner</p>
+        {% endfor %}
+    </div>
+{% endblock content %}

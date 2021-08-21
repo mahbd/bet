@@ -15,7 +15,7 @@ urlpatterns = [
     path('', lambda x: HttpResponse(f'Hey {x.user}, This is home'), name='home'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/profile/', lambda x: redirect('home')),
-    path('admin/doc/', include('django.contrib.admindocs.urls')),
+    path('easy-admin/', include('easy_admin.urls')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),

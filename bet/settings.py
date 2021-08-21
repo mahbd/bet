@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'users',
     'betting',
     'api',
+    'easy_admin',
 ]
 
 MIDDLEWARE = [

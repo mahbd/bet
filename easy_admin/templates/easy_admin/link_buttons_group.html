@@ -1,0 +1,7 @@
+<div class="row">
+    {% for button in buttons %}
+    <div class="col-auto">
+        <a class="btn m-1 {{ button.0 }}" href="{{ button.1 }}">{{ button.2 }}</a>
+    </div>
+    {% endfor %}
+</div>

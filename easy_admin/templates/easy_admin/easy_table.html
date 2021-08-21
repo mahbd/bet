@@ -1,0 +1,16 @@
+<table class="table table-bordered table-striped table-light">
+    {% if table_header %}
+        {% for col in table_header %}
+            <th class="{{ col.0 }}">{{ col.1 }}</th>
+        {% endfor %}
+    {% endif %}
+    {% for row in table_body %}
+        <tr>
+            {% for col in row %}
+                <td>{{ col }}</td>
+            {% endfor %}
+        </tr>
+    {% empty %}
+        {{ empty_message|safe }}
+    {% endfor %}
+</table>

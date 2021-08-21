@@ -165,6 +165,7 @@ class Match(models.Model):
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
     title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
     locked = models.BooleanField(default=False)
+    hide = models.BooleanField(default=False)
     start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
 
@@ -206,6 +207,7 @@ class BetScope(models.Model):
                                       blank=True, null=True)
     end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
     locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
+    hide = models.BooleanField(default=False)
     processed_internally = models.BooleanField(default=False)
 
     def is_locked(self):
