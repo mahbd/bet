@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load tags %}
+{% block content %}
+    <div class="container">
+        <h1>{{ bet_scope.question }}</h1>
+        <table class="table table-bordered table-striped table-light">
+            <tr>
+                <td>Game Type</td>
+                <td>{{ bet_scope.match.game_name }}</td>
+            </tr>
+            <tr>
+                <td>Match Title</td>
+                <td>{{ bet_scope.match.title }}</td>
+            </tr>
+            <tr>
+                <td>Bet Option start time</td>
+                <td>{{ bet_scope.start_time|default:"Not Provided" }}</td>
+            </tr>
+            <tr>
+                <td>Bet Option end time</td>
+                <td>{{ bet_scope.end_time|default:"Not Provided" }}</td>
+            </tr>
+            {% if bet_scope.winner %}
+                <tr>
+                    <td>Winner</td>
+                    <td>{{ bet_scope.winner }}</td>
+                </tr>
+                <tr>
+                    <td>Revenue</td>
+                    <td>
+                        {% if bet_scope.winner == choice_list.0.0 %}
+                            {{ option_benefits.0 }}
+                        {% elif bet_scope.winner == choice_list.1.0 %}
+                            {{ option_benefits.1 }}
+                        {% elif bet_scope.winner == choice_list.2.0 %}
+                            {{ option_benefits.2 }}
+                        {% elif bet_scope.winner == choice_list.3.0 %}
+                            {{ option_benefits.3 }}
+                        {% else %}
+                            Something is not right
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endif %}
+
+        </table>
+        {% bet_option_table_detail bet_scope %}
+
+        <a href="{% url 'ea:update_bet_scope' bet_scope.match_id bet_scope.id %}"
+           class="btn btn-success text-white">Edit Scope</a>
+
+        {% if not bet_scope.is_locked %}
+            <a class="btn btn-danger float-end text-white" href="{% url 'ea:lock_scope' bet_scope.id %}">Lock</a>
+        {% else %}
+            <button class="btn btn-danger float-end text-white disabled" disabled>Locked
+                {% include 'easy_admin/lock_icon.html' %}
+            </button>
+            {% if bet_scope.locked %}
+                <a class="btn btn-danger float-end text-white" href="{% url 'ea:lock_scope' bet_scope.id %}">Unlock</a>
+            {% endif %}
+        {% endif %}
+        {% if not bet_scope.hide %}
+            <a class="btn btn-danger float-end text-white me-1" href="{% url 'ea:hide_scope' bet_scope.id %}">Hide</a>
+        {% else %}
+            <button class="btn btn-danger float-end text-white disabled me-1" disabled>Hidden
+            </button>
+            <a class="btn btn-danger float-end text-white" href="{% url 'ea:hide_scope' bet_scope.id %}">Unhide</a>
+        {% endif %}
+        <br><br>
+        {% if user.is_superuser and not bet_scope.winner %}
+            <h3 class="text-danger">Select Winner</h3>
+            <a class="btn btn-danger text-white"
+               href="{% url 'admin:set_winner' bet_scope.id choice_list.0.0 %}">
+                {{ bet_scope.option_1 }}
+            </a>
+            <a class="btn btn-danger text-white"
+               href="{% url 'admin:set_winner' bet_scope.id choice_list.1.0 %}">
+                {{ bet_scope.option_2 }}
+            </a>
+            {% if bet_scope.option_3 %}
+                <a class="btn btn-danger text-white"
+                   href="{% url 'admin:set_winner' bet_scope.id choice_list.2.0 %}">
+                    {{ bet_scope.option_3 }}
+                </a>
+            {% endif %}
+            {% if bet_scope.option_4 %}
+                <a class="btn btn-danger text-white"
+                   href="{% url 'admin:set_winner' bet_scope.id choice_list.3.0 %}">
+                    {{ bet_scope.option_4 }}
+                </a>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

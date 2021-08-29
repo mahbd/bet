@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.crypto import get_random_string
 
 
@@ -14,6 +15,8 @@ class Club(models.Model):
     balance = models.FloatField(default=0,
                                 validators=[MinValueValidator(0)],
                                 help_text='Club\'s current balance.')
+    username = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
@@ -42,6 +45,14 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class UserClubInfo(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True)
+    date_joined = models.DateTimeField(default=timezone.now)
+    total_bet = models.FloatField(default=0)
+    total_commission = models.FloatField(default=0)
 
 
 class Notification(models.Model):

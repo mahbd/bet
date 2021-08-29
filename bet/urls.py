@@ -1,3 +1,4 @@
+import debug_toolbar
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles import views
@@ -16,11 +17,12 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/profile/', lambda x: redirect('home')),
     path('easy-admin/', include('easy_admin.urls')),
+    path('match-admin/', include('easy_admin.match_url')),
     path('admin/', admin.site.urls),
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),
     path('users/', include('users.urls')),
-    # path('__debug__/', include(debug_toolbar.urls)),
+    path('__debug__/', include(debug_toolbar.urls)),
     re_path(r'^static/(?P<path>.*)$', views.serve)
 ]
 

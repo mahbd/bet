@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load tags %}
+{% block title %}Bets{% endblock title %}
+{% block content %}
+    <div class="container">
+    <h2>Unpaid Bet List</h2>
+    {% easy_table unpaid_bet %}
+    <h2>Paid Bet List</h2>
+    {% easy_table paid_bet %}
+    </div>
+{% endblock content %}

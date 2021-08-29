@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Configurations{% endblock title %}
+{% block content %}
+    <div class="container">
+        <h1>Configurations</h1>
+        <table class="table table-bordered table-striped">
+            <tr>
+                <th>Name</th>
+                <th>Value</th>
+            </tr>
+            {% for c in configurations %}
+                <tr>
+                    <td>{{ c.name }}</td>
+                    <td>
+                        <form action="{% url 'ea:configure' %}" method="post">
+                            <div class="input-group">
+                                <input type="text" value="{{ c.value }}" class="form-control" name="value">
+                                <button type="submit" class="btn-sm btn-success">Save</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+
+            {% endfor %}
+        </table>
+    </div>
+{% endblock content %}

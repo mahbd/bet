@@ -1,22 +1,23 @@
 {% load tags %}
 {% with id=match.id %}
-    <form action="{% url 'ea:deposits' %}" method="post">
+    <form action="{% url 'ea:matches' %}" method="post">
         {% csrf_token %}
+        <input type="number" name="id" value="{{ id }}" hidden>
         <div class="row">
             <div class="col-sm">
                 <label class="required" for="id_gn_{{ id }}">Game name:</label>
                 <div class="input-group">
-                <select id="id_gn_{{ id }}" class="form-select" name="game_name" disabled>
-                    <option value="">Select Method</option>
-                    {% for option in game_list %}
-                        <option value="{{ option.0 }}"
-                                {% if match.game_name == option.0 %}selected="selected"{% endif %}>
-                            {{ option.1 }}
-                        </option>
-                    {% endfor %}
-                </select>
-                {% enable_f_button "id_gn_"|join_s:id %}
-            </div>
+                    <select id="id_gn_{{ id }}" class="form-select" name="game_name" disabled>
+                        <option value="">Select Method</option>
+                        {% for option in game_list %}
+                            <option value="{{ option.0 }}"
+                                    {% if match.game_name == option.0 %}selected="selected"{% endif %}>
+                                {{ option.1 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% enable_f_button "id_gn_"|join_s:id %}
+                </div>
             </div>
             <div class="col-sm">
                 <label class="required" for="id_title_{{ id }}">Match Title:</label>
@@ -43,23 +44,31 @@
                     <input type="text" class="form-control datetime bg-white"
                            value="{{ match.end_time|date:'Y-m-d h:i A' }}"
                            id="end_time_{{ id }}" name="end_time" disabled/>
-
                     {% enable_f_button "end_time_"|join_s:id %}
                 </div>
             </div>
         </div>
-        <a href="{% url 'admin:betting_match_change' match.id %}" class="btn btn-info text-white">Save</a>
+        <button type="submit" class="btn btn-success text-white">Save</button>
         <a class="btn btn-success text-white"
-           href="{% url 'admin:betting_betscope_add' %}?match_id={{ match.id }}">
+           href="{% url 'ea:create_bet_scope' id %}">
             New Bet Option
         </a>
         {% if not match.is_locked %}
-            <a class="btn btn-danger float-end text-white" href="{% url 'admin:lock_match' match.id %}">Lock
-                Match</a>
+            <a class="btn btn-danger float-end text-white" href="{% url 'ea:lock_match' match.id %}">Lock</a>
         {% else %}
             <button class="btn btn-danger float-end text-white disabled" disabled>Locked
                 {% include 'easy_admin/lock_icon.html' %}
             </button>
+            {% if match.locked %}
+                <a class="btn btn-danger float-end text-white" href="{% url 'ea:lock_match' match.id %}">Unlock</a>
+            {% endif %}
+        {% endif %}
+        {% if not match.hide %}
+            <a class="btn btn-danger float-end text-white me-1" href="{% url 'ea:hide_match' match.id %}">Hide</a>
+        {% else %}
+            <button class="btn btn-danger float-end text-white disabled me-1" disabled>Hidden
+            </button>
+            <a class="btn btn-danger float-end text-white" href="{% url 'ea:hide_match' match.id %}">Unhide</a>
         {% endif %}
     </form>
 {% endwith %}

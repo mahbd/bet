@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load tags %}
 {% block content %}
     <div class="container">
         <a href="#add-new" class="btn btn-success text-white float-lg-end">Add New Match</a>
@@ -11,13 +12,15 @@
                     {% for bet_scope in match.betscope_set.all %}
                         {% include 'easy_admin/bet_option_sm.html' %}
                     {% empty %}
-                        <p class="h1">No bet options for this match</p>
+                        <p>No bet options for this match</p>
                     {% endfor %}
                 </div>
             </div>
         {% empty %}
-            <p class="h1">No live match available</p>
+            <p>No live match available</p>
         {% endfor %}
+        <h2>Recent Matches</h2>
+        {% easy_table table_data %}
         <h2 id="add-new">Add New Match</h2>
         {% include 'easy_admin/forms/match_new_form.html' %}
     </div>

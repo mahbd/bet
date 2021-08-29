@@ -1,5 +1,5 @@
 {% with id=match.id %}
-    <form action="{% url 'ea:deposits' %}" method="post" class="mb-5">
+    <form action="{% url 'ea:matches' %}" method="post" class="mb-5">
         {% csrf_token %}
         <label class="required" for="id_gn_{{ id }}">Game name:</label>
         <select id="id_gn_{{ id }}" class="form-select" name="game_name">
@@ -17,6 +17,6 @@
         <input type="text" class="form-control datetime bg-white" id="end_time_{{ id }}" name="start_time"/>
         <label for="end_time_{{ id }}">End date</label>
         <input type="text" class="form-control datetime bg-white" id="end_time_{{ id }}" name="end_time"/>
-        <a href="#" class="btn btn-success text-white">Add Now</a>
+        <button type="submit" class="btn btn-success text-white">Add Now</button>
     </form>
 {% endwith %}

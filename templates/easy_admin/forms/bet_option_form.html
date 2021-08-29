@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load tags %}
+{% block title %}Add/Edit Bet Option{% endblock title %}
+{% block content %}
+    <div class="container">
+        <h2>Match Details</h2>
+        {% match_detail_table match %}
+        <h2>New Question details</h2>
+        {{ form.errors }}
+        <form action="
+                {% if scope_id %}
+                    {% url 'ea:update_bet_scope' match.id scope_id %}
+                {% else %}
+                    {% url 'ea:create_bet_scope' match.id %}
+                {% endif %}"
+              method="post">
+            {% csrf_token %}
+            {{ form.question.label }}
+            {{ form.question|add_classes:"form-control" }}
+            {{ form.end_time.label }}
+            {{ form.end_time|add_classes:"form-control datetime bg-white" }}
+            <div class="row">
+                <div class="col-sm">
+                    {{ form.option_1.label }}
+                    {{ form.option_1|add_classes:"form-control" }}
+                </div>
+                <div class="col-sm">
+                    {{ form.option_1_rate.label }}
+                    {{ form.option_1_rate|add_classes:"form-control" }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    {{ form.option_2.label }}
+                    {{ form.option_2|add_classes:"form-control" }}
+                </div>
+                <div class="col-sm">
+                    {{ form.option_2_rate.label }}
+                    {{ form.option_2_rate|add_classes:"form-control" }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    {{ form.option_3.label }}
+                    {{ form.option_3|add_classes:"form-control" }}
+                </div>
+                <div class="col-sm">
+                    {{ form.option_3_rate.label }}
+                    {{ form.option_3_rate|add_classes:"form-control" }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm">
+                    {{ form.option_4.label }}
+                    {{ form.option_4|add_classes:"form-control" }}
+                </div>
+                <div class="col-sm">
+                    {{ form.option_4_rate.label }}
+                    {{ form.option_4_rate|add_classes:"form-control" }}
+                </div>
+            </div>
+            <button class="btn btn-success" type="submit">Submit</button>
+        </form>
+    </div>
+{% endblock content %}

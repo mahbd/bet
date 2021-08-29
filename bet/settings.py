@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'log',
-    # 'debug_toolbar',
+    'debug_toolbar',
     # Apps
     'users',
     'betting',
@@ -57,7 +57,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    # 'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Corsheaders Middleware

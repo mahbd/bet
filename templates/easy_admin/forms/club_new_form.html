@@ -1,31 +1,32 @@
-<div class="container">
-    <form action="{% url 'ea:clubs' %}" method="post">
-        <div class="row">
-            <div class="col-sm">
-                <label for="id_name">Club Name</label>
-                <input id="id_name" type="text" name="name" class="form-control">
-            </div>
-
-            <div class="col-sm">
-                <div class="col-sm">
-                    <label for="id_admin">Club Admin</label>
-                    <input id="id_admin" type="text" name="admin" class="form-control">
-                </div>
-            </div>
+{% load tags %}
+<form action="{% url 'ea:clubs' %}" method="post">
+    {{ form.balance|hide_field }}
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_name">Club Name</label>
+            {{ form.name|add_classes:"form-control" }}
         </div>
 
-        <div class="row">
+        <div class="col-sm">
             <div class="col-sm">
-                <label for="id_username">Username</label>
-                <input id="id_username" type="text" name="username" class="form-control" disabled>
-            </div>
-            <div class="col-sm">
-                <div class="col-sm">
-                    <label for="id_password">Password</label>
-                    <input id="id_password" type="text" name="password" class="form-control" disabled>
-                </div>
+                <label for="id_admin">Club Admin</label>
+                {{ form.admin|add_classes:"form-select" }}
             </div>
         </div>
-        <button class="btn btn-success mt-2" type="submit">Save</button>
-    </form>
-</div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm">
+            <label for="id_username">Username</label>
+            {{ form.username|add_classes:"form-control" }}
+        </div>
+        <div class="col-sm">
+            <div class="col-sm">
+                <label for="id_password">Password</label>
+                {{ form.password|add_classes:"form-control" }}
+            </div>
+        </div>
+    </div>
+    <button class="btn btn-success mt-2" type="submit">Save</button>
+</form>

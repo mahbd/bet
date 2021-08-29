@@ -30,8 +30,8 @@
                     </div>
                 </div>
 
-                <a href="{% url 'admin:verify_transfer' transfer.id %}" class="btn btn-success text-white">Accept</a>
-                <a href="{% url 'admin:betting_transfer_delete' transfer.id %}"
+                <a href="{% url 'ea:verify_transfer' transfer.id %}" class="btn btn-success text-white">Accept</a>
+                <a href="{% url 'ea:delete_transfer' transfer.id %}"
                    class="btn btn-danger float-end text-white">Deny</a>
             </div>
         {% empty %}

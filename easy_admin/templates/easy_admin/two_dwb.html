@@ -1,0 +1,17 @@
+{% load tags %}
+<div class="row">
+    <div class="col-sm">
+        <label for="{{ id1 }}">{{ label1 }}</label>
+        <div class="input-group">
+            {{ field1 }}
+            {% enable_f_button ""|join_s:id1 %}
+        </div>
+    </div>
+    <div class="col-sm">
+        <label for="{{ id2 }}">{{ label2 }}</label>
+        <div class="input-group">
+            {{ field2 }}
+            {% enable_f_button ""|join_s:id2 %}
+        </div>
+    </div>
+</div>

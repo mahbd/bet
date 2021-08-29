@@ -26,7 +26,6 @@ def create_deposit(user_id: int, amount, method=None, description=None, verified
 
 
 def value_from_option(option: str, bet_scope: BetScope) -> str:
-    print(option)
     if option == BET_CHOICES[0][0]:
         return bet_scope.option_1
     if option == BET_CHOICES[1][0]:
@@ -209,6 +208,10 @@ def post_process_game(instance: BetScope, *args, **kwargs):
             instance.save()  # To avoid reprocessing the bet scope
 
 
+def sum_aggregate(queryset: QuerySet, field='amount'):
+    return queryset.aggregate(Sum(field))[f'{field}__sum'] or 0
+
+
 def total_transaction_amount(t_type=None, method=None, date: datetime = None) -> float:
     if method == METHOD_TRANSFER and t_type == TYPE_WITHDRAW:
         all_transaction = Transfer.objects.filter(verified=True)
@@ -220,7 +223,7 @@ def total_transaction_amount(t_type=None, method=None, date: datetime = None) ->
         all_transaction.filter(method=method)
     if date:
         all_transaction = all_transaction.filter(created_at__gte=date)
-    return float(all_transaction.aggregate(Sum('amount'))['amount__sum'])
+    return float(sum_aggregate(all_transaction))
 
 
 def unverified_transaction_count(t_type=None, method=None, date: datetime = None) -> int:
@@ -257,15 +260,23 @@ def test_post(request):
         return HttpResponse("Failed to made post request.")
 
 
+def last_bet(user=None):
+    if user:
+        return Bet.objects.order_by('created_at').filter(user=user).last()
+    return Bet.objects.order_by('created_at').last()
+
+
+def total_bet(user=None):
+    if user:
+        return sum_aggregate(Bet.objects.order_by('created_at').filter(user=user))
+    return sum_aggregate(Bet.objects.order_by('created_at'))
+
+
 def get_file(request):
     link = request.META['HTTP_HOST']
     for key, value in request.META.items():
         print(value)
     return HttpResponse(link)
-
-
-def sum_aggregate(queryset: QuerySet, field='amount'):
-    return queryset.aggregate(Sum(field))[f'{field}__sum'] or 0
 
 
 def generate_admin_dashboard_data():
