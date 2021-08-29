@@ -255,6 +255,41 @@ class Login(views.APIView):
         return Response({'detail': 'User must be logged in'}, status=403)
 
 
+class LoginClub(views.APIView):
+    """
+    post:
+    REQUIRED username, password\n
+    Return jwt key to authenticate user.
+    get:
+    Returns user details. User MUST be logged in
+    """
+
+    def post(self, *args, **kwargs):
+        data = self.request.data
+        if not data.get('username') or not data.get('password'):
+            return Response({'detail': 'Username or Password is not supplied.'}, status=400)
+        clubs = Club.objects.filter(username=data.get('username'))
+        if not clubs:
+            return Response({'detail': 'Username or Password is wrong.'}, status=400)
+        else:
+            club: Club = clubs[0]
+        if club.password == data.get('password'):
+            club.last_login = timezone.now()
+            club.save()
+            data = ClubSerializer(club).data
+            data['key'] = data.get('password')
+            jwt_str = jwt_writer(**data)
+            return Response({'jwt': jwt_str})
+        return Response({'detail': 'Username or Password is wrong.'}, status=400)
+
+    def get(self, *args, **kwargs):
+        user = self.request.user
+        if user and user.is_authenticated and user.is_club_admin():
+            data = ClubSerializer(self.request.user.club).data
+            return Response(data)
+        return Response({'detail': 'Club must be logged in'}, status=403)
+
+
 class MatchViewSet(mixins.CreateModelMixin,
                    mixins.RetrieveModelMixin,
                    mixins.UpdateModelMixin,

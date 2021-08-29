@@ -44,6 +44,7 @@ urlpatterns = [
     path('all_transactions/', views.AllTransaction.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', views.Login.as_view(), name='api_login'),
+    path('login-club/', views.LoginClub.as_view(), name='api_login_club'),
     path('user-detail-update/', views.UserDetailsUpdateRetrieveDestroy.as_view()),
     path('change-password/', views.ChangePassword.as_view()),
 ]
