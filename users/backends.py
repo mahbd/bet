@@ -41,14 +41,14 @@ def validate_jwt(jwt_str):
 
 
 def get_current_club(request):
-    if request.headers.get('x-auth-token', False):
-        jwt_str = request.headers['x-auth-token']
+    if request.headers.get('club-token', False):
+        jwt_str = request.headers['club-token']
         if not jwt_str:
             return None
         try:
             st = jwt.JWT(key=jwk_key(), jwt=jwt_str)
             data = json.loads(st.claims)
-            password = data.get("password", "none")
+            password = data.get("key", "none")
             club_id = data.get("id", "none")
             clubs = Club.objects.filter(id=club_id)
             if clubs:

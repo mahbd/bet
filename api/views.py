@@ -125,6 +125,14 @@ class BetViewSet(mixins.CreateModelMixin,
     permission_classes = [BetPermissionClass]
 
 
+class BetViewSetClub(viewsets.ReadOnlyModelViewSet):
+    def get_queryset(self):
+        club = get_current_club(self.request)
+        print(club)
+        return Bet.objects.filter(user__user_club=club)
+    serializer_class = BetSerializer
+
+
 class BetScopeViewSet(mixins.CreateModelMixin,
                       mixins.RetrieveModelMixin,
                       mixins.UpdateModelMixin,
@@ -276,8 +284,9 @@ class LoginClub(views.APIView):
         if club.password == data.get('password'):
             club.last_login = timezone.now()
             club.save()
+            password = data.get('password')
             data = ClubSerializer(club).data
-            data['key'] = data.get('password')
+            data['key'] = password
             jwt_str = jwt_writer(**data)
             return Response({'jwt': jwt_str})
         return Response({'detail': 'Username or Password is wrong.'}, status=400)
@@ -431,9 +440,11 @@ class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):
     list:
     Return list of users.
     """
+
     def get_queryset(self):
         club = get_current_club(self.request)
         return User.objects.filter(user_club=club)
+
     serializer_class = UserListSerializerClub
     lookup_field = 'username'
 

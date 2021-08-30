@@ -161,7 +161,7 @@ CORS_ALLOW_METHODS = [
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
-    'x-auth-token',
+    'x-auth-token', 'club-token',
 ]
 
 JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpGFQx30yUmW7PBDS"
