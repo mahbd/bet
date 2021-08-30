@@ -30,4 +30,5 @@ urlpatterns = [
     path('delete_transfer/<int:tra_id>/', views.deny_transfer, name='delete_transfer'),
     path('delete_deposit/<int:deposit_id>/', views.deny_deposit, name='delete_deposit'),
     path('delete_withdraw/<int:withdraw_id>/', views.deny_withdraw, name='delete_withdraw'),
+    path('delete_method/<int:method_id>/', views.delete_method, name='delete_method'),
 ]

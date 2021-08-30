@@ -13,6 +13,8 @@
                     <td>{{ c.name }}</td>
                     <td>
                         <form action="{% url 'ea:configure' %}" method="post">
+                            {% csrf_token %}
+                            <input type="text" value="{{ c.name }}" name="name" hidden>
                             <div class="input-group">
                                 <input type="text" value="{{ c.value }}" class="form-control" name="value">
                                 <button type="submit" class="btn-sm btn-success">Save</button>

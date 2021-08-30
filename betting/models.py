@@ -109,6 +109,7 @@ class ConfigModel(models.Model):
     class Meta:
         verbose_name = 'Configuration'
         verbose_name_plural = 'Configurations'
+        ordering = ('name', )
 
 
 class Config:

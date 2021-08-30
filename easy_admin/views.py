@@ -1,7 +1,6 @@
 from datetime import datetime
 
 import pytz
-from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
@@ -11,10 +10,11 @@ from django.utils.decorators import method_decorator
 from django.utils.html import format_html
 from django.views.generic import View
 
-from betting.forms import BetScopeForm, ClubForm
+from betting.forms import BetScopeForm, ClubForm, MethodForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
     DepositWithdrawMethod, ConfigModel, BET_CHOICES
 from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
+from users.backends import superuser_only
 from users.models import Club, User
 
 
@@ -25,10 +25,10 @@ def convert_time(time):
 
 
 def success_message(message="action completed successfully"):
-    return format_html('<div class="alert alert-danger">{}</div>', message)
+    return format_html('<div class="alert alert-success">{}</div>', message)
 
 
-@method_decorator(login_required, name='dispatch')
+@method_decorator(superuser_only, name='dispatch')
 class Home(View):
     template_name = 'easy_admin/home.html'
 
@@ -53,6 +53,7 @@ class Home(View):
         return render(request, self.template_name, context={'data': data, 'table_data': table_data, 'buttons': buttons})
 
 
+@superuser_only
 def deny_deposit(request, deposit_id, red=False):
     t = get_object_or_404(Deposit, pk=deposit_id)
     t.delete()
@@ -61,6 +62,7 @@ def deny_deposit(request, deposit_id, red=False):
     return redirect('ea:deposits')
 
 
+@method_decorator(superuser_only, name='dispatch')
 class DepositsView(View):
     model = Deposit
     template = 'easy_admin/deposit.html'
@@ -105,6 +107,7 @@ class DepositsView(View):
         return redirect(self.reverse_link())
 
 
+@superuser_only
 def deny_withdraw(request, withdraw_id, red=False):
     t = get_object_or_404(Withdraw, pk=withdraw_id)
     t.delete()
@@ -113,6 +116,7 @@ def deny_withdraw(request, withdraw_id, red=False):
     return redirect('ea:withdraws')
 
 
+@method_decorator(superuser_only, name='dispatch')
 class WithdrawsView(DepositsView):
     model = Withdraw
     template = 'easy_admin/withdraw.html'
@@ -122,6 +126,7 @@ class WithdrawsView(DepositsView):
         return reverse('ea:withdraws')
 
 
+@superuser_only
 def verify_transfer(request, tra_id, red=False):
     t = get_object_or_404(Transfer, pk=tra_id)
     t.verified = True
@@ -131,6 +136,7 @@ def verify_transfer(request, tra_id, red=False):
     return redirect('ea:transfers')
 
 
+@superuser_only
 def deny_transfer(request, tra_id, red=False):
     t = get_object_or_404(Transfer, pk=tra_id)
     t.delete()
@@ -139,6 +145,7 @@ def deny_transfer(request, tra_id, red=False):
     return redirect('ea:transfers')
 
 
+@method_decorator(superuser_only, name='dispatch')
 class TransferView(View):
     def get(self, *args, **kwargs):
         table_header = (
@@ -161,6 +168,7 @@ class TransferView(View):
         return render(self.request, 'easy_admin/transfer.html', context)
 
 
+@superuser_only
 def lock_match(request, match_id, red=False):
     match = get_object_or_404(Match, pk=match_id)
     match.locked = not match.locked
@@ -170,6 +178,7 @@ def lock_match(request, match_id, red=False):
     return redirect('ea:matches')
 
 
+@superuser_only
 def hide_match(request, match_id, red=False):
     match = get_object_or_404(Match, pk=match_id)
     match.hide = not match.hide
@@ -179,6 +188,7 @@ def hide_match(request, match_id, red=False):
     return redirect('ea:matches')
 
 
+@method_decorator(superuser_only, name='dispatch')
 class MatchView(View):
     def get(self, *args, **kwargs):
         table_header = (
@@ -219,6 +229,7 @@ class MatchView(View):
         return redirect('ea:matches')
 
 
+@superuser_only
 def hide_scope(request, scope_id, red=False):
     scope = get_object_or_404(BetScope, pk=scope_id)
     scope.hide = not scope.hide
@@ -228,6 +239,7 @@ def hide_scope(request, scope_id, red=False):
     return redirect('ea:bet_option_detail', scope_id)
 
 
+@superuser_only
 def lock_scope(request, scope_id, red=False):
     scope = get_object_or_404(BetScope, pk=scope_id)
     scope.locked = not scope.locked
@@ -237,6 +249,7 @@ def lock_scope(request, scope_id, red=False):
     return redirect('ea:bet_option_detail', scope_id)
 
 
+@method_decorator(superuser_only, name='dispatch')
 class BetOptionView(View):
     def get(self, *args, **kwargs):
         if kwargs.get('scope_id'):
@@ -255,6 +268,7 @@ class BetOptionView(View):
         return render(self.request, 'easy_admin/bet_option_list.html', context)
 
 
+@superuser_only
 def create_bet_option(request, match_id):
     match = get_object_or_404(Match, id=match_id)
     if request.method != 'POST':
@@ -277,6 +291,7 @@ def create_bet_option(request, match_id):
     })
 
 
+@superuser_only
 def update_bet_option(request, match_id, scope_id):
     match = get_object_or_404(Match, id=match_id)
     scope = get_object_or_404(BetScope, id=scope_id)
@@ -299,12 +314,14 @@ def update_bet_option(request, match_id, scope_id):
     })
 
 
+@superuser_only
 def delete_club(request, club_id):
     club = get_object_or_404(Club, id=club_id)
     club.delete()
     return redirect('ea:clubs')
 
 
+@method_decorator(superuser_only, name='dispatch')
 class ClubView(View):
     def get(self, *args, **kwargs):
         messages = kwargs.get('messages') or []
@@ -313,7 +330,7 @@ class ClubView(View):
             for error in errors:
                 messages.append(format_html('<div class="alert alert-danger">{}: {}</div>', error, errors[error][0]))
         context = {
-            'club_list': [(ClubForm(instance=club), club.total_user)
+            'club_list': [(ClubForm(instance=club), club)
                           for club in Club.objects.prefetch_related('user_set', 'user_set__userclubinfo').annotate(
                     total_user=Count('user')).all()],
             'form': kwargs.get('form') or ClubForm(),
@@ -322,33 +339,29 @@ class ClubView(View):
         return render(self.request, 'easy_admin/club.html', context)
 
     def post(self, *args, **kwargs):
-        if kwargs.get('club_id'):
-            club = get_object_or_404(Club, id=kwargs.get('club_id'))
+        print(self.request.POST)
+        if self.request.POST.get('id'):
+            club = get_object_or_404(Club, id=self.request.POST.get('id'))
             form = ClubForm(instance=club, data=self.request.POST)
+            print(form.data)
         else:
             form = ClubForm(data=self.request.POST)
         if form.is_valid():
             form.save()
-            return self.get(args, kwargs, messages=success_message("Club added/edited successfully"))
+            return self.get(args, kwargs, messages=[success_message("Club added/edited successfully")])
         return self.get(args, kwargs, form=form)
 
 
+@method_decorator(superuser_only, name='dispatch')
 class UserView(View):
     def get(self, *args, **kwargs):
         table_header = (
-            ('', 'ID'),
-            ('', 'Joining Date'),
-            ('', 'Last Bet'),
-            ('', 'Name'),
-            ('', 'Username'),
-            ('', 'Email'),
-            ('', 'Phone'),
-            ('', 'Club'),
-            ('', 'Total Bet'),
-            ('', 'Balance'),
+            ('', 'ID'), ('', 'Joining Date'), ('', 'Last Bet'), ('', 'Name'), ('', 'Username'),
+            ('', 'Email'), ('', 'Phone'), ('', 'Club'), ('', 'Total Bet'), ('', 'Balance'),
         )
         table_body = [
-            (user.id, user.userclubinfo.date_joined, get_last_bet(user) and get_last_bet(user).created_at, user.get_full_name(),
+            (user.id, user.userclubinfo.date_joined, get_last_bet(user) and get_last_bet(user).created_at,
+             user.get_full_name(),
              user.username, user.email, user.phone, user.user_club.name, sum_aggregate(user.bet_set.all()),
              user.balance)
             for user in User.objects.select_related('user_club').prefetch_related('bet_set').all()]
@@ -362,18 +375,12 @@ class UserView(View):
         return render(self.request, 'easy_admin/users.html', context)
 
 
+@method_decorator(superuser_only, name='dispatch')
 class BetView(View):
     def get(self, *args, **kwargs):
         table_header = (
-            ('', 'ID'),
-            ('', 'Username'),
-            ('', 'Amount'),
-            ('', 'Question'),
-            ('', 'Answer'),
-            ('', 'User Answer'),
-            ('', 'Return Rate'),
-            ('', 'Win Amount(p)'),
-            ('', 'Winner'),
+            ('', 'ID'), ('', 'Username'), ('', 'Amount'), ('', 'Question'), ('', 'Answer'),
+            ('', 'User Answer'), ('', 'Return Rate'), ('', 'Win Amount(p)'), ('', 'Winner'),
         )
         unpaid_body = [(bet.id, bet.user.username, bet.amount, bet.bet_scope.question, bet.answer,
                         value_from_option(bet.choice, bet.bet_scope), bet.return_rate, bet.winning, bet.is_winner
@@ -395,17 +402,60 @@ class BetView(View):
         })
 
 
+def get_name_from_code(code):
+    for c, name in DEPOSIT_WITHDRAW_CHOICES:
+        if code == c:
+            return name
+    return "Wrong"
+
+
+@method_decorator(superuser_only, name='dispatch')
 class MethodView(View):
     def get(self, *args, **kwargs):
+        messages = kwargs.get('messages') or []
+        if kwargs.get('form'):
+            errors = kwargs.get('form').errors.as_data()
+            for error in errors:
+                messages.append(format_html('<div class="alert alert-danger">{}: {}</div>', error, errors[error][0]))
+
         context = {
             'available_methods': DepositWithdrawMethod.objects.all(),
             'method_choices': DEPOSIT_WITHDRAW_CHOICES,
+            'form': kwargs.get('form') or MethodForm(),
+            'messages': messages or kwargs.get('messages')
         }
+        print(messages, kwargs.get('messages'))
         return render(self.request, 'easy_admin/method_list.html', context)
 
+    def post(self, *args, **kwargs):
+        if self.request.POST.get('id'):
+            method = get_object_or_404(DepositWithdrawMethod, id=self.request.POST.get('id'))
+            form = MethodForm(instance=method, data=self.request.POST)
+        else:
+            form = MethodForm(data=self.request.POST)
+        if form.is_valid():
+            method = form.save(commit=False)
+            method.name = get_name_from_code(method.code)
+            method.save()
+            return self.get(args, kwargs, messages=[success_message("Method added/edited successfully")])
+        return self.get(args, kwargs, form=form)
 
+
+def delete_method(request, method_id):
+    DepositWithdrawMethod.objects.filter(id=method_id).delete()
+    return redirect('ea:methods')
+
+
+@method_decorator(superuser_only, name='dispatch')
 class ConfigureView(View):
     def get(self, *args, **kwargs):
         return render(self.request, 'easy_admin/configurations.html', context={
-            'configurations': ConfigModel.objects.all()
+            'configurations': ConfigModel.objects.all(),
+            'messages': kwargs.get('messages')
         })
+
+    def post(self, *args, **kwargs):
+        name = self.request.POST.get('name')
+        value = self.request.POST.get('value')
+        ConfigModel.objects.filter(name=name).update(value=value)
+        return self.get(args, kwargs, messages=[success_message(f'{name} value updated successfully')])

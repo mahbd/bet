@@ -13,7 +13,7 @@
             </button>
             <div id="collapse_{{ club.id }}" class="collapse">
                 <h2>Club User List</h2>
-                {% user_list_table_club club.user_set.all %}
+                {% user_list_table_club club.1.user_set.all %}
             </div>
             <div class="mb-5"></div>
         {% empty %}

@@ -7,11 +7,13 @@
         <h2>Available Methods</h2>
         {% for method in available_methods %}
             <form action="{% url 'ea:methods' %}" method="post" class="form-control mb-5">
+                {% csrf_token %}
+                <input type="text" name="id" value="{{ method.id }}" hidden>
                 <div class="row">
                     <div class="col-sm">
                         <label for="id_code_{{ method.id }}">Name</label>
                         <div class="input-group">
-                            <select name="code" id="id_code_{{ method.id }}" class="form-select" disabled>
+                            <select name="code" id="id_code_{{ method.id }}" class="form-select" readonly>
                                 {% for option in method_choices %}
                                     <option value="{{ option.0 }}"
                                             {% if method.code == option.0 %}selected{% endif %}
@@ -23,7 +25,7 @@
                     </div>
                     <div class="col-sm">
                         <label>Total Deposit</label>
-                        <input type="text" value="{{ method.total_deposit }}" class="form-control" disabled>
+                        <input type="text" value="{{ method.total_deposit }}" class="form-control" readonly>
                     </div>
                 </div>
                 <div class="row">
@@ -31,7 +33,7 @@
                         <label for="id_number1_{{ method.id }}">Number 1</label>
                         <div class="input-group">
                             <input type="text" name="number1" id="id_number1_{{ method.id }}"
-                                   value="{{ method.number1 }}" class="form-control" disabled>
+                                   value="{{ method.number1 }}" class="form-control" readonly>
                             {% enable_f_button "id_number1_"|join_s:method.id %}
                         </div>
                     </div>
@@ -39,41 +41,33 @@
                         <label for="id_number2_{{ method.id }}">Number 1</label>
                         <div class="input-group">
                             <input type="text" name="number2" id="id_number2_{{ method.id }}"
-                                   value="{{ method.number2 }}" class="form-control" disabled>
+                                   value="{{ method.number2 }}" class="form-control" readonly>
                             {% enable_f_button "id_number2_"|join_s:method.id %}
                         </div>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-success me-5 mt-2">Save</button>
-                <button type="button" class="btn btn-danger mt-2">Delete</button>
+                <a href="{% url 'ea:delete_method' method.id %}" class="btn btn-danger mt-2">Delete</a>
             </form>
         {% empty %}
             <p>There is no deposit method</p>
         {% endfor %}
         <h2 id="addNew">Add New Method</h2>
         <form action="{% url 'ea:methods' %}" method="post" class="form-control mb-5">
+            {% csrf_token %}
             <label for="id_code">Name</label>
-            <select name="code" id="id_code" class="form-select">
-                {% for option in method_choices %}
-                    <option value="{{ option.0 }}"
-                            {% if method.code == option.0 %}selected{% endif %}
-                    >{{ option.1 }}</option>
-                {% endfor %}
-            </select>
+            {{ form.code|add_classes:"form-select" }}
             <div class="row">
                 <div class="col-sm">
                     <label for="id_number1">Number 1</label>
-                    <input type="text" name="number1" id="id_number1"
-                           value="{{ method.number1 }}" class="form-control">
+                    {{ form.number1|add_classes:"form-control" }}
                 </div>
                 <div class="col-sm">
                     <label for="id_number2">Number 2</label>
-                    <input type="text" name="number2" id="id_number2"
-                           value="{{ method.number2 }}" class="form-control">
+                    {{ form.number2|add_classes:"form-control" }}
                 </div>
             </div>
             <button type="submit" class="btn btn-success me-5 mt-2">Save</button>
-            <button type="button" class="btn btn-danger mt-2">Delete</button>
         </form>
     </div>
 {% endblock content %}
