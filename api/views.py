@@ -7,13 +7,13 @@ from rest_framework.response import Response
 
 from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
     METHOD_CLUB
-from users.backends import jwt_writer
+from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
-    WithdrawSerializer, TransferSerializer, NotificationSerializer
+    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub
 
 User: MainUser = get_user_model()
 
@@ -283,9 +283,9 @@ class LoginClub(views.APIView):
         return Response({'detail': 'Username or Password is wrong.'}, status=400)
 
     def get(self, *args, **kwargs):
-        user = self.request.user
-        if user and user.is_authenticated and user.is_club_admin():
-            data = ClubSerializer(self.request.user.club).data
+        club = get_current_club(self.request)
+        if club:
+            data = ClubSerializer(club).data
             return Response(data)
         return Response({'detail': 'Club must be logged in'}, status=403)
 
@@ -423,6 +423,18 @@ class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
     serializer_class = UserListSerializer
 
+    lookup_field = 'username'
+
+
+class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):
+    """
+    list:
+    Return list of users.
+    """
+    def get_queryset(self):
+        club = get_current_club(self.request)
+        return User.objects.filter(user_club=club)
+    serializer_class = UserListSerializerClub
     lookup_field = 'username'
 
 

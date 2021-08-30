@@ -14,7 +14,7 @@ from django.views.generic import View
 from betting.forms import BetScopeForm, ClubForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
     DepositWithdrawMethod, ConfigModel, BET_CHOICES
-from betting.views import generate_admin_dashboard_data, value_from_option, last_bet, sum_aggregate
+from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
 from users.models import Club, User
 
 
@@ -348,7 +348,7 @@ class UserView(View):
             ('', 'Balance'),
         )
         table_body = [
-            (user.id, user.userclubinfo.date_joined, last_bet(user) and last_bet(user).created_at, user.get_full_name(),
+            (user.id, user.userclubinfo.date_joined, get_last_bet(user) and get_last_bet(user).created_at, user.get_full_name(),
              user.username, user.email, user.phone, user.user_club.name, sum_aggregate(user.bet_set.all()),
              user.balance)
             for user in User.objects.select_related('user_club').prefetch_related('bet_set').all()]

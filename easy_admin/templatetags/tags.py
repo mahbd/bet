@@ -6,7 +6,7 @@ from django.core.serializers import serialize
 from django.db.models import Sum
 
 from betting.models import BetScope, BET_CHOICES, Match
-from betting.views import last_bet
+from betting.views import get_last_bet
 
 register = template.Library()
 
@@ -28,7 +28,7 @@ def user_list_table_club(users):
         ('', 'Commission'),
     )
     table_body = [
-        (user.id, user.userclubinfo.date_joined, last_bet(user) and last_bet(user).created_at, user.get_full_name(),
+        (user.id, user.userclubinfo.date_joined, get_last_bet(user) and get_last_bet(user).created_at, user.get_full_name(),
          user.username, user.userclubinfo.total_bet, user.userclubinfo.total_commission) for user in users]
     table_data = {
         'table_header': table_header,

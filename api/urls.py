@@ -19,6 +19,7 @@ router.register('notification', views.NotificationViewSet, 'notification')
 router.register('transfer', views.TransferViewSet, 'transfer')
 router.register('register', views.RegisterViewSet, 'register')
 router.register('user', views.UserListViewSet, 'user'),
+router.register('club-user', views.UserListViewSetClub, 'club_user'),
 router.register('withdraw', views.WithdrawViewSet, 'withdraw')
 
 app_name = 'api'

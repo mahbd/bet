@@ -260,7 +260,7 @@ def test_post(request):
         return HttpResponse("Failed to made post request.")
 
 
-def last_bet(user=None):
+def get_last_bet(user=None):
     if user:
         return Bet.objects.order_by('created_at').filter(user=user).last()
     return Bet.objects.order_by('created_at').last()

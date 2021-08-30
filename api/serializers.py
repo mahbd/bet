@@ -1,9 +1,10 @@
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
 from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator
-from betting.views import value_from_option
+    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES
+from betting.views import value_from_option, get_last_bet
 from users.backends import jwt_writer
 from users.models import User, Club, Notification
 
@@ -34,8 +35,48 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+def sum_filter_bet_set(bet_scope, choice, field='winning'):
+    return bet_scope.bet_set.filter(choice=choice).aggregate(Sum(field))[f'{field}__sum'] or 0
+
+
+def count_filter_bet_set(bet_scope, choice):
+    return bet_scope.bet_set.filter(choice=choice).count()
+
+
 class BetScopeSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField(read_only=True)
+    details = serializers.SerializerMethodField(read_only=True)
+
+    def get_details(self, bet_scope: BetScope) -> dict:
+        option1_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[0][0], 'amount')
+        option2_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[1][0], 'amount')
+        option3_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[2][0], 'amount')
+        option4_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[3][0], 'amount')
+
+        option1_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[0][0])
+        option2_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[1][0])
+        option3_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[2][0])
+        option4_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[3][0])
+
+        total_bet = option1_bet + option2_bet + option3_bet + option4_bet
+        option1_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[0][0])
+        option2_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[1][0])
+        option3_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[2][0])
+        option4_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[3][0])
+        return {
+            'option1_bet': option1_bet,
+            'option2_bet': option2_bet,
+            'option3_bet': option3_bet,
+            'option4_bet': option4_bet,
+            'option1_bet_count': option1_bet_count,
+            'option2_bet_count': option2_bet_count,
+            'option3_bet_count': option3_bet_count,
+            'option4_bet_count': option4_bet_count,
+            'option1_benefit': option1_benefit,
+            'option2_benefit': option2_benefit,
+            'option3_benefit': option3_benefit,
+            'option4_benefit': option4_benefit,
+        }
 
     # noinspection PyMethodMayBeStatic
     def get_is_locked(self, bet_scope: BetScope) -> bool:
@@ -44,7 +85,7 @@ class BetScopeSerializer(serializers.ModelSerializer):
     class Meta:
         model = BetScope
         fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match', 'option_1', 'option_1_rate', 'option_2',
-                  'option_2_rate',
+                  'option_2_rate', 'details',
                   'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
         read_only_fields = ('id', 'winner')
 
@@ -204,6 +245,36 @@ class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'first_name', 'last_name')
+        read_only_fields = ('id',)
+
+
+# noinspection PyMethodMayBeStatic
+class UserListSerializerClub(serializers.ModelSerializer):
+    join_date = serializers.SerializerMethodField(read_only=True)
+    last_bet = serializers.SerializerMethodField(read_only=True)
+    full_name = serializers.SerializerMethodField(read_only=True)
+    total_bet = serializers.SerializerMethodField(read_only=True)
+    total_commission = serializers.SerializerMethodField(read_only=True)
+
+    def get_join_date(self, user):
+        return user.userclubinfo.date_joined
+
+    def get_last_bet(self, user):
+        return get_last_bet(user) and get_last_bet(user).created_at
+
+    def get_full_name(self, user):
+        return user.get_full_name()
+
+    def get_total_bet(self, user):
+        return user.userclubinfo.total_bet
+
+    def get_total_commission(self, user):
+        return user.userclubinfo.total_commission
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'first_name', 'last_name', 'join_date', 'last_bet',
+                  'full_name', 'total_bet', 'total_commission')
         read_only_fields = ('id',)
 
 

@@ -8,6 +8,7 @@ from jwcrypto import jwt, jws, jwk
 from rest_framework.authentication import TokenAuthentication
 
 from bet.settings import JWK_KEY
+from users.models import Club
 
 UserModel = get_user_model()
 
@@ -37,6 +38,26 @@ def validate_jwt(jwt_str):
             return None
     except (jws.InvalidJWSSignature, jws.InvalidJWSObject, ValueError):
         return None
+
+
+def get_current_club(request):
+    if request.headers.get('x-auth-token', False):
+        jwt_str = request.headers['x-auth-token']
+        if not jwt_str:
+            return None
+        try:
+            st = jwt.JWT(key=jwk_key(), jwt=jwt_str)
+            data = json.loads(st.claims)
+            password = data.get("password", "none")
+            club_id = data.get("id", "none")
+            clubs = Club.objects.filter(id=club_id)
+            if clubs:
+                club = clubs.first()
+                if club.password == password:
+                    return club
+            return None
+        except (jws.InvalidJWSSignature, jws.InvalidJWSObject, ValueError):
+            return None
 
 
 def is_valid_jwt_header(request):
