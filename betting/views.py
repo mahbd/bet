@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 
-from django.db import transaction
 from django.db.models import Sum, QuerySet
-from django.db.models.signals import post_save, post_delete, pre_delete, pre_save
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 from django.http import HttpResponse
 from django.utils import timezone

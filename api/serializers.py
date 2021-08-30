@@ -96,6 +96,10 @@ class BetSerializer(serializers.ModelSerializer):
     match_name = serializers.SerializerMethodField(read_only=True)
     question = serializers.SerializerMethodField(read_only=True)
     your_answer = serializers.SerializerMethodField(read_only=True)
+    user_details = serializers.SerializerMethodField(read_only=True)
+
+    def get_user_details(self, bet: Bet) -> dict:
+        return UserListSerializer(bet.user).data
 
     def get_match_name(self, bet: Bet):
         return bet.bet_scope.match.title
@@ -112,7 +116,7 @@ class BetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bet
         fields = ('answer', 'amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question',
-                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning', 'created_at')
+                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning', 'created_at', 'user_details')
         read_only_fields = ('id', 'user', 'answer', 'return_rate', 'is_winner')
 
     def validate(self, attrs):

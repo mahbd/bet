@@ -128,7 +128,6 @@ class BetViewSet(mixins.CreateModelMixin,
 class BetViewSetClub(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         club = get_current_club(self.request)
-        print(club)
         return Bet.objects.filter(user__user_club=club)
     serializer_class = BetSerializer
 
