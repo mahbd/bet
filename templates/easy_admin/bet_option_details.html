@@ -70,25 +70,28 @@
         {% if user.is_superuser and not bet_scope.winner %}
             <h3 class="text-danger">Select Winner</h3>
             <a class="btn btn-danger text-white"
-               href="{% url 'admin:set_winner' bet_scope.id choice_list.0.0 %}">
+               href="{% url 'ea:scope_winner' bet_scope.id choice_list.0.0 %}">
                 {{ bet_scope.option_1 }}
             </a>
             <a class="btn btn-danger text-white"
-               href="{% url 'admin:set_winner' bet_scope.id choice_list.1.0 %}">
+               href="{% url 'ea:scope_winner' bet_scope.id choice_list.1.0 %}">
                 {{ bet_scope.option_2 }}
             </a>
             {% if bet_scope.option_3 %}
                 <a class="btn btn-danger text-white"
-                   href="{% url 'admin:set_winner' bet_scope.id choice_list.2.0 %}">
+                   href="{% url 'ea:scope_winner' bet_scope.id choice_list.2.0 %}">
                     {{ bet_scope.option_3 }}
                 </a>
             {% endif %}
             {% if bet_scope.option_4 %}
                 <a class="btn btn-danger text-white"
-                   href="{% url 'admin:set_winner' bet_scope.id choice_list.3.0 %}">
+                   href="{% url 'ea:scope_winner' bet_scope.id choice_list.3.0 %}">
                     {{ bet_scope.option_4 }}
                 </a>
             {% endif %}
+        {% endif %}
+        {% if user.is_superuser and bet_scope.winner and not bet_scope.processed_internally %}
+            <a class="btn-lg btn-danger text-white" href="{% url 'ea:pay_scope' bet_scope.id %}">Pay the winners</a>
         {% endif %}
     </div>
 {% endblock %}

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytz
+from django.db import transaction
 from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
@@ -12,10 +13,11 @@ from django.views.generic import View
 
 from betting.forms import BetScopeForm, ClubForm, MethodForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
-    DepositWithdrawMethod, ConfigModel, BET_CHOICES
+    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config
 from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
 from users.backends import superuser_only
 from users.models import Club, User
+from users.views import notify_user
 
 
 def convert_time(time):
@@ -26,6 +28,10 @@ def convert_time(time):
 
 def success_message(message="action completed successfully"):
     return format_html('<div class="alert alert-success">{}</div>', message)
+
+
+def failure_message(message="action completed successfully"):
+    return format_html('<div class="alert alert-danger">{}</div>', message)
 
 
 @method_decorator(superuser_only, name='dispatch')
@@ -244,6 +250,64 @@ def lock_scope(request, scope_id, red=False):
     scope = get_object_or_404(BetScope, pk=scope_id)
     scope.locked = not scope.locked
     scope.save()
+    if red:
+        return redirect(red)
+    return redirect('ea:bet_option_detail', scope_id)
+
+
+@superuser_only
+def pay_scope(request, scope_id, red=False):
+    scope = get_object_or_404(BetScope, pk=scope_id)
+    if scope.processed_internally or not scope.winner:
+        return render(request, 'super_base.html', {
+            'messages': [failure_message('Winner is not selected or already paid')]
+        })
+    with transaction.atomic():
+        scope.processed_internally = True  # To avoid reprocessing the bet scope
+
+        bet_winners = list(scope.bet_set.filter(choice=scope.winner))
+        bet_losers = scope.bet_set.exclude(choice=scope.winner)
+        club_commission = float(config.get_config_str('club_commission')) / 100
+        refer_commission = float(config.get_config_str('refer_commission')) / 100
+
+        for winner in bet_winners:
+            final_win = winner.amount * winner.return_rate * (1 - club_commission - refer_commission)
+            winner.user.balance += final_win
+            winner.winning = final_win
+            winner.user.save()
+            winner.is_winner = True
+            winner.answer = value_from_option(winner.choice, scope)
+            winner.save()
+            if winner.user.referred_by:
+                winner.user.referred_by.balance += winner.winning * refer_commission
+                winner.user.referred_by.earn_from_refer += winner.winning * refer_commission
+                notify_user(winner.user.referred_by, f"You earned {winner.winning * refer_commission} from user "
+                                                     f"{winner.user.username}. Keep referring and "
+                                                     f"earn {refer_commission}% commission from each bet")
+                winner.user.referred_by.save()
+
+            if winner.user.user_club:
+                winner.user.user_club.balance += winner.winning * club_commission
+                winner.user.user_club.save()
+                notify_user(winner.user.user_club.admin, f"{winner.user.user_club.name} has "
+                                                         f"earned {winner.winning * club_commission} from "
+                                                         f"{winner.user.username}")
+        for loser in bet_losers:
+            loser.is_winner = False
+            loser.paid = True
+            loser.winning = 0
+            loser.answer = value_from_option(loser.choice, scope)
+            loser.save()
+        scope.save()  # To avoid reprocessing the bet scope
+    if red:
+        return redirect(red)
+    return redirect('ea:bet_option_detail', scope_id)
+
+
+def set_scope_winner(request, scope_id, winner, red=False):
+    bet_scope = get_object_or_404(BetScope, pk=scope_id)
+    bet_scope.winner = winner
+    bet_scope.save()
     if red:
         return redirect(red)
     return redirect('ea:bet_option_detail', scope_id)

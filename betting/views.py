@@ -156,56 +156,16 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
 
 @receiver(pre_delete, sender=Bet)
 def pre_delete_bet(instance: Bet, *args, **kwargs):
-    if instance.winning - instance.amount > instance.user.balance:
+    if instance.paid and instance.amount * instance.return_rate - instance.amount > instance.user.balance:
         raise ValueError("User does not have enough balance.")
-    change = instance.winning - instance.amount
-    if not instance.paid:
+    change = instance.amount - instance.amount * instance.return_rate
+    if not instance.paid or (instance.paid and not instance.is_winner):
         change = instance.amount
     instance.user.balance += change
     instance.user.save()
     notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
                                f'on ##{instance.bet_scope.question}##. Balance '
                                f'refunded by {change} BDT')
-
-
-@receiver(pre_save, sender=BetScope)
-def post_process_game(instance: BetScope, *args, **kwargs):
-    if not instance.processed_internally and instance.winner:
-        with transaction.atomic():
-            instance.processed_internally = True  # To avoid reprocessing the bet scope
-
-            bet_winners = list(instance.bet_set.filter(choice=instance.winner))
-            bet_losers = instance.bet_set.exclude(choice=instance.winner)
-            club_commission = float(config.get_config_str('club_commission')) / 100
-            refer_commission = float(config.get_config_str('refer_commission')) / 100
-
-            for winner in bet_winners:
-                winner.user.balance += winner.winning * (1 - club_commission - refer_commission)
-                winner.user.save()
-                winner.is_winner = True
-                winner.answer = value_from_option(winner.choice, instance)
-                winner.save()
-                if winner.user.referred_by:
-                    winner.user.referred_by.balance += winner.winning * refer_commission
-                    winner.user.referred_by.earn_from_refer += winner.winning * refer_commission
-                    notify_user(winner.user.referred_by, f"You earned {winner.winning * refer_commission} from user "
-                                                         f"{winner.user.username}. Keep referring and "
-                                                         f"earn {refer_commission}% commission from each bet")
-                    winner.user.referred_by.save()
-
-                if winner.user.user_club:
-                    winner.user.user_club.balance += winner.winning * club_commission
-                    winner.user.user_club.save()
-                    notify_user(winner.user.user_club.admin, f"{winner.user.user_club.name} has "
-                                                             f"earned {winner.winning * club_commission} from "
-                                                             f"{winner.user.username}")
-            for loser in bet_losers:
-                loser.is_winner = False
-                loser.paid = True
-                loser.winning = 0
-                loser.answer = value_from_option(winner.choice, instance)
-                loser.save()
-            instance.save()  # To avoid reprocessing the bet scope
 
 
 def sum_aggregate(queryset: QuerySet, field='amount'):
