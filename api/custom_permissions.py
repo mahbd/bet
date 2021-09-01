@@ -96,6 +96,8 @@ class RegisterPermissionClass(permissions.BasePermission):
 
 class TransactionPermissionClass(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS or not obj.verified:
+        if request.method in SAFE_METHODS:
+            return True
+        if request.method != 'DELETE' and request.user.is_authenticated:
             return True
         return False

@@ -359,3 +359,12 @@ class Withdraw(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class Commission(models.Model):
+    bet = models.ForeignKey(Bet, on_delete=models.CASCADE)
+    amount = models.FloatField()
+    date = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ('date', )
