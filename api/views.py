@@ -114,7 +114,7 @@ class ClubTransaction(views.APIView):
                 'to': None,
                 'credit': deposit.amount,
                 'debit': 0,
-                'user_balance': deposit.user_balance,
+                'user_balance': deposit.balance,
                 'status': status,
                 'created_at': deposit.created_at
             })
