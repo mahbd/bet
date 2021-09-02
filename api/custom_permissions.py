@@ -107,7 +107,7 @@ class TransactionPermissionClass(permissions.IsAuthenticated):
         return False
 
 
-class ClubTransferPermissionClass(permissions.IsAuthenticated):
+class ClubTransferPermissionClass(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         club = get_current_club(request)
         if club:

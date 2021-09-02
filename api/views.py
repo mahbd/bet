@@ -437,7 +437,7 @@ class ClubTransferViewSet(mixins.CreateModelMixin,
 
     def get_queryset(self):
         club = get_current_club(self.request)
-        return ClubTransfer.objects.filter(user=club)
+        return ClubTransfer.objects.filter(club=club)
 
     serializer_class = ClubTransferSerializer
     permission_classes = [ClubTransferPermissionClass]

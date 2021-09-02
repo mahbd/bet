@@ -211,7 +211,7 @@ class ClubTransferView(View):
             'table_body': table_body,
         }
         context = {
-            'unverified_club_transfers': Transfer.objects.exclude(verified=True),
+            'unverified_club_transfers': ClubTransfer.objects.exclude(verified=True),
             'table_data': table_data
         }
         return render(self.request, 'easy_admin/club_transfer.html', context)
