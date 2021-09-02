@@ -116,7 +116,7 @@ class ClubTransaction(views.APIView):
                 'debit': 0,
                 'user_balance': deposit.balance,
                 'status': status,
-                'created_at': deposit.created_at
+                'created_at': deposit.date
             })
 
         for transfer in all_transfer:
