@@ -13,8 +13,10 @@ from django.views.generic import View
 
 from betting.forms import BetScopeForm, ClubForm, MethodForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
-    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer, Commission, COMMISSION_REFER, COMMISSION_CLUB
-from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
+    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer, Commission, COMMISSION_REFER, \
+    COMMISSION_CLUB, TYPE_DEPOSIT, TYPE_WITHDRAW, METHOD_TRANSFER
+from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate, \
+    unverified_transaction_count, active_matches, active_bet_scopes_count
 from users.backends import superuser_only
 from users.models import Club, User
 from users.views import notify_user
@@ -57,7 +59,12 @@ class Home(View):
             ('btn-primary', f"{reverse('ea:matches')}#running", 'Running matches'),
             ('btn-primary', f"{reverse('ea:bet_options')}#running", 'Running bet options'),
         )
-        return render(request, self.template_name, context={'data': data, 'table_data': table_data, 'buttons': buttons})
+        context = {'data': data, 'table_data': table_data, 'buttons': buttons, 'developer_name': 'Mahmudul Alam',
+                   'unverified_deposit': unverified_transaction_count(t_type=TYPE_DEPOSIT),
+                   'unverified_withdraw': unverified_transaction_count(t_type=TYPE_WITHDRAW),
+                   'unverified_transfer': unverified_transaction_count(t_type=TYPE_WITHDRAW, method=METHOD_TRANSFER),
+                   'active_matches': active_matches().count(), 'active_bet_scopes': active_bet_scopes_count()}
+        return render(request, self.template_name, context)
 
 
 @superuser_only

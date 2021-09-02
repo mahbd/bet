@@ -1,10 +1,4 @@
 from django.contrib.admin import AdminSite as MainAdminSite, ModelAdmin as MainModelAdmin
-from django.shortcuts import render
-from django.urls import path
-
-from betting.models import TYPE_DEPOSIT, TYPE_WITHDRAW, METHOD_TRANSFER
-from betting.views import unverified_transaction_count, active_matches, \
-    active_bet_scopes_count, generate_admin_dashboard_data
 
 
 class ModelAdmin(MainModelAdmin):
@@ -12,32 +6,7 @@ class ModelAdmin(MainModelAdmin):
 
 
 class AdminSite(MainAdminSite):
-    def each_context(self, request):
-        contexts = super().each_context(request)
-        contexts['developer_name'] = 'Mahmudul Alam'
-        contexts['unverified_deposit'] = unverified_transaction_count(t_type=TYPE_DEPOSIT)
-        contexts['unverified_withdraw'] = unverified_transaction_count(t_type=TYPE_WITHDRAW)
-        contexts['unverified_transfer'] = unverified_transaction_count(t_type=TYPE_WITHDRAW, method=METHOD_TRANSFER)
-        contexts['active_matches'] = active_matches().count()
-        contexts['active_bet_scopes'] = active_bet_scopes_count()
-        return contexts
-
-    def home(self, request):
-        request.current_app = self.name
-        context = dict(
-            self.each_context(request),
-            data=generate_admin_dashboard_data(),
-        )
-
-        return render(request, 'admin/home.html', context)
-
-    def get_urls(self):
-        urls = super().get_urls()
-        my_urls = [
-            path('home/', self.home, name='home')
-        ]
-        return my_urls + urls
-
+    pass
 
 site = AdminSite('admin')
 default_site = site
