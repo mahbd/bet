@@ -36,19 +36,12 @@ def value_from_option(option: str, bet_scope: BetScope) -> str:
     return "Invalid option"
 
 
-@receiver(post_save, sender=Deposit)
-def post_save_deposit(instance: Deposit, *args, **kwargs):
-    if instance.verified and not instance.processed_internally and instance.method == METHOD_CLUB:
-        instance.processed_internally = True
-        instance.user.club.balance += instance.amount
-        instance.user.club.save()
-
-    elif instance.verified and not instance.processed_internally:
-        instance.processed_internally = True
-        instance.user.balance += instance.amount
-        instance.user.save()
-        instance.user_balance = instance.user.balance
-        instance.save()
+def pay_deposit(deposit: Deposit):
+    deposit.processed_internally = True
+    deposit.user_balance = deposit.user.balance + deposit.amount
+    deposit.user.balance += deposit.amount
+    deposit.user.save()
+    deposit.save()
 
 
 @receiver(post_delete, sender=Deposit)

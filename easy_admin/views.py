@@ -16,7 +16,7 @@ from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer
     DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer, Commission, COMMISSION_REFER, \
     COMMISSION_CLUB, TYPE_DEPOSIT, TYPE_WITHDRAW, METHOD_TRANSFER
 from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate, \
-    unverified_transaction_count, active_matches, active_bet_scopes_count
+    unverified_transaction_count, active_matches, active_bet_scopes_count, pay_deposit
 from users.backends import superuser_only
 from users.models import Club, User
 from users.views import notify_user
@@ -118,6 +118,7 @@ class DepositsView(View):
         if created_at:
             data['created_at'] = convert_time(created_at)
         self.model.objects.filter(id=data['id']).update(**data)
+        pay_deposit(self.model.objects.filter(id=data['id']).first())
         return redirect(self.reverse_link())
 
 
