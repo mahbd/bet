@@ -3,7 +3,7 @@ from django.utils.html import format_html
 
 from bet import admin
 from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer, Announcement, \
-    ConfigModel, ClubTransfer
+    ConfigModel, ClubTransfer, Commission
 
 
 @admin.register(BetScope)
@@ -144,6 +144,11 @@ class TransferAdmin(admin.ModelAdmin):
 
 @admin.register(ClubTransfer)
 class ClubTransferAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Commission)
+class CommissionAdmin(admin.ModelAdmin):
     pass
 
 
