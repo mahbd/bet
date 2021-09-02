@@ -18,6 +18,7 @@ router.register('deposit', views.DepositViewSet, 'deposit')
 router.register('match', views.MatchViewSet, 'match')
 router.register('notification', views.NotificationViewSet, 'notification')
 router.register('transfer', views.TransferViewSet, 'transfer')
+router.register('club_transfer', views.ClubTransferViewSet, 'club_transfer')
 router.register('register', views.RegisterViewSet, 'register')
 router.register('user', views.UserListViewSet, 'user'),
 router.register('club-user', views.UserListViewSetClub, 'club_user')

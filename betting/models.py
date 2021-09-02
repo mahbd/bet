@@ -1,3 +1,5 @@
+from typing import Union
+
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -77,10 +79,8 @@ def club_admin_withdraw_validator(user: User):
         raise ValidationError("Only club admin can withdraw club balance.")
 
 
-def user_balance_validator(user: User, amount, method=None):
-    if method == METHOD_CLUB and user.club.balance < amount:
-        raise ValidationError('Club do not have enough balance.')
-    elif user.balance < amount:
+def user_balance_validator(user: Union[User, Club], amount):
+    if user.balance < amount:
         raise ValidationError('User does not have enough balance.')
 
 
@@ -325,6 +325,36 @@ class Transfer(models.Model):
         ordering = ['-created_at']
 
 
+class ClubTransfer(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, help_text="Club id of transaction maker")
+    to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                           help_text="User id to whom money transferred")
+    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
+                               help_text="how much money transacted in 2 point precession decimal number")
+    club_balance = models.FloatField(default=0, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    verified = models.BooleanField(default=None, blank=True, null=True,
+                                   help_text="Status if admin had verified. After verification(for deposit), "
+                                             "user account will be deposited")
+    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def clean(self):
+        user_balance_validator(self.club, self.amount)
+        super().clean()
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.full_clean()
+        super().save(force_insert, force_update, using, update_fields)
+
+    def __str__(self):
+        return str(self.id)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class Withdraw(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
@@ -345,7 +375,7 @@ class Withdraw(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
 
     def clean(self):
-        user_balance_validator(self.user, self.amount, self.method)
+        user_balance_validator(self.user, self.amount)
         Config().config_validator(self.user, self.amount, Withdraw, 'withdraw', md=1)
         super().clean()
 

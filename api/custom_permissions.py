@@ -1,6 +1,8 @@
 from rest_framework import permissions
 from rest_framework.permissions import SAFE_METHODS
 
+from users.backends import get_current_club
+
 
 class BetPermissionClass(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
@@ -96,8 +98,19 @@ class RegisterPermissionClass(permissions.BasePermission):
 
 class TransactionPermissionClass(permissions.IsAuthenticated):
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        if request.method != 'DELETE' and request.user.is_authenticated:
-            return True
+        if request.user and request.user.is_authenticated:
+            if request.user.is_superuser:
+                return True
+            if request.user == obj.user:
+                if request.method != 'DELETE' or not obj.verified:
+                    return True
+        return False
+
+
+class ClubTransferPermissionClass(permissions.IsAuthenticated):
+    def has_object_permission(self, request, view, obj):
+        club = get_current_club(request)
+        if club:
+            if request.method != 'DELETE' or not obj.verified:
+                return True
         return False

@@ -7,7 +7,7 @@ from django.utils.html import format_html
 
 from bet import admin
 from .models import Bet, BetScope, Match, DepositWithdrawMethod, Deposit, Withdraw, Transfer, Announcement, \
-    CHOICE_FIRST, CHOICE_SECOND, CHOICE_THIRD, CHOICE_FOURTH, ConfigModel
+    CHOICE_FIRST, CHOICE_SECOND, CHOICE_THIRD, CHOICE_FOURTH, ConfigModel, ClubTransfer
 from .views import active_bet_scopes
 
 
@@ -371,6 +371,11 @@ class TransferAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return Transfer.objects.select_related('user', 'to').all()
+
+
+@admin.register(ClubTransfer)
+class ClubTransferAdmin(admin.ModelAdmin):
+    pass
 
 
 @admin.register(Announcement)

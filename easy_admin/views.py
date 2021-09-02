@@ -13,7 +13,7 @@ from django.views.generic import View
 
 from betting.forms import BetScopeForm, ClubForm, MethodForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
-    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config
+    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer
 from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
 from users.backends import superuser_only
 from users.models import Club, User
@@ -52,7 +52,8 @@ class Home(View):
         buttons = (
             ('btn-primary', f"{reverse('ea:deposits')}#unverified", 'Unverified DepositsView'),
             ('btn-primary', f"{reverse('ea:withdraws')}#unverified", 'Unverified Withdraws'),
-            ('btn-primary', f"{reverse('ea:transfers')}#unverified", 'Unverified Transactions'),
+            ('btn-primary', f"{reverse('ea:transfers')}#unverified", 'Unverified Transfers'),
+            ('btn-primary', f"{reverse('ea:club_transfers')}#unverified", 'Unverified Club Transfers'),
             ('btn-primary', f"{reverse('ea:matches')}#running", 'Running matches'),
             ('btn-primary', f"{reverse('ea:bet_options')}#running", 'Running bet options'),
         )
@@ -172,6 +173,48 @@ class TransferView(View):
             'table_data': table_data
         }
         return render(self.request, 'easy_admin/transfer.html', context)
+
+
+@superuser_only
+def verify_club_transfer(request, tra_id, red=False):
+    t = get_object_or_404(ClubTransfer, pk=tra_id)
+    t.verified = True
+    t.save()
+    if red:
+        return redirect(red)
+    return redirect('ea:club_transfers')
+
+
+@superuser_only
+def deny_club_transfer(request, tra_id, red=False):
+    t = get_object_or_404(ClubTransfer, pk=tra_id)
+    t.delete()
+    if red:
+        return redirect(red)
+    return redirect('ea:club_transfers')
+
+
+@method_decorator(superuser_only, name='dispatch')
+class ClubTransferView(View):
+    def get(self, *args, **kwargs):
+        table_header = (
+            ('', 'ID'),
+            ('', 'Club'),
+            ('', 'Amount'),
+            ('', 'To user'),
+            ('', 'Date'),
+        )
+        table_body = [(club_transfer.id, club_transfer.club.name, club_transfer.amount, club_transfer.to.username,
+                       club_transfer.created_at) for club_transfer in ClubTransfer.objects.filter(verified=True)]
+        table_data = {
+            'table_header': table_header,
+            'table_body': table_body,
+        }
+        context = {
+            'unverified_club_transfers': Transfer.objects.exclude(verified=True),
+            'table_data': table_data
+        }
+        return render(self.request, 'easy_admin/club_transfer.html', context)
 
 
 @superuser_only

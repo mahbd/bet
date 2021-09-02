@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from django.db import transaction
 from django.db.models import Sum, QuerySet
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
@@ -10,7 +11,7 @@ from log.views import custom_log
 from users.models import User
 from users.views import total_user_balance, total_club_balance, notify_user
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, BetScope, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, \
-    config, BET_CHOICES
+    config, BET_CHOICES, ClubTransfer
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -125,6 +126,42 @@ def post_delete_transfer(instance: Transfer, *args, **kwargs):
             custom_log(e, "Failed to reduce balance of user for transfer")
     instance.user.balance += instance.amount
     instance.user.save()
+
+
+@receiver(pre_delete, sender=ClubTransfer)
+def post_delete_transfer(instance: ClubTransfer, *args, **kwargs):
+    notify_user(instance.club.admin, f"Transfer of {instance.amount}BDT to user {instance.to.username} placed on "
+                                     f"{instance.created_at} has been canceled and refunded")
+    if instance.verified:
+        try:
+            instance.to.balance -= instance.amount
+            instance.to.full_clean()
+            instance.to.save()
+            instance.club.balance += instance.amount
+            instance.club.save()
+        except Exception as e:
+            custom_log(e, "Failed to reduce balance of user for transfer")
+    else:
+        instance.club.balance += instance.amount
+        instance.club.save()
+
+
+@receiver(post_save, sender=ClubTransfer)
+def post_save_transfer(instance: ClubTransfer, created: bool, *args, **kwargs):
+    if created:
+        if instance.amount > instance.club.balance - config.get_config('min_balance'):
+            raise ValueError("Does not have enough balance.")
+        instance.club.balance -= instance.amount
+        instance.club.save()
+        instance.club_balance = instance.club.balance
+        instance.save()
+    if instance.verified and not instance.processed_internally:
+        instance.to.balance += instance.amount
+        instance.to.save()
+        notify_user(instance.to, f'Received tk {instance.amount} from ##{instance.club.username}##, with transfer '
+                                 f'id ##{instance.id}##')
+        instance.processed_internally = True
+        instance.save()
 
 
 @receiver(post_save, sender=Bet)

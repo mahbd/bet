@@ -3,9 +3,9 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES
+    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES, ClubTransfer
 from betting.views import value_from_option, get_last_bet
-from users.backends import jwt_writer
+from users.backends import jwt_writer, get_current_club
 from users.models import User, Club, Notification
 
 
@@ -245,6 +245,21 @@ class TransferSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class ClubTransferSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClubTransfer
+        fields = '__all__'
+        read_only_fields = ('id', 'club', 'verified', 'club_balance')
+
+    def validate(self, attrs):
+        if not self.instance:
+            attrs['club'] = get_current_club(self.context['request'])
+        club = attrs.get('club')
+        amount = attrs.get('amount')
+        user_balance_validator(club, amount + Config().get_config('min_balance'))
+        return attrs
+
+
 class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -326,7 +341,6 @@ class WithdrawSerializer(serializers.ModelSerializer):
             attrs['user'] = self.context['request'].user
         user = attrs.get('user')
         amount = attrs.get('amount')
-        method = attrs.get('method')
-        user_balance_validator(user, amount + Config().get_config('min_balance'), method)
+        user_balance_validator(user, amount + Config().get_config('min_balance'))
         Config().config_validator(user, amount, Withdraw, 'withdraw')
         return attrs

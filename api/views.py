@@ -6,14 +6,14 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
-    METHOD_CLUB
+    METHOD_CLUB, ClubTransfer
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
-    ClubPermissionClass, TransactionPermissionClass, IsUser
+    ClubPermissionClass, TransactionPermissionClass, IsUser, ClubTransferPermissionClass
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
-    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub
+    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, ClubTransferSerializer
 
 User: MainUser = get_user_model()
 
@@ -129,6 +129,7 @@ class BetViewSetClub(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         club = get_current_club(self.request)
         return Bet.objects.filter(user__user_club=club)
+
     serializer_class = BetSerializer
 
 
@@ -423,6 +424,25 @@ class TransferViewSet(mixins.CreateModelMixin,
     permission_classes = [TransactionPermissionClass]
 
 
+class ClubTransferViewSet(mixins.CreateModelMixin,
+                          mixins.RetrieveModelMixin,
+                          mixins.ListModelMixin,
+                          viewsets.GenericViewSet):
+    """
+        User must be logged in
+        create:
+        Request will be denied if user doesn't have enough balance or at least one of them is not club admin
+        or both of them is not of same club
+    """
+
+    def get_queryset(self):
+        club = get_current_club(self.request)
+        return ClubTransfer.objects.filter(user=club)
+
+    serializer_class = ClubTransferSerializer
+    permission_classes = [ClubTransferPermissionClass]
+
+
 class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     """
     list:
@@ -437,7 +457,7 @@ class UserListViewSet(viewsets.ReadOnlyModelViewSet):
 class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):
     """
     list:
-    Return list of users.
+    Return list of club users.
     """
 
     def get_queryset(self):
