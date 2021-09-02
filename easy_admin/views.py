@@ -13,7 +13,7 @@ from django.views.generic import View
 
 from betting.forms import BetScopeForm, ClubForm, MethodForm
 from betting.models import Deposit, DEPOSIT_WITHDRAW_CHOICES, Withdraw, Transfer, Match, GAME_CHOICES, BetScope, Bet, \
-    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer
+    DepositWithdrawMethod, ConfigModel, BET_CHOICES, config, ClubTransfer, Commission, COMMISSION_REFER, COMMISSION_CLUB
 from betting.views import generate_admin_dashboard_data, value_from_option, get_last_bet, sum_aggregate
 from users.backends import superuser_only
 from users.models import Club, User
@@ -316,8 +316,8 @@ def pay_scope(request, scope_id, red=False):
         for winner in bet_winners:
             final_win = winner.amount * winner.return_rate * (1 - club_commission - refer_commission)
             winner.user.balance += final_win
-            winner.winning = final_win
             winner.user.save()
+            winner.winning = final_win
             winner.is_winner = True
             winner.answer = value_from_option(winner.choice, scope)
             winner.save()
@@ -328,6 +328,8 @@ def pay_scope(request, scope_id, red=False):
                                                      f"{winner.user.username}. Keep referring and "
                                                      f"earn {refer_commission}% commission from each bet")
                 winner.user.referred_by.save()
+                Commission.objects.create(bet=winner, amount=winner.winning * refer_commission,
+                                          type=COMMISSION_REFER, balance=winner.user.referred_by.balance)
 
             if winner.user.user_club:
                 winner.user.user_club.balance += winner.winning * club_commission
@@ -335,6 +337,9 @@ def pay_scope(request, scope_id, red=False):
                 notify_user(winner.user.user_club.admin, f"{winner.user.user_club.name} has "
                                                          f"earned {winner.winning * club_commission} from "
                                                          f"{winner.user.username}")
+                Commission.objects.create(bet=winner, amount=winner.winning * club_commission,
+                                          club=winner.user.user_club,
+                                          type=COMMISSION_CLUB, balance=winner.user.user_club.balance)
         for loser in bet_losers:
             loser.is_winner = False
             loser.paid = True

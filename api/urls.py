@@ -45,6 +45,7 @@ urlpatterns = [
     url(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('transactions/available_methods/', views.available_methods),
     path('all_transactions/', views.AllTransaction.as_view()),
+    path('club_transactions/', views.ClubTransaction.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', views.Login.as_view(), name='api_login'),
     path('login-club/', views.LoginClub.as_view(), name='api_login_club'),

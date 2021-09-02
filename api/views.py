@@ -6,7 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
-    METHOD_CLUB, ClubTransfer
+    METHOD_CLUB, ClubTransfer, Commission, COMMISSION_CLUB
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
@@ -40,7 +40,7 @@ class AllTransaction(views.APIView):
                 'id': deposit.id,
                 'type': 'deposit',
                 'method': deposit.method,
-                'to': 'None',
+                'to': None,
                 'account': deposit.account,
                 'superuser_account': deposit.superuser_account,
                 'amount': deposit.amount,
@@ -91,6 +91,53 @@ class AllTransaction(views.APIView):
                 'status': status,
                 'created_at': transfer.created_at
             })
+        return Response({'results': all_transaction})
+
+
+class ClubTransaction(views.APIView):
+    """
+    get:
+    Club must be logged in
+    """
+
+    def get(self, *args, **kwargs):
+        club = get_current_club(self.request)
+        all_transfer = ClubTransfer.objects.select_related('to').filter(club=club)[:40]
+        all_deposit = Commission.objects.filter(type=COMMISSION_CLUB).filter(club=club)
+        all_transaction = []
+        for deposit in all_deposit:
+            status = 'accepted'
+            all_transaction.append({
+                'id': deposit.id,
+                'type': 'deposit',
+                'description': "bet commission",
+                'to': None,
+                'credit': deposit.amount,
+                'debit': 0,
+                'user_balance': deposit.user_balance,
+                'status': status,
+                'created_at': deposit.created_at
+            })
+
+        for transfer in all_transfer:
+            if transfer.verified is None:
+                status = 'pending'
+            elif transfer.verified:
+                status = 'accepted'
+            else:
+                status = 'denied'
+            all_transaction.append({
+                'id': transfer.id,
+                'type': 'withdraw',
+                'description': "club withdraw",
+                'to': transfer.to.username,
+                'credit': 0,
+                'debit': transfer.amount,
+                'user_balance': transfer.club_balance,
+                'status': status,
+                'created_at': transfer.created_at
+            })
+
         return Response({'results': all_transaction})
 
 

@@ -55,6 +55,13 @@ GAME_CHOICES = (
     (GAME_OTHERS, 'Others')
 )
 
+COMMISSION_REFER = 'refer'
+COMMISSION_CLUB = 'club'
+COMMISSION_CHOICES = (
+    (COMMISSION_REFER, 'Refer commission'),
+    (COMMISSION_CLUB, 'Club commission'),
+)
+
 
 def club_validator(sender: User, receiver: User):
     if sender.user_club != receiver.user_club:
@@ -230,6 +237,7 @@ class Bet(models.Model):
                                   help_text="For which question bet is done")
     choice = models.CharField(max_length=10, choices=BET_CHOICES, help_text="List of bet choices")
     amount = models.IntegerField(help_text='How much he bet')
+    balance = models.FloatField(default=0.0)
     return_rate = models.FloatField(default=1.00, blank=True, null=True)
     winning = models.FloatField(default=0, help_text='How much will get if wins')
     is_winner = models.BooleanField(default=None, blank=True, null=True)
@@ -392,8 +400,11 @@ class Withdraw(models.Model):
 
 
 class Commission(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, null=True, blank=True)
     bet = models.ForeignKey(Bet, on_delete=models.CASCADE)
     amount = models.FloatField()
+    balance = models.FloatField(default=0.0)
+    type = models.CharField(max_length=255, choices=COMMISSION_CHOICES)
     date = models.DateTimeField(default=timezone.now)
 
     class Meta:

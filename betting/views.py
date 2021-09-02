@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-from django.db import transaction
 from django.db.models import Sum, QuerySet
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
@@ -182,6 +181,7 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
                 ratio = instance.bet_scope.option_4_rate
             instance.return_rate = ratio
             instance.winning = instance.amount * ratio
+            instance.balance = instance.user.balance
             instance.save()
         except ValueError:
             instance.delete()
