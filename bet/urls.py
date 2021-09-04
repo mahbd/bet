@@ -5,6 +5,7 @@ from django.contrib.staticfiles import views
 from django.shortcuts import redirect, render
 from django.urls import path, include
 from django.urls import re_path
+from django.views.decorators.csrf import csrf_exempt
 
 from . import admin
 
@@ -12,14 +13,14 @@ admin.site.site_header = 'SuperBetting Admin Panel'
 admin.site.index_title = 'Admin Site'
 
 urlpatterns = [
-    re_path('accounts/', include('django.contrib.auth.urls')),
-    re_path('accounts/profile/', lambda x: redirect('home')),
-    re_path('easy-admin/', include('easy_admin.urls')),
-    re_path('match-admin/', include('easy_admin.match_url')),
-    re_path('admin/', admin.site.urls),
-    re_path('api/', include('api.urls')),
-    re_path('bet/', include('betting.urls')),
-    re_path('users/', include('users.urls')),
+    path('accounts/', include('django.contrib.auth.urls')),
+    path('accounts/profile/', lambda x: redirect('home')),
+    path('easy-admin/', include('easy_admin.urls')),
+    path('match-admin/', include('easy_admin.match_url')),
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+    path('bet/', include('betting.urls')),
+    path('users/', include('users.urls')),
     path('__debug__/', include(debug_toolbar.urls)),
     re_path(r'^static/(?P<path>.*)', views.serve),
     re_path('$', lambda x: render(x, 'build/index.html'), name='home'),

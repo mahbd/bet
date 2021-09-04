@@ -1,5 +1,6 @@
 from django.conf.urls import url
 from django.urls import path, include
+from django.views.decorators.csrf import csrf_exempt
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
@@ -47,8 +48,8 @@ urlpatterns = [
     path('all_transactions/', views.AllTransaction.as_view()),
     path('club_transactions/', views.ClubTransaction.as_view()),
     path('', include(router.urls), name='main_api'),
-    path('login/', views.Login.as_view(), name='api_login'),
-    path('login-club/', views.LoginClub.as_view(), name='api_login_club'),
+    path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
+    path('login-club/', csrf_exempt(views.LoginClub.as_view()), name='api_login_club'),
     path('user-detail-update/', views.UserDetailsUpdateRetrieveDestroy.as_view()),
     path('change-password/', views.ChangePassword.as_view()),
 ]
