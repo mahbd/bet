@@ -21,7 +21,6 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),
     path('users/', include('users.urls')),
-    path('__debug__/', include(debug_toolbar.urls)),
     re_path(r'^static/(?P<path>.*)', views.serve),
     re_path('$', lambda x: render(x, 'build/index.html'), name='home'),
 ]
