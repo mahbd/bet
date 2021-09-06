@@ -93,5 +93,7 @@
         {% if user.is_superuser and bet_scope.winner and not bet_scope.processed_internally %}
             <a class="btn-lg btn-danger text-white" href="{% url 'ea:pay_scope' bet_scope.id %}">Pay the winners</a>
         {% endif %}
+        <a class="btn-lg btn-danger text-white float-end" href="{% url 'ea:refund_scope' bet_scope.id %}">Refund and
+            Delete</a>
     </div>
 {% endblock %}

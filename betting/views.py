@@ -230,7 +230,7 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
 @receiver(post_delete, sender=Bet)
 def post_delete_bet(instance: Bet, *args, **kwargs):
     try:
-        change = -instance.winning * (instance.return_rate - 1.00)
+        change = instance.winning / instance.return_rate - instance.winning
         if not instance.paid or (instance.paid and not instance.is_winner):
             change = instance.winning / instance.return_rate
         instance.user.balance += change

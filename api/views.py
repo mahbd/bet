@@ -210,9 +210,9 @@ class BetScopeViewSet(mixins.CreateModelMixin,
         match_id = self.request.GET.get('match_id')
         game_name = self.request.GET.get('game_name')
         if match_id:
-            return BetScope.objects.select_related('match').filter(match_id=match_id)
+            return BetScope.objects.select_related('match').filter(match_id=match_id, winner__isnull=True)
         if game_name:
-            return BetScope.objects.select_related('match').filter(match__game_name=game_name)
+            return BetScope.objects.select_related('match').filter(match__game_name=game_name, winner__isnull=True)
         return BetScope.objects.select_related('match').all()
 
     serializer_class = BetScopeSerializer

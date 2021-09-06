@@ -27,6 +27,7 @@ urlpatterns = [
     path('hide_match/<int:match_id>/', views.hide_match, name='hide_match'),
     path('lock_scope/<int:scope_id>/', views.lock_scope, name='lock_scope'),
     path('hide_scope/<int:scope_id>/', views.hide_scope, name='hide_scope'),
+    path('refund_scope/<int:scope_id>/', views.refund_and_delete, name='refund_scope'),
     path('pay_scope/<int:scope_id>/', views.pay_scope, name='pay_scope'),
     path('set_scope_winner/<int:scope_id>/<winner>/', views.set_scope_winner, name='scope_winner'),
     path('verify_transfer/<int:tra_id>/', views.verify_transfer, name='verify_transfer'),

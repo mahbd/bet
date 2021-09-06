@@ -307,6 +307,19 @@ def lock_scope(request, scope_id, red=False):
     return redirect('ea:bet_option_detail', scope_id)
 
 
+def refund_and_delete(request, scope_id, red=False):
+    try:
+        bet_scope = BetScope.objects.get(pk=scope_id)
+        for bet in bet_scope.bet_set.all():
+            bet.delete()
+        bet_scope.delete()
+    except BetScope.DoesNotExist:
+        raise Http404
+    if red:
+        return redirect(red)
+    return redirect('ea:bet_options')
+
+
 @superuser_only
 def pay_scope(request, scope_id, red=False):
     scope = get_object_or_404(BetScope, pk=scope_id)
@@ -365,7 +378,7 @@ class BetOptionView(View):
                 'choice_list': BET_CHOICES,
             })
         context = {
-            'bet_scope_list': BetScope.objects.filter(winner__isnull=True)
+            'bet_scope_list': BetScope.objects.filter(processed_internally=False)
         }
         return render(self.request, 'easy_admin/bet_option_list.html', context)
 
