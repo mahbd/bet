@@ -2,6 +2,7 @@
 {% load tags %}
 {% block content %}
     <div class="container">
+        <a class="btn btn-danger float-end" href="{% url 'admin:betting_betscope_change' bet_scope.id %}">In Admin</a>
         <h1>{{ bet_scope.question }}</h1>
         <table class="table table-bordered table-striped table-light">
             <tr>
