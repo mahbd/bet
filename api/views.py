@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.http import Http404
 from django.utils import timezone
 from rest_framework import viewsets, permissions, views, mixins, generics
 from rest_framework.decorators import action, api_view
@@ -509,6 +510,8 @@ class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         club = get_current_club(self.request)
+        if not club:
+            raise Http404
         return User.objects.filter(user_club=club)
 
     serializer_class = UserListSerializerClub
