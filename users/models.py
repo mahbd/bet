@@ -15,6 +15,7 @@ class Club(models.Model):
     balance = models.FloatField(default=0,
                                 validators=[MinValueValidator(0)],
                                 help_text='Club\'s current balance.')
+    club_commission = models.FloatField(default=2)
     username = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
 

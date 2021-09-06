@@ -52,18 +52,19 @@ class Home(View):
             'table_body': table_body,
         }
         buttons = (
-            ('btn-primary', f"{reverse('ea:deposits')}#unverified", 'Unverified DepositsView'),
-            ('btn-primary', f"{reverse('ea:withdraws')}#unverified", 'Unverified Withdraws'),
-            ('btn-primary', f"{reverse('ea:transfers')}#unverified", 'Unverified Transfers'),
+            ('btn-primary', f"{reverse('ea:deposits')}#unverified",
+             f'Unverified Deposits({unverified_transaction_count(t_type=TYPE_DEPOSIT)})'),
+            ('btn-primary', f"{reverse('ea:withdraws')}#unverified",
+             f'Unverified Withdraws({unverified_transaction_count(t_type=TYPE_WITHDRAW)})'),
+            ('btn-primary', f"{reverse('ea:transfers')}#unverified",
+             f'Unverified Transfers({unverified_transaction_count(t_type=TYPE_WITHDRAW, method=METHOD_TRANSFER)})'),
             ('btn-primary', f"{reverse('ea:club_transfers')}#unverified", 'Unverified Club Transfers'),
-            ('btn-primary', f"{reverse('ea:matches')}#running", 'Running matches'),
-            ('btn-primary', f"{reverse('ea:bet_options')}#running", 'Running bet options'),
+            ('btn-primary', f"{reverse('ea:matches')}#running",
+             f'Running matches({active_matches().count()})'),
+            ('btn-primary', f"{reverse('ea:bet_options')}#running",
+             f'Running bet options({active_bet_scopes_count()})'),
         )
-        context = {'data': data, 'table_data': table_data, 'buttons': buttons, 'developer_name': 'Mahmudul Alam',
-                   'unverified_deposit': unverified_transaction_count(t_type=TYPE_DEPOSIT),
-                   'unverified_withdraw': unverified_transaction_count(t_type=TYPE_WITHDRAW),
-                   'unverified_transfer': unverified_transaction_count(t_type=TYPE_WITHDRAW, method=METHOD_TRANSFER),
-                   'active_matches': active_matches().count(), 'active_bet_scopes': active_bet_scopes_count()}
+        context = {'data': data, 'table_data': table_data, 'buttons': buttons}
         return render(request, self.template_name, context)
 
 
@@ -318,41 +319,22 @@ def pay_scope(request, scope_id, red=False):
 
         bet_winners = list(scope.bet_set.filter(choice=scope.winner))
         bet_losers = scope.bet_set.exclude(choice=scope.winner)
-        club_commission = float(config.get_config_str('club_commission')) / 100
-        refer_commission = float(config.get_config_str('refer_commission')) / 100
+        answer = value_from_option(scope.winner, scope)
 
-        for winner in bet_winners:
-            final_win = winner.amount * winner.return_rate * (1 - club_commission - refer_commission)
-            winner.user.balance += final_win
-            winner.user.save()
-            winner.winning = final_win
-            winner.is_winner = True
-            winner.answer = value_from_option(winner.choice, scope)
-            winner.save()
-            if winner.user.referred_by:
-                winner.user.referred_by.balance += winner.winning * refer_commission
-                winner.user.referred_by.earn_from_refer += winner.winning * refer_commission
-                notify_user(winner.user.referred_by, f"You earned {winner.winning * refer_commission} from user "
-                                                     f"{winner.user.username}. Keep referring and "
-                                                     f"earn {refer_commission}% commission from each bet")
-                winner.user.referred_by.save()
-                Commission.objects.create(bet=winner, amount=winner.winning * refer_commission,
-                                          type=COMMISSION_REFER, balance=winner.user.referred_by.balance)
+        for bet in bet_winners:
+            final_win = bet.winning
+            bet.user.balance += final_win
+            bet.user.save()
+            bet.winning = final_win
+            bet.is_winner = True
+            bet.answer = answer
+            bet.save()
 
-            if winner.user.user_club:
-                winner.user.user_club.balance += winner.winning * club_commission
-                winner.user.user_club.save()
-                notify_user(winner.user.user_club.admin, f"{winner.user.user_club.name} has "
-                                                         f"earned {winner.winning * club_commission} from "
-                                                         f"{winner.user.username}")
-                Commission.objects.create(bet=winner, amount=winner.winning * club_commission,
-                                          club=winner.user.user_club,
-                                          type=COMMISSION_CLUB, balance=winner.user.user_club.balance)
         for loser in bet_losers:
             loser.is_winner = False
             loser.paid = True
             loser.winning = 0
-            loser.answer = value_from_option(loser.choice, scope)
+            loser.answer = answer
             loser.save()
         scope.save()  # To avoid reprocessing the bet scope
     if red:
@@ -566,9 +548,15 @@ def delete_method(request, method_id):
     return redirect('ea:methods')
 
 
+def check_all_configuration():
+    for key in config.defaults.keys():
+        config.get_config_str(key)
+
+
 @method_decorator(superuser_only, name='dispatch')
 class ConfigureView(View):
     def get(self, *args, **kwargs):
+        check_all_configuration()
         return render(self.request, 'easy_admin/configurations.html', context={
             'configurations': ConfigModel.objects.all(),
             'messages': kwargs.get('messages')

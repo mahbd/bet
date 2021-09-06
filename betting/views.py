@@ -10,7 +10,7 @@ from log.views import custom_log
 from users.models import User
 from users.views import total_user_balance, total_club_balance, notify_user
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, BetScope, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, \
-    config, BET_CHOICES, ClubTransfer
+    config, BET_CHOICES, ClubTransfer, Commission, COMMISSION_REFER, COMMISSION_CLUB
 
 
 def create_deposit(user_id: int, amount, method=None, description=None, verified=False):
@@ -120,7 +120,7 @@ def post_delete_transfer(instance: Transfer, *args, **kwargs):
     instance.user.save()
 
 
-@receiver(pre_delete, sender=ClubTransfer)
+@receiver(post_delete, sender=ClubTransfer)
 def post_delete_transfer(instance: ClubTransfer, *args, **kwargs):
     notify_user(instance.club.admin, f"Transfer of {instance.amount}BDT to user {instance.to.username} placed on "
                                      f"{instance.created_at} has been canceled and refunded")
@@ -142,7 +142,7 @@ def post_delete_transfer(instance: ClubTransfer, *args, **kwargs):
 def post_save_transfer(instance: ClubTransfer, created: bool, *args, **kwargs):
     if created:
         if instance.amount > instance.club.balance - config.get_config('min_balance'):
-            raise ValueError("Does not have enough balance.")
+            raise ValueError("Club does not have enough balance.")
         instance.club.balance -= instance.amount
         instance.club.save()
         instance.club_balance = instance.club.balance
@@ -156,6 +156,49 @@ def post_save_transfer(instance: ClubTransfer, created: bool, *args, **kwargs):
         instance.save()
 
 
+def get_rate(choice, bet_scope: BetScope):
+    if choice == BET_CHOICES[0][0]:
+        ratio = bet_scope.option_1_rate
+    elif choice == BET_CHOICES[1][0]:
+        ratio = bet_scope.option_2_rate
+    elif choice == BET_CHOICES[2][0]:
+        ratio = bet_scope.option_3_rate
+    else:
+        ratio = bet_scope.option_4_rate
+    return ratio
+
+
+def pay_refer(bet: Bet) -> float:
+    refer_commission = float(config.get_config_str('refer_commission')) / 100
+    if bet.user.referred_by:
+        commission = bet.amount * refer_commission
+        bet.user.referred_by.balance += commission
+        bet.user.referred_by.earn_from_refer += commission
+        notify_user(bet.user.referred_by, f"You earned {commission} from user "
+                                          f"{bet.user.username}. Keep referring and "
+                                          f"earn {refer_commission * 100}% commission from each bet")
+        bet.user.referred_by.save()
+        Commission.objects.create(bet=bet, amount=commission,
+                                  type=COMMISSION_REFER, balance=bet.user.referred_by.balance)
+        return commission
+    return 0
+
+
+def pay_club(bet: Bet) -> float:
+    if bet.user.user_club:
+        commission = bet.amount * bet.user.user_club.club_commission
+        bet.user.user_club.balance += commission
+        bet.user.user_club.save()
+        notify_user(bet.user.user_club.admin, f"{bet.user.user_club.name} has "
+                                              f"earned {commission} from "
+                                              f"{bet.user.username}")
+        Commission.objects.create(bet=bet, amount=commission,
+                                  club=bet.user.user_club,
+                                  type=COMMISSION_CLUB, balance=bet.user.user_club.balance)
+        return commission
+    return 0
+
+
 @receiver(post_save, sender=Bet)
 def post_process_bet(instance: Bet, created, *args, **kwargs):
     if created:
@@ -164,16 +207,12 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
                 raise ValueError("Does not have enough balance.")
             instance.user.balance -= instance.amount
             instance.user.save()
-            if instance.choice == BET_CHOICES[0][0]:
-                ratio = instance.bet_scope.option_1_rate
-            elif instance.choice == BET_CHOICES[1][0]:
-                ratio = instance.bet_scope.option_2_rate
-            elif instance.choice == BET_CHOICES[2][0]:
-                ratio = instance.bet_scope.option_3_rate
-            else:
-                ratio = instance.bet_scope.option_4_rate
+            refer_paid = pay_refer(instance)
+            club_paid = pay_club(instance)
+            ratio = get_rate(instance.choice, instance.bet_scope)
+
             instance.return_rate = ratio
-            instance.winning = instance.amount * ratio
+            instance.winning = (instance.amount - club_paid - refer_paid) * ratio
             instance.balance = instance.user.balance
             instance.save()
         except ValueError:
@@ -183,18 +222,20 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
             instance.delete()
 
 
-@receiver(pre_delete, sender=Bet)
-def pre_delete_bet(instance: Bet, *args, **kwargs):
-    if instance.paid and instance.amount * instance.return_rate - instance.amount > instance.user.balance:
-        raise ValueError("User does not have enough balance.")
-    change = instance.amount - instance.amount * instance.return_rate
-    if not instance.paid or (instance.paid and not instance.is_winner):
-        change = instance.amount
-    instance.user.balance += change
-    instance.user.save()
-    notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
-                               f'on ##{instance.bet_scope.question}##. Balance '
-                               f'refunded by {change} BDT')
+@receiver(post_delete, sender=Bet)
+def post_delete_bet(instance: Bet, *args, **kwargs):
+    try:
+        change = -instance.winning * (instance.return_rate - 1.00)
+        if not instance.paid or (instance.paid and not instance.is_winner):
+            change = instance.winning / instance.return_rate
+        instance.user.balance += change
+        instance.user.save()
+        notify_user(instance.user, f'Bet cancelled for match ##{instance.bet_scope.match.title}## '
+                                   f'on ##{instance.bet_scope.question}##. Balance '
+                                   f'refunded by {change} BDT')
+    except Exception as e:
+        custom_log(e,f'Error post delete bet of user {instance.user.username} bet id {instance.id} amount:'
+                     f' {instance.amount} date: {instance.created_at}')
 
 
 def sum_aggregate(queryset: QuerySet, field='amount'):
@@ -232,13 +273,11 @@ def active_matches():
 
 
 def active_bet_scopes():
-    return BetScope.objects.filter(locked=False, match__locked=False, match__end_time__gte=timezone.now(),
-                                   winner__isnull=True).exclude(end_time__lte=timezone.now())
+    return BetScope.objects.filter(processed_internally=False)
 
 
 def active_bet_scopes_count() -> int:
-    return BetScope.objects.filter(locked=False, match__locked=False, match__end_time__gte=timezone.now(),
-                                   winner__isnull=True).exclude(end_time__lte=timezone.now()).count()
+    return BetScope.objects.filter(processed_internally=False).count()
 
 
 def test_post(request):

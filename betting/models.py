@@ -103,15 +103,15 @@ def bet_scope_validator(bet_scope):
 
 
 class Announcement(models.Model):
-    text = models.TextField()
-    expired = models.BooleanField()
     created_at = models.DateTimeField(default=timezone.now)
+    expired = models.BooleanField()
+    text = models.TextField()
 
 
 class ConfigModel(models.Model):
+    description = models.TextField(blank=True, null=True)
     name = models.CharField(max_length=255, unique=True, primary_key=True)
     value = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'Configuration'
@@ -170,12 +170,12 @@ config = Config()
 
 
 class Match(models.Model):
-    game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
-    title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
-    locked = models.BooleanField(default=False)
-    hide = models.BooleanField(default=False)
-    start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
+    game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
+    hide = models.BooleanField(default=False)
+    locked = models.BooleanField(default=False)
+    start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
+    title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
 
     def is_live(self):
         return not self.locked and self.start_time <= timezone.now() <= self.end_time
@@ -191,9 +191,10 @@ class Match(models.Model):
 
 
 class BetScope(models.Model):
+    end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
+    hide = models.BooleanField(default=False)
+    locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
     match = models.ForeignKey(Match, on_delete=models.CASCADE, help_text="Id of the match under which this is question")
-    question = models.CharField(max_length=1023, help_text="Question of bet")
-
     option_1 = models.CharField(max_length=255)
     option_1_rate = models.FloatField(default=1,
                                       validators=[MinValueValidator(1)])
@@ -208,15 +209,10 @@ class BetScope(models.Model):
     option_4_rate = models.FloatField(default=1,
                                       validators=[MinValueValidator(1)],
                                       blank=True, null=True)
-    winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True,
-                              help_text="Which option is the winner. Be careful. As soon as you select winner,"
-                                        " bet winner receive money. This can not be reverted")
-    start_time = models.DateTimeField(default=timezone.now, help_text="when this question will be available for bet",
-                                      blank=True, null=True)
-    end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
-    locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
-    hide = models.BooleanField(default=False)
     processed_internally = models.BooleanField(default=False)
+    question = models.CharField(max_length=1023, help_text="Question of bet")
+    winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True)
+    start_time = models.DateTimeField(default=timezone.now, blank=True, null=True)
 
     def is_locked(self):
         return bool(
@@ -232,17 +228,17 @@ class BetScope(models.Model):
 
 class Bet(models.Model):
     answer = models.CharField(max_length=255, default="Unknown", blank=True, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
+    amount = models.IntegerField(help_text='How much he bet')
+    balance = models.FloatField(default=0.0)
     bet_scope = models.ForeignKey(BetScope, on_delete=models.PROTECT, validators=[bet_scope_validator],
                                   help_text="For which question bet is done")
     choice = models.CharField(max_length=10, choices=BET_CHOICES, help_text="List of bet choices")
-    amount = models.IntegerField(help_text='How much he bet')
-    balance = models.FloatField(default=0.0)
-    return_rate = models.FloatField(default=1.00, blank=True, null=True)
-    winning = models.FloatField(default=0, help_text='How much will get if wins')
+    created_at = models.DateTimeField(auto_now_add=True)
     is_winner = models.BooleanField(default=None, blank=True, null=True)
     paid = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    return_rate = models.FloatField(default=1.00, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
+    winning = models.FloatField(default=0, help_text='How much will get if wins')
 
     def clean(self):
         bet_scope_validator(self.bet_scope)
@@ -267,23 +263,23 @@ class DepositWithdrawMethod(models.Model):
 
 
 class Deposit(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
-                              help_text="method used to do transaction")
-    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                               help_text="how much money transacted in 2 point precession decimal number")
     account = models.CharField(max_length=255, blank=True, null=True,
                                help_text="bank account number. Used for deposit and withdraw")
-    transaction_id = models.CharField(max_length=255, blank=True, null=True)
-    user_balance = models.FloatField(default=0, blank=True, null=True)
+    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
+                               help_text="how much money transacted in 2 point precession decimal number")
+    created_at = models.DateTimeField(default=timezone.now)
+    description = models.TextField(blank=True, null=True)
+    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
+                              help_text="method used to do transaction")
+    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
     superuser_account = models.CharField(max_length=255, blank=True, null=True,
                                          help_text="bank account number of the superuser")
-    description = models.TextField(blank=True, null=True)
+    transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    user_balance = models.FloatField(default=0, blank=True, null=True)
     verified = models.BooleanField(default=None, null=True, blank=True,
                                    help_text="Status if admin had verified. After verification(for deposit), "
                                              "user account will be deposited")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
-    created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return str(self.id)
