@@ -134,7 +134,6 @@ class Config:
             'limit_bet': 50,
             'min_bet': 10,
             'max_bet': 25000,
-            'club_commission': 2,
             'refer_commission': 0.5,
         }
 
