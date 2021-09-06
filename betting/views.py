@@ -217,6 +217,9 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
             instance.winning = (instance.amount - club_paid - refer_paid) * ratio
             instance.balance = instance.user.balance
             instance.save()
+            instance.user.userclubinfo.total_bet += instance.amount
+            instance.user.userclubinfo.save()
+
         except ValueError:
             instance.delete()
         except Exception as e:
