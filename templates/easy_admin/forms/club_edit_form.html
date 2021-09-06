@@ -4,20 +4,14 @@
         {% csrf_token %}
         <input type="text" value="{{ club.1.id }}" name="id" hidden>
         {% double_rwb form.name form.admin %}
-        <div class="row">
-            <div class="col-sm">
-                {% disable_with_button form.balance %}
-            </div>
-            <div class="col-sm">
-                <div class="col-sm">
-                    <label for="total_users">Total Users</label>
-                    <div class="input-group">
-                        <input id="total_users" type="text" class="form-control"
-                               value="{{ club.1.total_user|default:"0" }}" disabled>
-                    </div>
-                </div>
-            </div>
+        {% double_rwb form.balance form.club_commission %}
+
+        <label for="total_users">Total Users</label>
+        <div class="input-group">
+            <input id="total_users" type="text" class="form-control"
+                   value="{{ club.1.total_user|default:"0" }}" disabled>
         </div>
+
         {% double_rwb form.username form.password %}
         <button class="btn btn-success mt-2" type="submit">Save</button>
     {% endwith %}

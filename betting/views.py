@@ -186,7 +186,7 @@ def pay_refer(bet: Bet) -> float:
 
 def pay_club(bet: Bet) -> float:
     if bet.user.user_club:
-        commission = bet.amount * bet.user.user_club.club_commission
+        commission = bet.amount * bet.user.user_club.club_commission / 100
         bet.user.user_club.balance += commission
         bet.user.user_club.save()
         notify_user(bet.user.user_club.admin, f"{bet.user.user_club.name} has "
@@ -195,6 +195,8 @@ def pay_club(bet: Bet) -> float:
         Commission.objects.create(bet=bet, amount=commission,
                                   club=bet.user.user_club,
                                   type=COMMISSION_CLUB, balance=bet.user.user_club.balance)
+        bet.user.userclubinfo.total_commission += commission
+        bet.user.userclubinfo.save()
         return commission
     return 0
 

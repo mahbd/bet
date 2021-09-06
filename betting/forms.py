@@ -17,7 +17,7 @@ class BetScopeForm(forms.ModelForm):
 class ClubForm(forms.ModelForm):
     class Meta:
         model = Club
-        fields = ('name', 'admin', 'balance', 'username', 'password')
+        fields = ('name', 'admin', 'balance', 'username', 'password', 'club_commission')
 
 
 class MethodForm(forms.ModelForm):
