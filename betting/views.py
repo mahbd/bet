@@ -88,19 +88,18 @@ def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
     if created:
         if instance.amount > instance.user.balance - config.get_config('min_balance'):
             raise ValueError("Does not have enough balance.")
+
+        notify_user(instance.to, f'You will receive {instance.amount} tk from user ##{instance.user.username}##, '
+                                 f'with transfer id ##{instance.id}## as soon as admin confirmed')
         instance.user.balance -= instance.amount
         instance.user.save()
         instance.user_balance = instance.user.balance
         instance.save()
     if instance.verified and not instance.processed_internally:
-        deposit = Deposit()
-        deposit.user = instance.to
-        deposit.method = METHOD_TRANSFER
-        deposit.amount = instance.amount
-        deposit.description = f'From ##{instance.user.username}##, with transfer id ##{instance.id}##'
-        deposit.verified = True
-        deposit.save()
-
+        instance.to.balance += instance.amount
+        instance.to.save()
+        notify_user(instance.to, f'You  received {instance.amount} tk from user ##{instance.user.username}##, '
+                                 f'with transfer id ##{instance.id}##')
         instance.processed_internally = True
         instance.save()
 

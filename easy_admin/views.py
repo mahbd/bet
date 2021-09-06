@@ -119,7 +119,8 @@ class DepositsView(View):
         if created_at:
             data['created_at'] = convert_time(created_at)
         self.model.objects.filter(id=data['id']).update(**data)
-        pay_deposit(self.model.objects.filter(id=data['id']).first())
+        if self.name == "deposit":
+            pay_deposit(self.model.objects.filter(id=data['id']).first())
         return redirect(self.reverse_link())
 
 

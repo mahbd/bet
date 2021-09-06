@@ -168,7 +168,6 @@ JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpG
                                     "RtAuavkWRfpQ_lXrc8m5Ga9ebqpe3fcPvIZVPQ\",\"kty\":\"oct\"}")
 
 # Configuration
-MINIMUM_TRANSACTION = os.environ.get('MINIMUM_TRANSACTION', 1)
 django_heroku.settings(locals())
 
 ADMIN_AUTH_TOKEN = os.environ.get('ADMIN_AUTH_TOKEN', 'eyJhbGciOiJIUzI1NiJ9.eyJiYWxhbmNlIjoiNjc2LjAwIiwiZW1haWwiOi'

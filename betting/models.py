@@ -5,7 +5,6 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from bet.settings import MINIMUM_TRANSACTION
 from users.models import User, Club
 
 TYPE_DEPOSIT = 'deposit'
@@ -163,7 +162,7 @@ class Config:
         if total_per_day >= limit_count + md:
             raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_per_day}")
         if minimum > amount or amount > maximum:
-            raise ValidationError(f"Amount limit {minimum} - {maximum} does not match.")
+            raise ValidationError(f"Amount limit of {des} {minimum} - {maximum} does not match. Yours {amount}")
 
 
 config = Config()
@@ -240,12 +239,6 @@ class Bet(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
     winning = models.FloatField(default=0, help_text='How much will get if wins')
 
-    def clean(self):
-        bet_scope_validator(self.bet_scope)
-        user_balance_validator(self.user, self.amount)
-        Config().config_validator(self.user, self.amount, Bet, 'bet', md=1)
-        super().clean()
-
     class Meta:
         ordering = ['bet_scope', '-created_at']
 
@@ -265,8 +258,7 @@ class DepositWithdrawMethod(models.Model):
 class Deposit(models.Model):
     account = models.CharField(max_length=255, blank=True, null=True,
                                help_text="bank account number. Used for deposit and withdraw")
-    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                               help_text="how much money transacted in 2 point precession decimal number")
+    amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
     created_at = models.DateTimeField(default=timezone.now)
     description = models.TextField(blank=True, null=True)
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
@@ -301,8 +293,7 @@ class Transfer(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
     to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
                            help_text="User id to whom money transferred")
-    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                               help_text="how much money transacted in 2 point precession decimal number")
+    amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
     user_balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     verified = models.BooleanField(default=None, blank=True, null=True,
@@ -310,17 +301,6 @@ class Transfer(models.Model):
                                              "user account will be deposited")
     processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
     created_at = models.DateTimeField(default=timezone.now)
-
-    def clean(self):
-        user_balance_validator(self.user, self.amount)
-        club_validator(self.user, self.to)
-        Config().config_validator(self.user, self.amount, Transfer, 'transfer', md=1)
-        super().clean()
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return str(self.id)
@@ -333,8 +313,7 @@ class ClubTransfer(models.Model):
     club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, help_text="Club id of transaction maker")
     to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                            help_text="User id to whom money transferred")
-    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                               help_text="how much money transacted in 2 point precession decimal number")
+    amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
     club_balance = models.FloatField(default=0, blank=True, null=True)
     notes = models.TextField(blank=True, null=True)
     verified = models.BooleanField(default=None, blank=True, null=True,
@@ -342,15 +321,6 @@ class ClubTransfer(models.Model):
                                              "user account will be deposited")
     processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
     created_at = models.DateTimeField(default=timezone.now)
-
-    def clean(self):
-        user_balance_validator(self.club, self.amount)
-        super().clean()
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return str(self.id)
@@ -363,8 +333,7 @@ class Withdraw(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
                               help_text="method used to do transaction")
-    amount = models.FloatField(validators=[MinValueValidator(MINIMUM_TRANSACTION)],
-                               help_text="how much money transacted in 2 point precession decimal number")
+    amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
     account = models.CharField(max_length=255, blank=True, null=True,
                                help_text="bank account number. Used for deposit and withdraw")
     superuser_account = models.CharField(max_length=255, blank=True, null=True,
@@ -377,16 +346,6 @@ class Withdraw(models.Model):
                                              "user account will be deposited")
     processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
     created_at = models.DateTimeField(default=timezone.now)
-
-    def clean(self):
-        user_balance_validator(self.user, self.amount)
-        Config().config_validator(self.user, self.amount, Withdraw, 'withdraw', md=1)
-        super().clean()
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
 
     def __str__(self):
         return str(self.id)
