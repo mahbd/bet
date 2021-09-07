@@ -93,9 +93,9 @@ WSGI_APPLICATION = 'bet.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DATABASE_NAME', 'bet'),
-        'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
-        'USER': 'bet_admin',
+        'NAME': os.environ.get('DB_NAME', 'bet'),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'USER': os.environ.get('DB_USER', 'bet_admin'),
         'PASSWORD': os.environ.get('BET_ADMIN_DB_PASS', '1234')
     }
 }
