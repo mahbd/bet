@@ -3,3 +3,6 @@ __pycache__
 /staticfiles/
 mysite.log
 /static/*
+stderr.log
+passenger_wsgi.py
+tmp/
