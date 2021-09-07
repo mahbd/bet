@@ -1,11 +1,9 @@
-import debug_toolbar
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.staticfiles import views
 from django.shortcuts import redirect, render
 from django.urls import path, include
 from django.urls import re_path
-from django.views.decorators.csrf import csrf_exempt
 
 from . import admin
 

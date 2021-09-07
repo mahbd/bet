@@ -13,7 +13,6 @@ import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-import django_heroku
 from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -93,9 +92,9 @@ WSGI_APPLICATION = 'bet.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bet',
-        'HOST': '127.0.0.1',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('DATABASE_NAME', 'bet'),
+        'HOST': os.environ.get('DATABASE_HOST', '127.0.0.1'),
         'USER': 'bet_admin',
         'PASSWORD': os.environ.get('BET_ADMIN_DB_PASS', '1234')
     }
@@ -168,8 +167,6 @@ JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpG
                                     "RtAuavkWRfpQ_lXrc8m5Ga9ebqpe3fcPvIZVPQ\",\"kty\":\"oct\"}")
 
 # Configuration
-django_heroku.settings(locals())
-
 ADMIN_AUTH_TOKEN = os.environ.get('ADMIN_AUTH_TOKEN', 'eyJhbGciOiJIUzI1NiJ9.eyJiYWxhbmNlIjoiNjc2LjAwIiwiZW1haWwiOi'
                                                       'JnQGcuY29tIiwiZmlyc3RfbmFtZSI6IiIs'
                                                       'ImdhbWVfZWRpdG9yIjpmYWxzZSwiaWQiOjEsImlzX2NsdWJfYWRtaW4iOnRy'
