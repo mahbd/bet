@@ -43,9 +43,18 @@ def count_filter_bet_set(bet_scope, choice):
     return bet_scope.bet_set.filter(choice=choice).count()
 
 
+# noinspection PyMethodMayBeStatic
 class BetScopeSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField(read_only=True)
     details = serializers.SerializerMethodField(read_only=True)
+    match_name = serializers.SerializerMethodField(read_only=True)
+    match_start_time = serializers.SerializerMethodField(read_only=True)
+
+    def get_match_name(self, bet_scope: BetScope):
+        return bet_scope.match.title
+
+    def get_match_start_time(self, bet_scope: BetScope):
+        return str(bet_scope.match.start_time)
 
     def get_details(self, bet_scope: BetScope) -> dict:
         option1_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[0][0], 'amount')
@@ -78,14 +87,13 @@ class BetScopeSerializer(serializers.ModelSerializer):
             'option4_benefit': option4_benefit,
         }
 
-    # noinspection PyMethodMayBeStatic
     def get_is_locked(self, bet_scope: BetScope) -> bool:
         return bet_scope.is_locked()
 
     class Meta:
         model = BetScope
         fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match', 'option_1', 'option_1_rate', 'option_2',
-                  'option_2_rate', 'details',
+                  'option_2_rate', 'details', 'match_name', 'match_start_time',
                   'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
         read_only_fields = ('id', )
 
