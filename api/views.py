@@ -6,17 +6,34 @@ from rest_framework.decorators import action, api_view
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from betting.models import Bet, BetScope, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
-    METHOD_CLUB, ClubTransfer, Commission, COMMISSION_CLUB
+from betting.models import Bet, BetQuestion, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
+    METHOD_CLUB, QuestionOption
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
-    ClubPermissionClass, TransactionPermissionClass, IsUser, ClubTransferPermissionClass
+    ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
-    UserListSerializer, BetScopeSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
-    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, ClubTransferSerializer
+    UserListSerializer, BetQuestionSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
+    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer
 
 User: MainUser = get_user_model()
+
+
+def determine_status(status):
+    if status is None:
+        return 'pending'
+    elif status:
+        return 'accepted'
+    else:
+        return 'denied'
+
+
+def determine_type(query):
+    if hasattr(query, 'recipient'):
+        return 'transfer'
+    if hasattr(query, 'club'):
+        return 'deposit'
+    return 'withdraw'
 
 
 class AllTransaction(views.APIView):
@@ -26,123 +43,36 @@ class AllTransaction(views.APIView):
     """
 
     def get(self, *args, **kwargs):
-        all_deposit = Deposit.objects.exclude(method=METHOD_CLUB).filter(user=self.request.user)[:40]
-        all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
-        all_transfer = Transfer.objects.select_related('to').filter(user=self.request.user)[:40]
+        if self.request.GET.get('club'):
+            club = get_current_club(self.request)
+            all_deposit = Deposit.objects.filter(club__isnull=False).filter(club=club)[:40]
+            all_withdraw = []
+            all_transfer = Transfer.objects.filter(club__isnull=False).filter(club=club)[:40]
+        else:
+            all_deposit = Deposit.objects.exclude(method=METHOD_CLUB).filter(user=self.request.user)[:40]
+            all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
+            all_transfer = Transfer.objects.filter(user=self.request.user)[:40]
         all_transaction = []
-        for deposit in all_deposit:
-            if deposit.verified is None:
-                status = 'pending'
-            elif deposit.verified:
-                status = 'accepted'
-            else:
-                status = 'denied'
+        for query in all_deposit + all_withdraw + all_transfer:
             all_transaction.append({
-                'id': deposit.id,
-                'type': 'deposit',
-                'method': deposit.method,
-                'to': None,
-                'account': deposit.account,
-                'superuser_account': deposit.superuser_account,
-                'amount': deposit.amount,
-                'user_balance': deposit.user_balance,
-                'transaction_id': deposit.transaction_id,
-                'status': status,
-                'created_at': deposit.created_at
+                'id': query.id,
+                'type': determine_type(query),
+                'method': (hasattr(query, 'method') and query.method) or None,
+                'recipient': (hasattr(query, 'recipient') and query.recipient.username) or None,
+                'user_account': (hasattr(query, 'user_account') and query.user_account) or None,
+                'site_account': (hasattr(query, 'site_account') and query.site_account) or None,
+                'amount': query.amount,
+                'user_balance': query.balance,
+                'transaction_id': (hasattr(query, 'transaction_id') and query.transaction_id) or None,
+                'status': determine_status(query.status),
+                'created_at': query.created_at
             })
 
-        for withdraw in all_withdraw:
-            if withdraw.verified is None:
-                status = 'pending'
-            elif withdraw.verified:
-                status = 'accepted'
-            else:
-                status = 'denied'
-            all_transaction.append({
-                'id': withdraw.id,
-                'type': 'withdraw',
-                'method': withdraw.method,
-                'to': None,
-                'account': withdraw.account,
-                'superuser_account': withdraw.superuser_account,
-                'user_balance': withdraw.user_balance,
-                'amount': withdraw.amount,
-                'transaction_id': withdraw.transaction_id,
-                'status': status,
-                'created_at': withdraw.created_at,
-            })
-
-        for transfer in all_transfer:
-            if transfer.verified is None:
-                status = 'pending'
-            elif transfer.verified:
-                status = 'accepted'
-            else:
-                status = 'denied'
-            all_transaction.append({
-                'id': transfer.id,
-                'type': 'transfer',
-                'method': None,
-                'to': transfer.to.username,
-                'account': None,
-                'superuser_account': None,
-                'amount': transfer.amount,
-                'user_balance': transfer.user_balance,
-                'transaction_id': None,
-                'status': status,
-                'created_at': transfer.created_at
-            })
+        all_transaction.sort(key=lambda x: x['created_at'], reverse=True)
         return Response({'results': all_transaction})
 
 
-class ClubTransaction(views.APIView):
-    """
-    get:
-    Club must be logged in
-    """
-
-    def get(self, *args, **kwargs):
-        club = get_current_club(self.request)
-        all_transfer = ClubTransfer.objects.select_related('to').filter(club=club)[:40]
-        all_deposit = Commission.objects.filter(type=COMMISSION_CLUB).filter(club=club)
-        all_transaction = []
-        for deposit in all_deposit:
-            status = 'accepted'
-            all_transaction.append({
-                'id': deposit.id,
-                'type': 'deposit',
-                'description': "bet commission",
-                'to': None,
-                'credit': deposit.amount,
-                'debit': 0,
-                'user_balance': deposit.balance,
-                'status': status,
-                'created_at': deposit.date
-            })
-
-        for transfer in all_transfer:
-            if transfer.verified is None:
-                status = 'pending'
-            elif transfer.verified:
-                status = 'accepted'
-            else:
-                status = 'denied'
-            all_transaction.append({
-                'id': transfer.id,
-                'type': 'withdraw',
-                'description': "club withdraw",
-                'to': transfer.to.username,
-                'credit': 0,
-                'debit': transfer.amount,
-                'user_balance': transfer.club_balance,
-                'status': status,
-                'created_at': transfer.created_at
-            })
-
-        return Response({'results': all_transaction})
-
-
-class AnnouncementViewSet(viewsets.ReadOnlyModelViewSet):
+class AnnouncementViewSet(viewsets.ModelViewSet):
     queryset = Announcement.objects.filter(expired=False)
     serializer_class = AnnouncementSerializer
 
@@ -181,15 +111,22 @@ class BetViewSetClub(viewsets.ReadOnlyModelViewSet):
     serializer_class = BetSerializer
 
 
-class BetScopeViewSet(mixins.CreateModelMixin,
-                      mixins.RetrieveModelMixin,
-                      mixins.UpdateModelMixin,
-                      mixins.ListModelMixin,
-                      viewsets.GenericViewSet):
+class QuestionOptionViewSet(mixins.RetrieveModelMixin,
+                            mixins.UpdateModelMixin,
+                            viewsets.GenericViewSet):
+    queryset = QuestionOption.objects.all()
+    serializer_class = QuestionOptionSerializer
+    permission_classes = [MatchPermissionClass]
+
+
+class BetQuestionViewSet(viewsets.ModelViewSet):
     """
     This is the place where user can bet.
     list:
     Returns list of bet scopes. \n
+    To get only active/bet_able scope list\n
+    /api/bet_scope/?active=true\n
+    ?active=true can be used for all GET request in this api\n
     To get list of scopes of a match \n
     /api/bet_scope/?match_id={{ match_id }}
     To get list of scopes of a game \n
@@ -210,17 +147,28 @@ class BetScopeViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         match_id = self.request.GET.get('match_id')
         game_name = self.request.GET.get('game_name')
+        is_winner = self.request.GET.get('is_winner')
+        all_scope = BetQuestion.objects.select_related('match').all()
         if match_id:
-            return BetScope.objects.select_related('match').filter(match_id=match_id, winner__isnull=True)
+            all_scope = all_scope.filter(match_id=match_id)
         if game_name:
-            return BetScope.objects.select_related('match').filter(match__game_name=game_name, winner__isnull=True)
-        return BetScope.objects.select_related('match').all()
+            all_scope = all_scope.filter(match__game_name=game_name)
+        if is_winner:
+            return all_scope
+        return all_scope.filter(winner__isnull=True)
 
-    serializer_class = BetScopeSerializer
+    serializer_class = BetQuestionSerializer
     permission_classes = [MatchPermissionClass]
 
 
 class ChangePassword(views.APIView):
+    """
+    Change user password\n
+    Only post is allowed. User must be logged in. Use this API to change user password.
+    Payload\n
+    {'password': 'New Password'}
+    """
+
     def post(self, *args, **kwargs):
         user = self.request.user
         password = self.request.POST.get('password') or self.request.data.get('password')
@@ -236,10 +184,7 @@ class ChangePassword(views.APIView):
         return Response({'detail': 'Password is not supplied or user is not logged in.'}, status=400)
 
 
-class ClubViewSet(mixins.ListModelMixin,
-                  mixins.RetrieveModelMixin,
-                  mixins.UpdateModelMixin,
-                  viewsets.GenericViewSet):
+class ClubViewSet(viewsets.ModelViewSet):
     """
     list:
     Returns list of clubs
@@ -268,8 +213,18 @@ class ClubViewSet(mixins.ListModelMixin,
 class DepositViewSet(mixins.CreateModelMixin,
                      mixins.RetrieveModelMixin,
                      mixins.ListModelMixin,
-                     mixins.DestroyModelMixin,
                      viewsets.GenericViewSet):
+    """
+    Deposit View\n
+    User Must be logged in to make any request
+    create:
+    Create new Deposit request\n
+    list:
+    By default shows all deposits\n
+    add ?pending=true     to see only pending requests\n
+    add ?confirmed=true     to see only confirmed requests\n
+    """
+
     def get_queryset(self):
         return Deposit.objects.filter(user=self.request.user)
 
@@ -290,12 +245,13 @@ class Login(views.APIView):
         data = self.request.data
         if not data.get('username') or not data.get('password'):
             return Response({'detail': 'Username or Password is not supplied.'}, status=400)
-        user = User.objects.filter(username=data.get('username'))
+        username, password = data.get('username'), data.get('password')
+        user = User.objects.filter(username=username)
         if not user:
             return Response({'detail': 'Username or Password is wrong.'}, status=400)
         else:
             user = user[0]
-        if user.check_password(data.get('password')):
+        if user.check_password(password):
             user.last_login = timezone.now()
             user.save()
             data = RegisterSerializer(user).data
@@ -347,11 +303,7 @@ class LoginClub(views.APIView):
         return Response({'detail': 'Club must be logged in'}, status=403)
 
 
-class MatchViewSet(mixins.CreateModelMixin,
-                   mixins.RetrieveModelMixin,
-                   mixins.UpdateModelMixin,
-                   mixins.ListModelMixin,
-                   viewsets.GenericViewSet):
+class MatchViewSet(viewsets.ModelViewSet):
     """
     list:
     Return a list of matches\n
@@ -466,29 +418,13 @@ class TransferViewSet(mixins.CreateModelMixin,
     """
 
     def get_queryset(self):
-        return Transfer.objects.filter(user=self.request.user)
+        if self.request.GET.get('club'):
+            club = get_current_club(self.request)
+            return Transfer.objects.filter(club=club)
+        return Transfer.objects.filter(sender=self.request.user)
 
     serializer_class = TransferSerializer
     permission_classes = [TransactionPermissionClass]
-
-
-class ClubTransferViewSet(mixins.CreateModelMixin,
-                          mixins.RetrieveModelMixin,
-                          mixins.ListModelMixin,
-                          viewsets.GenericViewSet):
-    """
-        User must be logged in
-        create:
-        Request will be denied if user doesn't have enough balance or at least one of them is not club admin
-        or both of them is not of same club
-    """
-
-    def get_queryset(self):
-        club = get_current_club(self.request)
-        return ClubTransfer.objects.filter(club=club)
-
-    serializer_class = ClubTransferSerializer
-    permission_classes = [ClubTransferPermissionClass]
 
 
 class UserListViewSet(viewsets.ReadOnlyModelViewSet):
@@ -498,7 +434,6 @@ class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
     serializer_class = UserListSerializer
-
     lookup_field = 'username'
 
 

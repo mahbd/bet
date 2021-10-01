@@ -1,7 +1,6 @@
 from typing import Union
 
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -19,6 +18,15 @@ METHOD_MYCASH = 'mycash'
 METHOD_SURECASH = 'surecash'
 METHOD_TRUSTPAY = 'trustpay'
 METHOD_CLUB = 'club'
+SOURCE_REFER = 'refer'
+SOURCE_COMMISSION = 'commission'
+SOURCE_BANK = 'bank'
+
+DEPOSIT_SOURCE = (
+    (SOURCE_BANK, 'From Bank'),
+    (SOURCE_REFER, 'Referral'),
+    (SOURCE_COMMISSION, 'Club Commission'),
+)
 
 DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_BKASH, 'bKash'),
@@ -31,16 +39,8 @@ DEPOSIT_WITHDRAW_CHOICES = (
     (METHOD_TRUSTPAY, 'Trust Axiata Pay'),
     (METHOD_TRANSFER, 'Transfer'),
     (METHOD_CLUB, 'Club W/D'),
-)
-CHOICE_FIRST = 'option_1'
-CHOICE_SECOND = 'option_2'
-CHOICE_THIRD = 'option_3'
-CHOICE_FOURTH = 'option_4'
-BET_CHOICES = (
-    (CHOICE_FIRST, 'Option 1'),
-    (CHOICE_SECOND, 'Option 2'),
-    (CHOICE_THIRD, 'Option 3'),
-    (CHOICE_FOURTH, 'Option 4')
+    (SOURCE_COMMISSION, 'Commission'),
+    (SOURCE_REFER, 'Referral'),
 )
 
 GAME_FOOTBALL = 'football'
@@ -92,7 +92,7 @@ def user_balance_validator(user: Union[User, Club], amount):
 
 def bet_scope_validator(bet_scope):
     if isinstance(bet_scope, int):
-        bet_scope = BetScope.objects.filter(id=bet_scope)
+        bet_scope = BetQuestion.objects.filter(id=bet_scope)
         if bet_scope:
             bet_scope = bet_scope[0]
         else:
@@ -115,7 +115,7 @@ class ConfigModel(models.Model):
     class Meta:
         verbose_name = 'Configuration'
         verbose_name_plural = 'Configurations'
-        ordering = ('name', )
+        ordering = ('name',)
 
 
 class Config:
@@ -188,29 +188,21 @@ class Match(models.Model):
         ordering = ['-end_time', '-start_time', 'game_name']
 
 
-class BetScope(models.Model):
+class QuestionOption(models.Model):
+    option = models.CharField(max_length=255)
+    rate = models.FloatField(default=1)
+
+
+class BetQuestion(models.Model):
     end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
-    hide = models.BooleanField(default=False)
-    locked = models.BooleanField(default=False, help_text="manually lock question before end_time")
+    hide = models.BooleanField(default=False, help_text="If the game is hidden")
+    locked = models.BooleanField(default=False, help_text="Force lock question before end time")
     match = models.ForeignKey(Match, on_delete=models.CASCADE, help_text="Id of the match under which this is question")
-    option_1 = models.CharField(max_length=255)
-    option_1_rate = models.FloatField(default=1,
-                                      validators=[MinValueValidator(1)])
-    option_2 = models.CharField(max_length=255)
-    option_2_rate = models.FloatField(default=1,
-                                      validators=[MinValueValidator(1)])
-    option_3 = models.CharField(max_length=255, blank=True, null=True)
-    option_3_rate = models.FloatField(default=1,
-                                      validators=[MinValueValidator(1)],
-                                      blank=True, null=True)
-    option_4 = models.CharField(max_length=255, blank=True, null=True)
-    option_4_rate = models.FloatField(default=1,
-                                      validators=[MinValueValidator(1)],
-                                      blank=True, null=True)
-    processed_internally = models.BooleanField(default=False)
+    options = models.ManyToManyField(QuestionOption, help_text="Question options for user")
+    paid = models.BooleanField(default=False, help_text="If all bet under this question is paid")
     question = models.CharField(max_length=1023, help_text="Question of bet")
-    winner = models.CharField(max_length=255, choices=BET_CHOICES, blank=True, null=True)
-    start_time = models.DateTimeField(default=timezone.now, blank=True, null=True)
+    winner = models.ForeignKey(QuestionOption, on_delete=models.CASCADE, blank=True, null=True, related_name='gnn',
+                               help_text="Winner option id")
 
     def is_locked(self):
         return bool(
@@ -225,29 +217,26 @@ class BetScope(models.Model):
 
 
 class Bet(models.Model):
-    answer = models.CharField(max_length=255, default="Unknown", blank=True, null=True)
-    amount = models.IntegerField(help_text='How much he bet')
-    balance = models.FloatField(default=0.0)
-    bet_scope = models.ForeignKey(BetScope, on_delete=models.PROTECT, validators=[bet_scope_validator],
-                                  help_text="For which question bet is done")
-    choice = models.CharField(max_length=10, choices=BET_CHOICES, help_text="List of bet choices")
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_winner = models.BooleanField(default=None, blank=True, null=True)
-    paid = models.BooleanField(default=False)
-    return_rate = models.FloatField(default=1.00, blank=True, null=True)
+    amount = models.IntegerField(help_text='How much he/she bet')
+    bet_question = models.ForeignKey(BetQuestion, on_delete=models.PROTECT, validators=[bet_scope_validator],
+                                     help_text="For which question bet is done")
+    choice = models.ForeignKey(QuestionOption, help_text="Choice for question", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Time when bet is created")
+    is_winner = models.BooleanField(default=None, blank=True, null=True, help_text="If this bet is winner")
+    paid = models.BooleanField(default=False, help_text="If this bet is paid")
+    win_rate = models.FloatField(default=1.00, blank=True, null=True, help_text="Multiplication with bet amount")
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
-    winning = models.FloatField(default=0, help_text='How much will get if wins')
+    user_balance = models.FloatField(default=0.0, help_text="User balance after bet")
+    win_amount = models.FloatField(default=0, help_text='How much will get if wins')
 
     class Meta:
-        ordering = ['bet_scope', '-created_at']
+        ordering = ['bet_question', '-created_at']
 
 
 class DepositWithdrawMethod(models.Model):
-    code = models.CharField(max_length=255, choices=DEPOSIT_WITHDRAW_CHOICES[:8], unique=True,
-                            help_text="hidden method code for internal processing")
-    name = models.CharField(max_length=255, help_text="Method name to be shown to users")
-    number1 = models.CharField(default="017331245546", max_length=32, null=True, blank=True)
-    number2 = models.CharField(default="019455422145", max_length=32, null=True, blank=True)
+    method = models.CharField(max_length=255, help_text="Method name to be shown to users")
+    number1 = models.CharField(max_length=32)
+    number2 = models.CharField(max_length=32, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Method'
@@ -255,71 +244,47 @@ class DepositWithdrawMethod(models.Model):
 
 
 class Deposit(models.Model):
-    account = models.CharField(max_length=255, blank=True, null=True,
-                               help_text="bank account number. Used for deposit and withdraw")
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    created_at = models.DateTimeField(default=timezone.now)
-    description = models.TextField(blank=True, null=True)
+    balance = models.FloatField(default=0, blank=True, null=True, help_text="User possible balance after deposit")
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True,
+                             help_text="Club id which balance will be updated")
+    created_at = models.DateTimeField(default=timezone.now, help_text="When deposit is made")
+    deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE,
+                                      help_text="Options are, commission|bank|refer")
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
                               help_text="method used to do transaction")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
-    superuser_account = models.CharField(max_length=255, blank=True, null=True,
-                                         help_text="bank account number of the superuser")
-    transaction_id = models.CharField(max_length=255, blank=True, null=True)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    user_balance = models.FloatField(default=0, blank=True, null=True)
-    verified = models.BooleanField(default=None, null=True, blank=True,
-                                   help_text="Status if admin had verified. After verification(for deposit), "
-                                             "user account will be deposited")
+    site_account = models.CharField(max_length=255, blank=True, null=True,
+                                    help_text="bank account number of the website")
+    transaction_id = models.CharField(max_length=255, blank=True, null=True,
+                                      help_text="Transaction id of user send money")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                             help_text="User id of transaction maker")
+    user_account = models.CharField(max_length=255, blank=True, null=True,
+                                    help_text="bank account number. Used for deposit and withdraw")
+    status = models.BooleanField(default=None, null=True, blank=True,
+                                 help_text="Status if admin had verified. After verification(for deposit), "
+                                           "user account will be deposited")
 
     def __str__(self):
         return str(self.id)
-
-    def clean(self):
-        Config().config_validator(self.user, self.amount, Deposit, 'deposit', md=1)
-        super().clean()
-
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
 
     class Meta:
         ordering = ['-created_at']
 
 
 class Transfer(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
-                           help_text="User id to whom money transferred")
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    user_balance = models.FloatField(default=0, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    verified = models.BooleanField(default=None, blank=True, null=True,
-                                   help_text="Status if admin had verified. After verification(for deposit), "
-                                             "user account will be deposited")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    balance = models.FloatField(default=0, blank=True, null=True, help_text="User balance after transfer")
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True,
+                             help_text="Club Id from which money is going to be transferred")
     created_at = models.DateTimeField(default=timezone.now)
-
-    def __str__(self):
-        return str(self.id)
-
-    class Meta:
-        ordering = ['-created_at']
-
-
-class ClubTransfer(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, help_text="Club id of transaction maker")
-    to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
-                           help_text="User id to whom money transferred")
-    amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    club_balance = models.FloatField(default=0, blank=True, null=True)
-    notes = models.TextField(blank=True, null=True)
-    verified = models.BooleanField(default=None, blank=True, null=True,
-                                   help_text="Status if admin had verified. After verification(for deposit), "
-                                             "user account will be deposited")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
-    created_at = models.DateTimeField(default=timezone.now)
+    description = models.TextField(blank=True, null=True, help_text="Description of transfer")
+    recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
+                                  help_text="User id to whom money transferred")
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    status = models.BooleanField(default=None, blank=True, null=True,
+                                 help_text="Status if admin had verified. After verification(for deposit), "
+                                           "user account will be deposited")
 
     def __str__(self):
         return str(self.id)
@@ -333,17 +298,16 @@ class Withdraw(models.Model):
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
                               help_text="method used to do transaction")
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    account = models.CharField(max_length=255, blank=True, null=True,
-                               help_text="bank account number. Used for deposit and withdraw")
-    superuser_account = models.CharField(max_length=255, blank=True, null=True,
-                                         help_text="bank account number of the superuser")
+    user_account = models.CharField(max_length=255, blank=True, null=True,
+                                    help_text="bank account number. Used for deposit and withdraw")
+    site_account = models.CharField(max_length=255, blank=True, null=True,
+                                    help_text="bank account number of the website")
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
     user_balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    verified = models.BooleanField(default=None, null=True, blank=True,
-                                   help_text="Status if admin had verified. After verification(for deposit), "
-                                             "user account will be deposited")
-    processed_internally = models.BooleanField(default=False, editable=False, help_text="For internal uses only")
+    status = models.BooleanField(default=None, null=True, blank=True,
+                                 help_text="Status if admin had verified. After verification(for deposit), "
+                                           "user account will be deposited")
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -351,15 +315,3 @@ class Withdraw(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-
-class Commission(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, null=True, blank=True)
-    bet = models.ForeignKey(Bet, on_delete=models.CASCADE)
-    amount = models.FloatField()
-    balance = models.FloatField(default=0.0)
-    type = models.CharField(max_length=255, choices=COMMISSION_CHOICES)
-    date = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        ordering = ('date', )

@@ -66,6 +66,9 @@ def is_valid_jwt_header(request):
     if request.headers.get('x-auth-token', False):
         jwt_str = request.headers['x-auth-token']
         return validate_jwt(jwt_str)
+    if request.headers.get('AUTH_TOKEN', False):
+        jwt_str = request.headers['AUTH_TOKEN']
+        return validate_jwt(jwt_str)
 
 
 class RestBackendWithJWT(TokenAuthentication):

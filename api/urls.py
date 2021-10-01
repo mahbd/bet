@@ -13,13 +13,13 @@ router = DefaultRouter()
 router.register('announcement', views.AnnouncementViewSet, 'announcement')
 router.register('bet', views.BetViewSet, 'bet')
 router.register('club-bet', views.BetViewSetClub, 'club_bet')
-router.register('bet_scope', views.BetScopeViewSet, 'bet_scope')
+router.register('bet-question', views.BetQuestionViewSet, 'bet_question')
+router.register('question-option', views.QuestionOptionViewSet, 'question_option')
 router.register('club', views.ClubViewSet, 'club')
 router.register('deposit', views.DepositViewSet, 'deposit')
 router.register('match', views.MatchViewSet, 'match')
 router.register('notification', views.NotificationViewSet, 'notification')
 router.register('transfer', views.TransferViewSet, 'transfer')
-router.register('club_transfer', views.ClubTransferViewSet, 'club_transfer')
 router.register('register', views.RegisterViewSet, 'register')
 router.register('user', views.UserListViewSet, 'user'),
 router.register('club-user', views.UserListViewSetClub, 'club_user')
@@ -46,7 +46,6 @@ urlpatterns = [
     url(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('transactions/available_methods/', views.available_methods),
     path('all_transactions/', views.AllTransaction.as_view()),
-    path('club_transactions/', views.ClubTransaction.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
     path('login-club/', csrf_exempt(views.LoginClub.as_view()), name='api_login_club'),

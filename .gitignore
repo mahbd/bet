@@ -6,3 +6,4 @@ mysite.log
 stderr.log
 passenger_wsgi.py
 tmp/
+bet-front/build/static/

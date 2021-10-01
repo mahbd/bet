@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,12 +26,9 @@ PROJECT_DIR = os.path.dirname(__file__)
 SECRET_KEY = 'django-insecure-9kbj6b9n!c&d2*ts+0oj9$wf1m0i^tn^v6wslyg6@w(hv5ms7g'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-if os.environ.get('DEBUG') == 'FALSE':
-    DEBUG = False
-else:
-    DEBUG = True
+DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'b202et.herokuapp.com ', 'bet.mahbd.xyz']
+ALLOWED_HOSTS = ['127.0.0.1', 'bet65.org']
 
 # Application definition
 
@@ -52,7 +50,6 @@ INSTALLED_APPS = [
     'users',
     'betting',
     'api',
-    'easy_admin',
 ]
 
 MIDDLEWARE = [
@@ -90,16 +87,24 @@ WSGI_APPLICATION = 'bet.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DB_NAME', 'bet'),
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'USER': os.environ.get('DB_USER', 'bet_admin'),
-        'PASSWORD': os.environ.get('BET_ADMIN_DB_PASS', '1234')
-    }
-}
 
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'bet'),
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'USER': os.environ.get('DB_USER', 'bet_admin'),
+            'PASSWORD': os.environ.get('BET_ADMIN_DB_PASS', '1234')
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -123,8 +128,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = (os.path.join(BASE_DIR, 'bet-front', 'build', 'static'),)
-STATIC_ROOT = os.path.join(PROJECT_DIR, str('static/'))
+STATICFILES_DIRS = (os.path.join(BASE_DIR, 'bet-front', 'build', 'static'),
+                    # BASE_DIR, str('static/')
+                    )
+STATIC_ROOT = os.path.join(BASE_DIR, str('static/'))
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
@@ -136,6 +143,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [  #
         'users.backends.RestBackendWithJWT',  #
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        # 'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100
@@ -160,7 +171,7 @@ CORS_ALLOW_METHODS = [
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
-    'x-auth-token', 'club-token',
+    'x-auth-token', 'club-token', 'AUTH_TOKEN',
 ]
 
 JWK_KEY = os.environ.get('JWK_KEY', "{\"k\":\"TU6B5zRpJVD9pQ-86mEpQOf_N3gj-70kpGFQx30yUmW7PBDS"
@@ -188,11 +199,11 @@ SWAGGER_SETTINGS = {
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"  #
-EMAIL_HOST = "smtp.gmail.com"  #
-EMAIL_HOST_USER = os.environ.get('EMAIL')  #
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')  #
-EMAIL_PORT = 587  #
-EMAIL_USE_TLS = True  #
+EMAIL_HOST = "mail.bet65.org"  #
+EMAIL_HOST_USER = 'admin@bet65.org'  #
+EMAIL_HOST_PASSWORD = 'e4mCoP,O'  #
+EMAIL_PORT = 465  #
+EMAIL_USE_SSL = True
 
 if os.environ.get('LOG', False):
     LOGGING = {

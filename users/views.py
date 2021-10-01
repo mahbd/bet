@@ -18,8 +18,11 @@ def total_club_balance() -> float:
     return sum_aggregate(Club.objects.all(), 'balance')
 
 
-def notify_user(user, message):
-    Notification.objects.create(user=user, message=message)
+def notify_user(user, message, club=False):
+    if club:
+        Notification.objects.create(club=user, message=message)
+    else:
+        Notification.objects.create(user=user, message=message)
 
 
 @receiver(post_save, sender=User)

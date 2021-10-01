@@ -102,7 +102,7 @@ class TransactionPermissionClass(permissions.IsAuthenticated):
             if request.user.is_superuser:
                 return True
             if request.user == obj.user:
-                if request.method != 'DELETE' or not obj.verified:
+                if request.method != 'DELETE' or not obj.status:
                     return True
         return False
 
@@ -111,6 +111,6 @@ class ClubTransferPermissionClass(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         club = get_current_club(request)
         if club:
-            if request.method != 'DELETE' or not obj.verified:
+            if request.method != 'DELETE' or not obj.status:
                 return True
         return False

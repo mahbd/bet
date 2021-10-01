@@ -57,7 +57,8 @@ class UserClubInfo(models.Model):
 
 
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True)
     message = models.TextField()
     viewed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

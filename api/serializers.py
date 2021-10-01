@@ -2,10 +2,10 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
-from betting.models import Announcement, Bet, BetScope, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator, BET_CHOICES, ClubTransfer
-from betting.views import value_from_option, get_last_bet
-from users.backends import jwt_writer, get_current_club
+from betting.models import Announcement, Bet, BetQuestion, Config, Deposit, Match, Withdraw, Transfer, \
+    club_validator, bet_scope_validator, user_balance_validator, QuestionOption
+from betting.views import get_last_bet
+from users.backends import jwt_writer
 from users.models import User, Club, Notification
 
 
@@ -35,103 +35,106 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-def sum_filter_bet_set(bet_scope, choice, field='winning'):
-    return bet_scope.bet_set.filter(choice=choice).aggregate(Sum(field))[f'{field}__sum'] or 0
+def sum_filter_bet_set(bet_question, choice, field='win_amount'):
+    return bet_question.bet_set.filter(choice=choice).aggregate(Sum(field))[f'{field}__sum'] or 0
 
 
-def count_filter_bet_set(bet_scope, choice):
-    return bet_scope.bet_set.filter(choice=choice).count()
+def count_filter_bet_set(bet_question, choice):
+    return bet_question.bet_set.filter(choice=choice).count()
+
+
+class QuestionOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionOption
+        fields = '__all__'
 
 
 # noinspection PyMethodMayBeStatic
-class BetScopeSerializer(serializers.ModelSerializer):
+class BetQuestionSerializer(serializers.ModelSerializer):
+    options = QuestionOptionSerializer(many=True)
     is_locked = serializers.SerializerMethodField(read_only=True)
     details = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     match_start_time = serializers.SerializerMethodField(read_only=True)
 
-    def get_match_name(self, bet_scope: BetScope):
-        return bet_scope.match.title
+    def get_match_name(self, bet_question: BetQuestion):
+        return bet_question.match.title
 
-    def get_match_start_time(self, bet_scope: BetScope):
-        return str(bet_scope.match.start_time)
+    def get_match_start_time(self, bet_question: BetQuestion):
+        return str(bet_question.match.start_time)
 
-    def get_details(self, bet_scope: BetScope) -> dict:
-        option1_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[0][0], 'amount')
-        option2_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[1][0], 'amount')
-        option3_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[2][0], 'amount')
-        option4_bet = sum_filter_bet_set(bet_scope, BET_CHOICES[3][0], 'amount')
+    def get_details(self, bet_question: BetQuestion) -> dict:
+        details = {}
+        total_bet = bet_question.bet_set.all().aggregate(Sum('amount'))[f'amount__sum'] or 0
+        for option in bet_question.options.all():
+            details[f'{option.option}_bet'] = sum_filter_bet_set(bet_question, option, 'amount')
+            details[f'{option.option}_bet_count'] = count_filter_bet_set(bet_question, option)
+            details[f'{option.option}_benefit'] = total_bet - sum_filter_bet_set(bet_question, option)
+        return details
 
-        option1_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[0][0])
-        option2_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[1][0])
-        option3_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[2][0])
-        option4_bet_count = count_filter_bet_set(bet_scope, BET_CHOICES[3][0])
-
-        total_bet = option1_bet + option2_bet + option3_bet + option4_bet
-        option1_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[0][0])
-        option2_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[1][0])
-        option3_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[2][0])
-        option4_benefit = total_bet - sum_filter_bet_set(bet_scope, BET_CHOICES[3][0])
-        return {
-            'option1_bet': option1_bet,
-            'option2_bet': option2_bet,
-            'option3_bet': option3_bet,
-            'option4_bet': option4_bet,
-            'option1_bet_count': option1_bet_count,
-            'option2_bet_count': option2_bet_count,
-            'option3_bet_count': option3_bet_count,
-            'option4_bet_count': option4_bet_count,
-            'option1_benefit': option1_benefit,
-            'option2_benefit': option2_benefit,
-            'option3_benefit': option3_benefit,
-            'option4_benefit': option4_benefit,
-        }
-
-    def get_is_locked(self, bet_scope: BetScope) -> bool:
+    def get_is_locked(self, bet_scope: BetQuestion) -> bool:
         return bet_scope.is_locked()
 
+    def create(self, validated_data):
+        options = validated_data.pop('options', [])
+        instance = BetQuestion.objects.create(**validated_data)
+        for task_data in options:
+            task = QuestionOption.objects.create(**task_data)
+            instance.options.add(task)
+        return instance
+
+    def update(self, instance, validated_data):
+        if hasattr(validated_data, 'options'):
+            validated_data.pop('options')
+        return super().update(instance, validated_data)
+
     class Meta:
-        model = BetScope
-        fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match', 'option_1', 'option_1_rate', 'option_2',
-                  'option_2_rate', 'details', 'match_name', 'match_start_time',
-                  'option_3', 'option_3_rate', 'option_4', 'option_4_rate', 'question', 'winner', 'start_time',)
-        read_only_fields = ('id', )
+        model = BetQuestion
+        fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match',
+                  'details', 'match_name', 'match_start_time',
+                  'options', 'question', 'winner',)
+        read_only_fields = ('id',)
 
 
 # noinspection PyMethodMayBeStatic
 class BetSerializer(serializers.ModelSerializer):
+    answer = serializers.SerializerMethodField(read_only=True)
     match_start_time = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     question = serializers.SerializerMethodField(read_only=True)
     your_answer = serializers.SerializerMethodField(read_only=True)
     user_details = serializers.SerializerMethodField(read_only=True)
 
+    def get_answer(self, bet: Bet) -> str:
+        return bet.bet_question.winner and bet.bet_question.winner.option
+
     def get_user_details(self, bet: Bet) -> dict:
         return UserListSerializer(bet.user).data
 
-    def get_match_name(self, bet: Bet):
-        return bet.bet_scope.match.title
+    def get_match_name(self, bet: Bet) -> str:
+        return bet.bet_question.match.title
 
-    def get_match_start_time(self, bet: Bet):
-        return str(bet.bet_scope.match.start_time)
+    def get_match_start_time(self, bet: Bet) -> str:
+        return str(bet.bet_question.match.start_time)
 
-    def get_question(self, bet: Bet):
-        return bet.bet_scope.question
+    def get_question(self, bet: Bet) -> str:
+        return bet.bet_question.question
 
     def get_your_answer(self, bet: Bet):
-        return value_from_option(bet.choice, bet.bet_scope)
+        return bet.choice.option
 
     class Meta:
         model = Bet
-        fields = ('answer', 'amount', 'bet_scope', 'choice', 'id', 'match_start_time', 'match_name', 'question',
-                  'return_rate', 'is_winner', 'user', 'your_answer', 'winning', 'created_at', 'user_details', 'balance')
-        read_only_fields = ('id', 'user', 'answer', 'return_rate', 'is_winner')
+        fields = ('answer', 'amount', 'bet_question', 'choice', 'id', 'match_start_time', 'match_name', 'question',
+                  'win_rate', 'is_winner', 'user', 'your_answer', 'win_amount', 'paid',
+                  'created_at', 'user_details', 'user_balance')
+        read_only_fields = ('id', 'user', 'win_rate', 'is_winner')
 
     def validate(self, attrs):
         if not self.instance:
             attrs['user'] = self.context['request'].user
         amount = attrs.get('amount')
-        bet_scope: BetScope = attrs.get('bet_scope')
+        bet_scope: BetQuestion = attrs.get('bet_question')
         user: User = attrs.get('user')
         bet_scope_validator(bet_scope)
         Config().config_validator(user, amount, Bet, 'bet')
@@ -250,21 +253,6 @@ class TransferSerializer(serializers.ModelSerializer):
         user_balance_validator(user, amount + Config().get_config('min_balance'))
         club_validator(user, receiver)
         Config().config_validator(user, amount, Transfer, 'transfer')
-        return attrs
-
-
-class ClubTransferSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ClubTransfer
-        fields = '__all__'
-        read_only_fields = ('id', 'club', 'verified', 'club_balance')
-
-    def validate(self, attrs):
-        if not self.instance:
-            attrs['club'] = get_current_club(self.context['request'])
-        club = attrs.get('club')
-        amount = attrs.get('amount')
-        user_balance_validator(club, amount + Config().get_config('min_balance'))
         return attrs
 
 
