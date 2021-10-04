@@ -6,6 +6,23 @@ from django.utils import timezone
 
 from users.models import User, Club
 
+default_configs = {
+    'min_balance': 10,
+    'limit_deposit': 1,
+    'min_deposit': 100,
+    'max_deposit': 25000,
+    'limit_withdraw': 1,
+    'min_withdraw': 500,
+    'max_withdraw': 25000,
+    'limit_transfer': 1,
+    'min_transfer': 10,
+    'max_transfer': 25000,
+    'limit_bet': 50,
+    'min_bet': 10,
+    'max_bet': 25000,
+    'refer_commission': 0.5,
+}
+
 TYPE_DEPOSIT = 'deposit'
 TYPE_WITHDRAW = 'withdraw'
 METHOD_TRANSFER = 'transfer'
@@ -102,7 +119,7 @@ def bet_scope_validator(bet_scope):
 
 
 class Announcement(models.Model):
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
     expired = models.BooleanField()
     text = models.TextField()
 
@@ -145,23 +162,32 @@ class Config:
             ConfigModel.objects.create(name=name, value=str(default or self.defaults[name]))
             return str(default or self.defaults[name])
 
-    def get_config(self, name):
+    def get_config(self, name) -> int:
         return int(self.get_from_model(name))
 
     def get_config_str(self, name):
         return str(self.get_from_model(name))
 
-    def config_validator(self, user: User, amount, model, des, md=0):
+    def validate_count_limit(self, user: User, model, des, md=0):
         limit_count = int(self.get_from_model(f'limit_{des}'))
-        minimum = int(self.get_from_model(f'min_{des}'))
+        total_today = model.objects.filter(user=user, created_at__day=timezone.now().day).count()
+        if total_today >= limit_count + md:
+            raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_today}")
+
+    def validate_maximum_limit(self, amount, des):
         maximum = int(self.get_from_model(f'max_{des}'))
-        total_per_day = model.objects.filter(user=user,
-                                             created_at__gte=timezone.now().replace(hour=0, minute=0,
-                                                                                    second=0)).count()
-        if total_per_day >= limit_count + md:
-            raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_per_day}")
-        if minimum > amount or amount > maximum:
-            raise ValidationError(f"Amount limit of {des} {minimum} - {maximum} does not match. Yours {amount}")
+        if amount > maximum:
+            raise ValidationError(f"{amount} exceed maximum {maximum} limit of {des}")
+
+    def validate_minimum_limit(self, amount, des):
+        minimum = int(self.get_from_model(f'min_{des}'))
+        if minimum > amount:
+            raise ValidationError(f"{amount} is below minimum {minimum} limit of {des}")
+
+    def config_validator(self, user: User, amount, model, des, md=0):
+        self.validate_count_limit(user, model, des, md)
+        self.validate_minimum_limit(amount, des)
+        self.validate_maximum_limit(amount, des)
 
 
 config = Config()
@@ -248,8 +274,8 @@ class Deposit(models.Model):
     balance = models.FloatField(default=0, blank=True, null=True, help_text="User possible balance after deposit")
     club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True,
                              help_text="Club id which balance will be updated")
-    created_at = models.DateTimeField(default=timezone.now, help_text="When deposit is made")
-    deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE,
+    created_at = models.DateTimeField(auto_now_add=True)
+    deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE, default='bank',
                                       help_text="Options are, commission|bank|refer")
     method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
                               help_text="method used to do transaction")
@@ -277,7 +303,7 @@ class Transfer(models.Model):
     balance = models.FloatField(default=0, blank=True, null=True, help_text="User balance after transfer")
     club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True,
                              help_text="Club Id from which money is going to be transferred")
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(blank=True, null=True, help_text="Description of transfer")
     recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
                                   help_text="User id to whom money transferred")
@@ -308,7 +334,7 @@ class Withdraw(models.Model):
     status = models.BooleanField(default=None, null=True, blank=True,
                                  help_text="Status if admin had verified. After verification(for deposit), "
                                            "user account will be deposited")
-    created_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.id)

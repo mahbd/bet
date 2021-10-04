@@ -1,11 +1,14 @@
+from django.core.validators import MaxValueValidator
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
+from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator
 from betting.models import Announcement, Bet, BetQuestion, Config, Deposit, Match, Withdraw, Transfer, \
     club_validator, bet_scope_validator, user_balance_validator, QuestionOption
 from betting.views import get_last_bet
-from users.backends import jwt_writer
+from users.backends import jwt_writer, get_current_club
 from users.models import User, Club, Notification
 
 
@@ -145,27 +148,30 @@ class BetSerializer(serializers.ModelSerializer):
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ('admin', 'balance', 'id', 'name',)
+        fields = ('admin', 'balance', 'id', 'name', 'username', 'password', 'club_commission')
         read_only_fields = ('admin', 'id',)
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'username': {'validators': [UniqueMultiQuerysetValidator(User.objects.all(), Club.objects.all())]}
+        }
 
 
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deposit
-        fields = '__all__'
-        read_only_fields = ('id', 'user', 'user_balance', 'verified')
+        fields = ('id', 'amount', 'balance', 'club', 'created_at', 'deposit_source', 'method', 'site_account',
+                  'transaction_id', 'user', 'user_account', 'status')
+        read_only_fields = ('id', 'balance', 'user', 'deposit_source', 'status')
         extra_kwargs = {
-            'account': {'required': True},
-            'superuser_account': {'required': True},
+            'user_account': {'required': True},
+            'site_account': {'required': True},
             'transaction_id': {'required': True},
+            'amount': {'validators': [MinMaxLimitValidator('deposit')]},
         }
 
     def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        amount = attrs.get('amount')
-        user = attrs.get('user')
-        Config().config_validator(user, amount, Deposit, 'deposit')
+        attrs['user'] = self.context['request'].user
+        CountLimitValidator('deposit', Deposit).__call__(attrs.get('user'))
         return attrs
 
 
@@ -208,7 +214,11 @@ class RegisterSerializer(serializers.ModelSerializer):
                   'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'login_key', 'jwt',
                   'referer_username')
         read_only_fields = ('id', 'game_editor', 'is_club_admin', 'is_superuser',)
-        extra_kwargs = {'password': {'write_only': True}, 'user_club': {'required': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'user_club': {'required': True},
+            'username': {'validators': [UniqueMultiQuerysetValidator(User.objects.all(), Club.objects.all())]}
+        }
 
     # noinspection PyMethodMayBeStatic
     def get_is_club_admin(self, user) -> bool:
@@ -242,17 +252,39 @@ class TransferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transfer
         fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified', 'user_balance')
+        read_only_fields = ('id', 'sender', 'status', 'balance')
+        extra_kwargs = {
+            'amount': {'validators': [MinMaxLimitValidator('withdraw')]},
+            'recipient': {'required': True}
+        }
 
     def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        user = attrs.get('user')
-        receiver: User = attrs.get('to')
-        amount = attrs.get('amount')
-        user_balance_validator(user, amount + Config().get_config('min_balance'))
-        club_validator(user, receiver)
-        Config().config_validator(user, amount, Transfer, 'transfer')
+        recipient: User = attrs.get('recipient')
+        user, amount = self.context['request'].user, attrs.get('amount')
+        attrs['sender'] = user
+        MaxValueValidator(user.balance - Config().get_config('min_balance'), 'Not enough balance').__call__(amount)
+        CountLimitValidator('transfer', Transfer, field_check='sender').__call__(attrs.get('sender'))
+        club_validator(user, recipient)
+        return attrs
+
+
+class TransferClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Transfer
+        fields = '__all__'
+        read_only_fields = ('id', 'sender', 'status', 'balance')
+        extra_kwargs = {
+            'amount': {'validators': [MinMaxLimitValidator('withdraw')]}
+        }
+
+    def validate(self, attrs):
+        club, amount = get_current_club(self.context['request']), attrs.get('amount')
+        if club is None:
+            raise ValidationError(f"Bad data sent or doesn't have enough permission")
+        attrs['club'] = club
+        attrs['recipient'] = club.admin
+        MaxValueValidator(club.balance - Config().get_config('min_balance'), 'Not enough balance').__call__(amount)
+        CountLimitValidator('transfer', Transfer, field_check='club').__call__(attrs.get('club'))
         return attrs
 
 
@@ -329,14 +361,15 @@ class WithdrawSerializer(serializers.ModelSerializer):
     class Meta:
         model = Withdraw
         fields = '__all__'
-        read_only_fields = ('id', 'user', 'verified', 'user_balance')
-        extra_kwargs = {'account': {'required': True}}
+        read_only_fields = ('id', 'user', 'status', 'user_balance')
+        extra_kwargs = {
+            'account': {'required': True},
+            'amount': {'validators': [MinMaxLimitValidator('withdraw')]}
+        }
 
     def validate(self, attrs):
-        if not self.instance:
-            attrs['user'] = self.context['request'].user
-        user = attrs.get('user')
-        amount = attrs.get('amount')
-        user_balance_validator(user, amount + Config().get_config('min_balance'))
-        Config().config_validator(user, amount, Withdraw, 'withdraw')
+        attrs['user'] = self.context['request'].user
+        user, amount = attrs.get('user'), attrs.get('amount')
+        MaxValueValidator(user.balance - Config().get_config('min_balance'), 'Not enough balance').__call__(amount)
+        CountLimitValidator('withdraw', Withdraw).__call__(attrs.get('user'))
         return attrs

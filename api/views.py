@@ -14,7 +14,8 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, Regist
     ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
-    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer
+    WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
+    TransferClubSerializer
 
 User: MainUser = get_user_model()
 
@@ -210,10 +211,7 @@ class ClubViewSet(viewsets.ModelViewSet):
         return Response({"results": UserListSerializer(users, many=True).data})
 
 
-class DepositViewSet(mixins.CreateModelMixin,
-                     mixins.RetrieveModelMixin,
-                     mixins.ListModelMixin,
-                     viewsets.GenericViewSet):
+class DepositViewSet(viewsets.ModelViewSet):
     """
     Deposit View\n
     User Must be logged in to make any request
@@ -230,6 +228,7 @@ class DepositViewSet(mixins.CreateModelMixin,
 
     serializer_class = DepositSerializer
     permission_classes = [TransactionPermissionClass]
+    http_method_names = ['get', 'post', 'head', 'options']
 
 
 class Login(views.APIView):
@@ -243,12 +242,19 @@ class Login(views.APIView):
 
     def post(self, *args, **kwargs):
         data = self.request.data
-        if not data.get('username') or not data.get('password'):
-            return Response({'detail': 'Username or Password is not supplied.'}, status=400)
         username, password = data.get('username'), data.get('password')
+        if username is None or password is None:
+            return Response({'detail': 'Username or Password is not supplied.'}, status=400)
         user = User.objects.filter(username=username)
-        if not user:
-            return Response({'detail': 'Username or Password is wrong.'}, status=400)
+        if not user.exists():
+            club = Club.objects.filter(username=username)
+            if not club:
+                return Response({'detail': 'Username or Password is wrong.'}, status=400)
+            club = club[0]
+            data = ClubSerializer(club).data
+            data['key'] = password
+            jwt_str = jwt_writer(**data)
+            return Response({'jwt': jwt_str})
         else:
             user = user[0]
         if user.check_password(password):
@@ -265,42 +271,6 @@ class Login(views.APIView):
             data = UserSerializer(self.request.user).data
             return Response(data)
         return Response({'detail': 'User must be logged in'}, status=403)
-
-
-class LoginClub(views.APIView):
-    """
-    post:
-    REQUIRED username, password\n
-    Return jwt key to authenticate user.
-    get:
-    Returns user details. User MUST be logged in
-    """
-
-    def post(self, *args, **kwargs):
-        data = self.request.data
-        if not data.get('username') or not data.get('password'):
-            return Response({'detail': 'Username or Password is not supplied.'}, status=400)
-        clubs = Club.objects.filter(username=data.get('username'))
-        if not clubs:
-            return Response({'detail': 'Username or Password is wrong.'}, status=400)
-        else:
-            club: Club = clubs[0]
-        if club.password == data.get('password'):
-            club.last_login = timezone.now()
-            club.save()
-            password = data.get('password')
-            data = ClubSerializer(club).data
-            data['key'] = password
-            jwt_str = jwt_writer(**data)
-            return Response({'jwt': jwt_str})
-        return Response({'detail': 'Username or Password is wrong.'}, status=400)
-
-    def get(self, *args, **kwargs):
-        club = get_current_club(self.request)
-        if club:
-            data = ClubSerializer(club).data
-            return Response(data)
-        return Response({'detail': 'Club must be logged in'}, status=403)
 
 
 class MatchViewSet(viewsets.ModelViewSet):
@@ -388,11 +358,7 @@ def available_methods(request):
     return Response({'methods': methods})
 
 
-class WithdrawViewSet(mixins.CreateModelMixin,
-                      mixins.RetrieveModelMixin,
-                      mixins.ListModelMixin,
-                      mixins.DestroyModelMixin,
-                      viewsets.GenericViewSet):
+class WithdrawViewSet(viewsets.ModelViewSet):
     """
     User must be logged in
     create:
@@ -404,12 +370,10 @@ class WithdrawViewSet(mixins.CreateModelMixin,
 
     serializer_class = WithdrawSerializer
     permission_classes = [TransactionPermissionClass]
+    http_method_names = ['get', 'post', 'head', 'options']
 
 
-class TransferViewSet(mixins.CreateModelMixin,
-                      mixins.RetrieveModelMixin,
-                      mixins.ListModelMixin,
-                      viewsets.GenericViewSet):
+class TransferViewSet(viewsets.ModelViewSet):
     """
         User must be logged in
         create:
@@ -420,11 +384,15 @@ class TransferViewSet(mixins.CreateModelMixin,
     def get_queryset(self):
         if self.request.GET.get('club'):
             club = get_current_club(self.request)
+            self.permission_classes = []
             return Transfer.objects.filter(club=club)
+        self.permission_classes = [TransactionPermissionClass]
         return Transfer.objects.filter(sender=self.request.user)
 
-    serializer_class = TransferSerializer
-    permission_classes = [TransactionPermissionClass]
+    def get_serializer_class(self):
+        return TransferClubSerializer if self.request.GET.get('club') else TransferSerializer
+
+    http_method_names = ['get', 'post', 'head', 'options']
 
 
 class UserListViewSet(viewsets.ReadOnlyModelViewSet):

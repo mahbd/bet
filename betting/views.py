@@ -8,7 +8,16 @@ from django.utils import timezone
 
 from users.views import total_user_balance, total_club_balance, notify_user
 from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, BetQuestion, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, \
-    config, SOURCE_REFER, SOURCE_COMMISSION
+    config, SOURCE_REFER, SOURCE_COMMISSION, ConfigModel, default_configs
+
+
+def get_config_from_model(name: str, default=False) -> str:
+    obj = ConfigModel.objects.filter(name=name)
+    if obj:
+        return str(obj[0].value)
+    else:
+        ConfigModel.objects.create(name=name, value=str(default or default_configs[name]))
+        return str(default or default_configs[name])
 
 
 def create_deposit(user_id, amount, source, method=None, description=None, club=False):
@@ -151,8 +160,9 @@ def cancel_transfer(transfer: Transfer):
 @receiver(post_save, sender=Transfer)
 def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
     if created:
-        notify_user(instance.recipient, f'You will receive {instance.amount} tk from user '
-                                        f'##{instance.sender.username}## with transfer id '
+        notify_user(instance.recipient, f'You will receive {instance.amount} tk from user/club '
+                                        f'##{(instance.sender and instance.sender.username) or instance.club.name}## '
+                                        f'with transfer id '
                                         f'##{instance.id}## as soon as admin confirms')
         if instance.sender:
             instance.sender.balance -= instance.amount
