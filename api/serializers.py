@@ -2,10 +2,7 @@ from django.core.validators import MaxValueValidator
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
-from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
-
-api_view
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator
 from betting.models import Announcement, Bet, BetQuestion, Config, Deposit, Match, Withdraw, Transfer, \
@@ -64,7 +61,7 @@ class BetQuestionSerializer(serializers.ModelSerializer):
     match_start_time = serializers.SerializerMethodField(read_only=True)
 
     def get_match_name(self, bet_question: BetQuestion):
-        return bet_question.match.title
+        return bet_question.match.__str__()
 
     def get_match_start_time(self, bet_question: BetQuestion):
         return str(bet_question.match.start_time)
@@ -118,7 +115,7 @@ class BetSerializer(serializers.ModelSerializer):
         return UserListSerializer(bet.user).data
 
     def get_match_name(self, bet: Bet) -> str:
-        return bet.bet_question.match.title
+        return bet.bet_question.match.__str__()
 
     def get_match_start_time(self, bet: Bet) -> str:
         return str(bet.bet_question.match.start_time)
@@ -295,8 +292,7 @@ class TransferClubSerializer(serializers.ModelSerializer):
 class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'first_name', 'last_name')
-        read_only_fields = ('id',)
+        fields = ('id', 'first_name', 'last_name', 'username', 'user_club',)
 
 
 # noinspection PyMethodMayBeStatic
@@ -324,27 +320,25 @@ class UserListSerializerClub(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'first_name', 'last_name', 'join_date', 'last_bet',
-                  'full_name', 'total_bet', 'total_commission')
-        read_only_fields = ('id',)
+        fields = ('id', 'full_name', 'join_date', 'last_bet',
+                  'total_bet', 'total_commission', 'username',)
 
 
-class UserSerializer(serializers.ModelSerializer):
-    referred_by = serializers.SerializerMethodField(read_only=True)
-    is_club_admin = serializers.SerializerMethodField(read_only=True)
-    refer_set = serializers.SerializerMethodField(read_only=True)
+# noinspection PyMethodMayBeStatic
+class UserDetailsSerializer(serializers.ModelSerializer):
     club_detail = serializers.SerializerMethodField(read_only=True)
+    is_club_admin = serializers.SerializerMethodField(read_only=True)
     jwt = serializers.SerializerMethodField(read_only=True)
+    referred_by = serializers.SerializerMethodField(read_only=True)
+    refer_set = serializers.SerializerMethodField(read_only=True)
+    referer_username = serializers.CharField(default='no_data', required=False, trim_whitespace=True)
 
-    # noinspection PyMethodMayBeStatic
     def get_is_club_admin(self, user) -> bool:
         return user.is_club_admin()
 
-    # noinspection PyMethodMayBeStatic
     def get_refer_set(self, user: User):
         return UserListSerializer(user.refer_set.all(), many=True).data
 
-    # noinspection PyMethodMayBeStatic
     def get_referred_by(self, user: User) -> dict:
         return UserListSerializer(user.referred_by).data
 
@@ -355,10 +349,35 @@ class UserSerializer(serializers.ModelSerializer):
     def get_club_detail(self, user: User) -> dict:
         return ClubSerializer(user.user_club).data
 
+    def create(self, validated_data: dict):
+        password = validated_data.pop('password', None)
+        referrer = validated_data.pop('referer_username', None)
+        user = User.objects.filter(username=referrer)
+        if user:
+            validated_data['referred_by'] = user
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+        return user
+
+    def update(self, instance, validated_data):
+        validated_data.pop('referer_username', None)
+        password = validated_data.get('password', None)
+        if password:
+            instance.set_password(password)
+            return instance
+        else:
+            return super().update(instance, validated_data)
+
     class Meta:
         model = User
-        exclude = ('groups', 'user_permissions', 'password')
-        read_only_fields = ('id', 'balance', 'game_editor', 'is_club_admin', 'is_superuser', 'is_staff', 'referred_by')
+        exclude = ('groups', 'user_permissions')
+        read_only_fields = ('id', 'balance', 'game_editor', 'is_superuser', 'is_staff', 'referred_by', 'username')
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'user_club': {'required': True},
+            'username': {'validators': [UniqueMultiQuerysetValidator(User.objects.all(), Club.objects.all())]},
+        }
 
 
 class WithdrawSerializer(serializers.ModelSerializer):

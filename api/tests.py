@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.test import TestCase, Client
 from django.utils import timezone
 
-from api.serializers import UserSerializer
+from api.serializers import UserDetailsSerializer
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer
@@ -151,6 +151,12 @@ class ActionTestCase(TestCase):
         question = BetQuestion.objects.get(pk=self.question_id)
         self.assertEqual(question.paid, False, 'Should be able to change start time of match')
 
+    def test_make_game_editor(self):
+        self.assertEqual(5, 4, 'Not implemented')
+
+    def test_remove_game_editor(self):
+        self.assertEqual(5, 4, 'Not implemented')
+
 
 class AllTransactionTestCase(TestCase):
     def setUp(self) -> None:
@@ -252,7 +258,7 @@ class BetTestCase(TestCase):
         self.assertEqual(response.json()['user_balance'], 4900, msg=f'User balance is not correct, {response.json()}')
         self.assertEqual(response.json()['win_rate'], QuestionOption.objects.get(id=self.option_id).rate)
         self.assertEqual(self.user2.balance, 4900,
-                         msg=f'User balance is not correct, {UserSerializer(self.user2).data}')
+                         msg=f'User balance is not correct, {UserDetailsSerializer(self.user2).data}')
 
     def test_create_bet_before_start(self):
         increase_balance(self.user2, 5000)
@@ -507,7 +513,7 @@ class QuestionOptionTest(TestCase):
         self.assertEqual(response.status_code, 403, msg=f'Should be able to update option\n{response.content}')
 
 
-class RegisterTest(TestCase):
+class UserTestCase(TestCase):
     def setUp(self):
         data = set_up_helper()
         (self.club, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
@@ -515,12 +521,20 @@ class RegisterTest(TestCase):
 
     # Creation Test
     def test_can_register_valid_data(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'user_club': self.club.id,
-                                            'password': 'fds sdf'})
-        self.assertEqual(request.status_code, 201, msg=f'Should be able to create user.\n{request.content}')
+        response = c.post('/api/register/', {'username': 'test3', 'email': 'testing@gmail.com',
+                                             'phone': '017745445', 'user_club': self.club.id,
+                                             'password': 'fds_sdf'})
+        self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
+        user = User.objects.get(pk=response.json()['id'])
+        self.assertEqual(user.check_password('fds_sdf'), True, 'Password should be correct')
+
+    def test_register_referrer(self):
+        response = c.post('/api/register/', {'username': 'test3', 'email': 'testing@gmail.com',
+                                             'phone': '017745445', 'user_club': self.club.id,
+                                             'password': 'fds_sdf', 'referer_username': self.user2.username})
+        self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
+        user = User.objects.get(pk=response.json()['id'])
+        self.assertEqual(user.referred_by.id, self.user2.id, 'Password should be correct')
 
     def test_can_register_without_club(self):
         request = c.post('/api/register/', {'username': 'test3',
@@ -559,17 +573,28 @@ class RegisterTest(TestCase):
 
     # Update test
     def test_update_user_club(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.get('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
-        self.assertEqual(response.json()['club_detail']['name'], self.club.name, msg='Wrong club name')
-        response = c.patch('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
-        self.assertEqual(response.json()['club_detail']['name'], self.club2.name, msg='Club should be changed')
+        response = c.patch(f'/api/user/{self.user2.id}/', {'user_club': self.club2.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'Should be able to update club')
+        self.user2 = User.objects.get(pk=self.user2.id)
+        self.assertEqual(self.user2.user_club.id, self.club2.id, msg='Club should be changed')
+
+    def test_update_other_user_club(self):
+        response = c.patch(f'/api/user/{self.user1.id}/', {'user_club': self.club2.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Should be able to update club')
 
     def test_update_user_email_phone(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.patch('/api/user-detail-update/', {'email': 'himan@gma.com', 'phone': '45454545'}, **headers)
-        self.assertEqual(response.json()['phone'], '45454545', msg='Phone is not updated')
-        self.assertEqual(response.json()['email'], 'himan@gma.com', msg='Email is not updated')
+        response = c.patch(f'/api/user/{self.user2.id}/',
+                           {'email': 'han@gma.com', 'phone': '45454545'}, **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'should be able to update')
+        self.user2 = User.objects.get(pk=self.user2.id)
+        self.assertEqual(self.user2.phone, '45454545', msg='Phone is not updated')
+        self.assertEqual(self.user2.email, 'han@gma.com', msg='Email is not updated')
+
+    def test_change_password(self):
+        response = c.post(f'/api/change-password/', {'password': 'fds_sdf'}, **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'Should be able to change password')
+        self.user2.refresh_from_db()
+        self.assertEqual(self.user2.check_password('fds_sdf'), True, 'Password should be correct')
 
 
 class TransferClubTestCase(TestCase):

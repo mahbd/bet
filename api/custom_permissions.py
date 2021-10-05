@@ -57,13 +57,14 @@ class IsOwnerOrAdminOrReadOnly(IsAdminOrReadOnly):
         )
 
 
-class IsUser(permissions.IsAuthenticated):
+class UserViewPermission(permissions.IsAuthenticated):
+    def has_permission(self, request, view):
+        return True
+
     def has_object_permission(self, request, view, obj):
-        response = bool(
-            request.user and
-            request.user.is_authenticated and request.user.id == obj.id
-        )
-        return response
+        return bool(request.method in SAFE_METHODS or
+                    request.user and request.user.is_authenticated and
+                    (request.user.id == obj.id or request.user.is_superuser))
 
 
 class MatchPermissionClass(permissions.BasePermission):

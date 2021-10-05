@@ -4,8 +4,10 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from betting.choices import METHOD_TRANSFER, STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED
+from betting.choices import METHOD_TRANSFER, STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED, STATUS_LOCKED, STATUS_HIDDEN, \
+    STATUS_LIVE, STATUS_CLOSED
 from betting.models import Match, BetQuestion, Deposit, Transfer, Withdraw, Bet, QuestionOption
+from users.models import User
 from users.views import notify_user, notify_club
 
 
@@ -28,25 +30,25 @@ def create_deposit(user_id: Union[int, Type[int]], amount: Union[int, float],
 def lock_match(match_id: int) -> Union[Match, bool]:
     if not match_id or not Match.objects.filter(pk=match_id).exists():
         return False
-    return Match.objects.filter(pk=match_id).update(locked=True)
+    return Match.objects.filter(pk=match_id).update(status=STATUS_LOCKED)
 
 
 def hide_match(match_id: int) -> Union[Match, bool]:
     if not match_id or not Match.objects.filter(pk=match_id).exists():
         return False
-    return Match.objects.filter(pk=match_id).update(hidden=True)
+    return Match.objects.filter(pk=match_id).update(status=STATUS_HIDDEN)
 
 
 def go_live_match(match_id) -> Union[Match, bool]:
     if not match_id or not Match.objects.filter(pk=match_id).exists():
         return False
-    return Match.objects.filter(pk=match_id).update(start_time=timezone.now())
+    return Match.objects.filter(pk=match_id).update(status=STATUS_LIVE)
 
 
 def end_match_now(match_id) -> Union[Match, bool]:
     if not match_id or not Match.objects.filter(pk=match_id).exists():
         return False
-    return Match.objects.filter(pk=match_id).update(end_time=timezone.now())
+    return Match.objects.filter(pk=match_id).update(status=STATUS_CLOSED)
 
 
 # Bet Question
@@ -126,7 +128,7 @@ def refund_bet(bet_id: int):
         change = bet.win_amount / bet.win_rate
     bet.user.balance += change
     bet.user.save()
-    notify_user(bet.user, f'Bet cancelled for match ##{bet.bet_question.match.title}## '
+    notify_user(bet.user, f'Bet cancelled for match ##{bet.bet_question.match.__str__()}## '
                           f'on ##{bet.bet_question.question}##. Balance '
                           f'refunded by {change} BDT')
     bet.status = STATUS_REFUNDED
@@ -275,3 +277,16 @@ def cancel_transfer(transfer_id: int) -> Transfer:
     transfer.status = False
     transfer.save()
     return transfer
+
+
+# User
+def make_game_editor(user_id: int) -> Union[User, int]:
+    if not user_id or not User.objects.filter(pk=user_id).exists():
+        return False
+    return User.objects.filter(pk=user_id).update(game_editor=True)
+
+
+def remove_game_editor(user_id: int) -> Union[User, int]:
+    if not user_id or not User.objects.filter(pk=user_id).exists():
+        return False
+    return User.objects.filter(pk=user_id).update(game_editor=False)

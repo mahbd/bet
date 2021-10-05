@@ -16,9 +16,9 @@ from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
 from .action_data import action_data
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
-    ClubPermissionClass, TransactionPermissionClass, IsUser
+    ClubPermissionClass, TransactionPermissionClass, UserViewPermission
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
-    UserListSerializer, BetQuestionSerializer, UserSerializer, AnnouncementSerializer, DepositSerializer, \
+    UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
     TransferClubSerializer
 
@@ -320,7 +320,7 @@ class Login(views.APIView):
 
     def get(self, *args, **kwargs):
         if self.request.user and self.request.user.is_authenticated:
-            data = UserSerializer(self.request.user).data
+            data = UserDetailsSerializer(self.request.user).data
             return Response(data)
         return Response({'detail': 'User must be logged in'}, status=403)
 
@@ -436,46 +436,27 @@ class TransferViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'options']
 
 
-class UserListViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """
     list:
-    Return list of users.
-    """
-    queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
-    serializer_class = UserListSerializer
-    lookup_field = 'username'
-    filter_backends = [SearchFilter, DjangoFilterBackend]
-    search_fields = ['username', 'first_name', 'last_name', 'email']
-    filterset_fields = ['user_club']
-
-
-class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):
-    """
-    list:
-    Return list of club users.
+    Return list of users.\n
+    Filterable fields: user_club, referred_by\n
+    Searchable fields: username, first_name, last_name\n
     """
 
-    def get_queryset(self):
-        club = get_current_club(self.request)
-        if not club:
-            raise Http404
-        return User.objects.filter(user_club=club)
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return UserDetailsSerializer
+        if self.request.user.id == int(self.kwargs.get('pk')) or self.request.user.is_superuser:
+            return UserDetailsSerializer
+        elif self.request.GET.get('club'):
+            return UserListSerializerClub
+        else:
+            return UserListSerializer
 
-    serializer_class = UserListSerializerClub
-    lookup_field = 'username'
-
-
-class UserDetailsUpdateRetrieveDestroy(generics.RetrieveUpdateDestroyAPIView):
-    """
-    retrieve:
-    Return user of that id or username. Example: \n
-    by id: /api/users/10/\n
-    by username: /api/users/miloy/
-
-    """
+    permission_classes = [UserViewPermission]
     queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsUser]
-
-    def get_object(self):
-        return self.request.user
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['username', 'first_name', 'last_name']
+    filterset_fields = ['user_club', 'referred_by']

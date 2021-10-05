@@ -21,8 +21,7 @@ router.register('match', views.MatchViewSet, 'match')
 router.register('notification', views.NotificationViewSet, 'notification')
 router.register('transfer', views.TransferViewSet, 'transfer')
 router.register('register', views.RegisterViewSet, 'register')
-router.register('user', views.UserListViewSet, 'user'),
-router.register('club-user', views.UserListViewSetClub, 'club_user')
+router.register('user', views.UserViewSet, 'user'),
 router.register('withdraw', views.WithdrawViewSet, 'withdraw')
 
 app_name = 'api'
@@ -48,7 +47,6 @@ urlpatterns = [
     path('all_transactions/', views.AllTransactionView.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
-    path('user-detail-update/', views.UserDetailsUpdateRetrieveDestroy.as_view()),
     path('change-password/', views.ChangePassword.as_view()),
     path('actions/', views.ActionView.as_view()),
 ]
