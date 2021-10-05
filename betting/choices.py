@@ -20,7 +20,15 @@ DEPOSIT_SOURCE = (
     (SOURCE_COMMISSION, 'Club Commission'),
 )
 
-DEPOSIT_WITHDRAW_CHOICES = (
+METHOD_TYPE_PERSONAL = 'personal'
+METHOD_TYPE_AGENT = 'agent'
+
+METHOD_TYPE_CHOICES = (
+    (METHOD_TYPE_PERSONAL, 'Personal'),
+    (METHOD_TYPE_AGENT, 'Agent'),
+)
+
+DEPOSIT_CHOICES = (
     (METHOD_BKASH, 'bKash'),
     (METHOD_ROCKET, 'DBBL Rocket'),
     (METHOD_NAGAD, 'Nagad'),
@@ -62,12 +70,6 @@ MATCH_STATUS_CHOICES = (
     (STATUS_CLOSED, 'Closed'),
     (STATUS_LOCKED, 'Locked'),
 )
-QUESTION_STATUS_CHOICES = (
-    (STATUS_LIVE, 'Live'),
-    (STATUS_HIDDEN, 'Hidden'),
-    (STATUS_CLOSED, 'Closed'),
-    (STATUS_LOCKED, 'Locked'),
-)
 STATUS_PENDING = 'pending'
 STATUS_PAID = 'paid'
 STATUS_REFUNDED = 'refunded'
@@ -80,6 +82,13 @@ STATUS_CHOICES = (
     (STATUS_CANCELLED, 'Cancelled'),
     (STATUS_AWAITING_RESULT, 'No Result'),
 )
+QUESTION_STATUS_CHOICES = (
+    (STATUS_LIVE, 'Live'),
+    (STATUS_HIDDEN, 'Hidden'),
+    (STATUS_CLOSED, 'Closed'),
+    (STATUS_LOCKED, 'Locked'),
+    (STATUS_REFUNDED, 'Refunded'),
+)
 
 A_MATCH_LOCK = 'lock_match'
 A_MATCH_HIDE = 'hide_match'
@@ -89,6 +98,7 @@ A_QUESTION_LOCK = 'lock_question'
 A_QUESTION_HIDE = 'hide_question'
 A_QUESTION_END_NOW = 'end_now_question'
 A_QUESTION_SELECT_WINNER = 'select_winner_question'
-A_QUESTION_PAY = 'pay_question'
-A_QUESTION_UN_PAY = 'un_pay_question'
+A_QUESTION_UNSELECT_WINNER = 'unselect_winner_question'
 A_QUESTION_REFUND = 'refund_question'
+A_MAKE_GAME_EDITOR = 'make_game_editor'
+A_REMOVE_GAME_EDITOR = 'remove_game_editor'

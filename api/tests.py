@@ -5,7 +5,9 @@ from django.utils import timezone
 
 from api.serializers import UserDetailsSerializer
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
-    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
+    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
+    A_QUESTION_REFUND, \
+    STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer
 from users.models import User, Club
 
@@ -48,7 +50,7 @@ class ActionTestCase(TestCase):
         response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_super)
         self.assertEqual(response.status_code, 200, 'Should be able to lock match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.locked, True, 'Should be able to lock match')
+        self.assertEqual(match.status, STATUS_LOCKED, 'Should be able to lock match')
 
     def test_lock_match_staff(self):
         self.user2.is_staff = True
@@ -56,7 +58,7 @@ class ActionTestCase(TestCase):
         response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
         self.assertEqual(response.status_code, 200, 'Should be able to lock match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.locked, True, 'Should be able to lock match')
+        self.assertEqual(match.status, STATUS_LOCKED, 'Should be able to lock match')
 
     def test_lock_match_game_editor(self):
         self.user2.game_editor = True
@@ -64,58 +66,60 @@ class ActionTestCase(TestCase):
         response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
         self.assertEqual(response.status_code, 200, 'Should be able to lock match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.locked, True, 'Should be able to lock match')
+        self.assertEqual(match.status, STATUS_LOCKED, 'Should be able to lock match')
 
     def test_lock_match_user(self):
         response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
         self.assertEqual(response.status_code, 403, 'Should not be able to lock match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.locked, False, 'Should not be able to lock match')
+        self.assertNotEqual(match.status, STATUS_LOCKED, 'Should not be able to lock match')
 
     def test_hide_match(self):
         response = c.post(self.api, {'action_code': A_MATCH_HIDE, 'match_id': self.match_id}, **self.headers_super)
         self.assertEqual(response.status_code, 200, 'Should be able to hide match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.hidden, True, 'Should be able to hide match')
+        self.assertEqual(match.status, STATUS_HIDDEN, 'Should be able to hide match')
 
     def test_hide_match_user(self):
+        Match.objects.filter(pk=self.match_id).update(status=STATUS_LIVE)
         response = c.post(self.api, {'action_code': A_MATCH_HIDE, 'match_id': self.match_id}, **self.headers_user)
-        self.assertEqual(response.status_code, 403, 'Should not be able to hide match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.hidden, False, 'Should not be able to hide match')
+        self.assertEqual(response.status_code, 403, 'Should not be able to hide match')
+        self.assertNotEqual(match.status, STATUS_HIDDEN, 'Should not be able to hide match')
 
     def test_match_go_live(self):
         response = c.post(self.api, {'action_code': A_MATCH_GO_LIVE, 'match_id': self.match_id}, **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        self.assertEqual(response.status_code, 200, 'Should be able to go live')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.is_live(), True, 'Should be able to change start time of match')
+        self.assertEqual(match.status, STATUS_LIVE, 'Should be able to go live')
 
     def test_match_end_match(self):
         response = c.post(self.api, {'action_code': A_MATCH_END_NOW, 'match_id': self.match_id}, **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        self.assertEqual(response.status_code, 200, 'Should be able to close match')
         match = Match.objects.get(pk=self.match_id)
-        self.assertEqual(match.end_time <= timezone.now(), True, 'Should be able to change start time of match')
+        self.assertEqual(match.status, STATUS_CLOSED, 'Should be able to close match')
 
     def test_lock_question(self):
         response = c.post(self.api, {'action_code': A_QUESTION_LOCK, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        self.assertEqual(response.status_code, 200, 'Should be able to lock question')
         question = BetQuestion.objects.get(pk=self.question_id)
-        self.assertEqual(question.locked, True, 'Should be able to change start time of match')
+        self.assertEqual(question.status, STATUS_LOCKED, 'Should be able to lock question')
 
     def test_hide_question(self):
+        BetQuestion.objects.filter(pk=self.question_id).update(status=STATUS_LIVE)
         response = c.post(self.api, {'action_code': A_QUESTION_HIDE, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        self.assertEqual(response.status_code, 200, 'Should be able to hide bet question')
         question = BetQuestion.objects.get(pk=self.question_id)
-        self.assertEqual(question.hidden, True, 'Should be able to change start time of match')
+        self.assertEqual(question.status, STATUS_HIDDEN, 'Should be able to change start time of match')
 
     def test_end_question_now(self):
         response = c.post(self.api, {'action_code': A_QUESTION_END_NOW, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        self.assertEqual(response.status_code, 200, 'Should be able to close question')
         question = BetQuestion.objects.get(pk=self.question_id)
-        self.assertEqual(question.end_time <= timezone.now(), True, 'Should be able to change start time of match')
+        self.assertEqual(question.status, STATUS_CLOSED, 'Should be able to close question')
 
     def test_question_select_winner(self):
         response = c.post(self.api, {'action_code': A_QUESTION_SELECT_WINNER, 'question_id': self.question_id,
@@ -124,38 +128,51 @@ class ActionTestCase(TestCase):
         question = BetQuestion.objects.get(pk=self.question_id)
         self.assertEqual(question.winner_id, self.option_id, 'Should be able to change start time of match')
 
-    def test_question_pay(self):
-        question = BetQuestion.objects.get(pk=self.question_id)
-        question.winner_id = self.option_id
-        question.save()
-        response = c.post(self.api, {'action_code': A_QUESTION_PAY, 'question_id': self.question_id},
-                          **self.headers_super)
-        self.assertEqual(response.status_code, 200, 'Should be able to pay question')
-        question.refresh_from_db()
-        self.assertEqual(question.paid, True, 'Should be able to pay question')
 
     def test_question_un_pay(self):
         question = BetQuestion.objects.get(pk=self.question_id)
-        question.paid = True
+        question.winner_id = self.option_id
         question.save()
-        response = c.post(self.api, {'action_code': A_QUESTION_UN_PAY, 'question_id': self.question_id},
-                          **self.headers_super)
+        response = c.post(self.api, {'action_code': A_QUESTION_UNSELECT_WINNER, 'question_id': self.question_id,
+                                     'option_id': self.option_id}, **self.headers_super)
         self.assertEqual(response.status_code, 200, 'Should be able to un pay question')
         question.refresh_from_db()
-        self.assertEqual(question.paid, False, 'Should be able to un pay question')
+        self.assertEqual(question.status, STATUS_LOCKED, 'Should be able to un pay question')
 
     def test_question_refund(self):
         response = c.post(self.api, {'action_code': A_QUESTION_REFUND, 'question_id': self.question_id},
                           **self.headers_super)
         self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
         question = BetQuestion.objects.get(pk=self.question_id)
-        self.assertEqual(question.paid, False, 'Should be able to change start time of match')
+        self.assertEqual(question.status, STATUS_REFUNDED, 'Should be able to change start time of match')
 
     def test_make_game_editor(self):
-        self.assertEqual(5, 4, 'Not implemented')
+        c.post(self.api, {'action_code': A_MAKE_GAME_EDITOR, 'user_id': self.user2.id},
+               **self.headers_super)
+        self.user2.refresh_from_db()
+        self.assertEqual(self.user2.game_editor, True, 'Should be able to make game editor')
+
+    def test_make_game_editor_user(self):
+        c.post(self.api, {'action_code': A_MAKE_GAME_EDITOR, 'user_id': self.user2.id},
+               **self.headers_user)
+        self.user2.refresh_from_db()
+        self.assertEqual(self.user2.game_editor, False, 'Should not be able to make game editor')
 
     def test_remove_game_editor(self):
-        self.assertEqual(5, 4, 'Not implemented')
+        self.user2.game_editor = True
+        self.user2.save()
+        c.post(self.api, {'action_code': A_REMOVE_GAME_EDITOR, 'user_id': self.user2.id},
+               **self.headers_super)
+        self.user2.refresh_from_db()
+        self.assertEqual(self.user2.game_editor, False, 'Should be able to make game editor')
+
+    def test_remove_game_editor_user(self):
+        self.user2.game_editor = True
+        self.user2.save()
+        c.post(self.api, {'action_code': A_REMOVE_GAME_EDITOR, 'user_id': self.user2.id},
+               **self.headers_user)
+        self.user2.refresh_from_db()
+        self.assertEqual(self.user2.game_editor, True, 'Should not be able to make game editor')
 
 
 class AllTransactionTestCase(TestCase):
@@ -293,28 +310,28 @@ class BetTestCase(TestCase):
 
     def test_create_bet_match_ended(self):
         increase_balance(self.user2, 5000)
-        Match.objects.update(id=self.match_id, end_time=timezone.now() - timedelta(minutes=1))
+        Match.objects.update(id=self.match_id, status=STATUS_CLOSED)
         response = c.post('/api/bet/', data={'amount': 500, 'bet_question': self.question_id,
                                              'choice': self.option_id}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'Should not be able to bet to ended match')
 
     def test_create_bet_match_locked(self):
         increase_balance(self.user2, 5000)
-        Match.objects.update(id=self.match_id, locked=True)
+        Match.objects.update(id=self.match_id, status=STATUS_LOCKED)
         response = c.post('/api/bet/', data={'amount': 500, 'bet_question': self.question_id,
                                              'choice': self.option_id}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'Should not be able to bet to locked match')
 
     def test_create_bet_question_ended(self):
         increase_balance(self.user2, 5000)
-        BetQuestion.objects.update(id=self.question_id, end_time=timezone.now() - timedelta(minutes=1))
+        BetQuestion.objects.update(id=self.question_id, status=STATUS_CLOSED)
         response = c.post('/api/bet/', data={'amount': 500, 'bet_question': self.question_id,
                                              'choice': self.option_id}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'Should not be able to bet to ended question')
 
     def test_create_bet_question_locked(self):
         increase_balance(self.user2, 5000)
-        BetQuestion.objects.update(id=self.question_id, locked=True)
+        BetQuestion.objects.update(id=self.question_id, status=STATUS_LOCKED)
         response = c.post('/api/bet/', data={'amount': 500, 'bet_question': self.question_id,
                                              'choice': self.option_id}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'Should not be able to bet to ended question')
@@ -521,54 +538,54 @@ class UserTestCase(TestCase):
 
     # Creation Test
     def test_can_register_valid_data(self):
-        response = c.post('/api/register/', {'username': 'test3', 'email': 'testing@gmail.com',
-                                             'phone': '017745445', 'user_club': self.club.id,
-                                             'password': 'fds_sdf'})
+        response = c.post('/api/user/', {'username': 'test3', 'email': 'testing@gmail.com',
+                                         'phone': '017745445', 'user_club': self.club.id,
+                                         'password': 'fds_sdf'})
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
         user = User.objects.get(pk=response.json()['id'])
         self.assertEqual(user.check_password('fds_sdf'), True, 'Password should be correct')
 
     def test_register_referrer(self):
-        response = c.post('/api/register/', {'username': 'test3', 'email': 'testing@gmail.com',
-                                             'phone': '017745445', 'user_club': self.club.id,
-                                             'password': 'fds_sdf', 'referer_username': self.user2.username})
+        response = c.post('/api/user/', {'username': 'test3', 'email': 'testing@gmail.com',
+                                         'phone': '017745445', 'user_club': self.club.id,
+                                         'password': 'fds_sdf', 'referer_username': self.user2.username})
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
         user = User.objects.get(pk=response.json()['id'])
         self.assertEqual(user.referred_by.id, self.user2.id, 'Password should be correct')
 
     def test_can_register_without_club(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
+        request = c.post('/api/user/', {'username': 'test3',
+                                        'email': 'testing@gmail.com',
+                                        'phone': '017745445',
+                                        'password': 'fd sdf fd'})
         self.assertNotEqual(request.status_code, 201, msg=f"Should not be able to create user without club.")
 
     def test_duplicate_username(self):
-        request = c.post('/api/register/', {'username': 'test2',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
+        request = c.post('/api/user/', {'username': 'test2',
+                                        'email': 'testing@gmail.com',
+                                        'phone': '017745445',
+                                        'password': 'fd sdf fd'})
         self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
 
     def test_duplicate_username_club(self):
-        request = c.post('/api/register/', {'username': 'test_club1',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
+        request = c.post('/api/user/', {'username': 'test_club1',
+                                        'email': 'testing@gmail.com',
+                                        'phone': '017745445',
+                                        'password': 'fd sdf fd'})
         self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
 
     def test_duplicate_email(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'teng@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
+        request = c.post('/api/user/', {'username': 'test3',
+                                        'email': 'teng@gmail.com',
+                                        'phone': '017745445',
+                                        'password': 'fd sdf fd'})
         self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
 
     def test_duplicate_phone(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '01774545',
-                                            'password': 'fd sdf fd'})
+        request = c.post('/api/user/', {'username': 'test3',
+                                        'email': 'testing@gmail.com',
+                                        'phone': '01774545',
+                                        'password': 'fd sdf fd'})
         self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
 
     # Update test
@@ -591,7 +608,7 @@ class UserTestCase(TestCase):
         self.assertEqual(self.user2.email, 'han@gma.com', msg='Email is not updated')
 
     def test_change_password(self):
-        response = c.post(f'/api/change-password/', {'password': 'fds_sdf'}, **self.headers_user)
+        response = c.patch(f'/api/user/{self.user2.id}/', {'password': 'fds_sdf'}, **self.headers_user)
         self.assertEqual(response.status_code, 200, 'Should be able to change password')
         self.user2.refresh_from_db()
         self.assertEqual(self.user2.check_password('fds_sdf'), True, 'Password should be correct')

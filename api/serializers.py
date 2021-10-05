@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator
 from betting.models import Announcement, Bet, BetQuestion, Config, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_scope_validator, user_balance_validator, QuestionOption
+    club_validator, bet_scope_validator, user_balance_validator, QuestionOption, DepositMethod
 from betting.views import get_last_bet
 from users.backends import jwt_writer, get_current_club
 from users.models import User, Club, Notification
@@ -172,6 +172,12 @@ class ClubSerializer(serializers.ModelSerializer):
         }
 
 
+class DepositMethodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DepositMethod
+        fields = '__all__'
+
+
 class DepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deposit
@@ -203,55 +209,6 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = '__all__'
-
-
-class RegisterSerializer(serializers.ModelSerializer):
-    is_club_admin = serializers.SerializerMethodField(read_only=True)
-    jwt = serializers.SerializerMethodField(read_only=True)
-    referer_username = serializers.CharField(default='no_data', required=False, trim_whitespace=True)
-    referred_by = serializers.SerializerMethodField(read_only=True)
-
-    def get_referred_by(self, user: User):
-        return UserListSerializer(user).data
-
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'phone', 'first_name', 'last_name', 'user_club', 'password',
-                  'game_editor', 'is_club_admin', 'is_superuser', 'referred_by', 'login_key', 'jwt',
-                  'referer_username')
-        read_only_fields = ('id', 'game_editor', 'is_club_admin', 'is_superuser',)
-        extra_kwargs = {
-            'password': {'write_only': True},
-            'user_club': {'required': True},
-            'username': {'validators': [UniqueMultiQuerysetValidator(User.objects.all(), Club.objects.all())]}
-        }
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_club_admin(self, user) -> bool:
-        return user.is_club_admin()
-
-    # noinspection PyMethodMayBeStatic
-    def get_jwt(self, user) -> str:
-        jwt = jwt_from_user(user)
-        diff = (timezone.now() - user.date_joined).total_seconds()
-        if diff > 60:
-            return "Not allowed jwt. Please login to get JWT"
-        return jwt
-
-    def validate(self, attrs):
-        if not self.instance:
-            u = attrs.get('referer_username', None)
-            user = User.objects.filter(username=u)
-            if user:
-                attrs['referred_by'] = user[0]
-        return attrs
-
-    def create(self, validated_data):
-        validated_data.pop('referer_username')
-        user = super().create(validated_data)
-        user.set_password(validated_data.get('password'))
-        user.save()
-        return user
 
 
 class TransferSerializer(serializers.ModelSerializer):
@@ -359,10 +316,11 @@ class UserDetailsSerializer(serializers.ModelSerializer):
         referrer = validated_data.pop('referer_username', None)
         user = User.objects.filter(username=referrer)
         if user:
-            validated_data['referred_by'] = user
+            validated_data['referred_by'] = user[0]
         user = super().create(validated_data)
         if password:
             user.set_password(password)
+            user.save()
         return user
 
     def update(self, instance, validated_data):
@@ -370,6 +328,7 @@ class UserDetailsSerializer(serializers.ModelSerializer):
         password = validated_data.get('password', None)
         if password:
             instance.set_password(password)
+            instance.save()
             return instance
         else:
             return super().update(instance, validated_data)

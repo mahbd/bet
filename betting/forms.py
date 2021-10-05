@@ -1,6 +1,6 @@
 from django import forms
 
-from betting.models import BetQuestion, Club, DepositWithdrawMethod, ConfigModel
+from betting.models import BetQuestion, Club, DepositMethod, ConfigModel
 
 
 class BetScopeForm(forms.ModelForm):
@@ -22,7 +22,7 @@ class ClubForm(forms.ModelForm):
 
 class MethodForm(forms.ModelForm):
     class Meta:
-        model = DepositWithdrawMethod
+        model = DepositMethod
         fields = ('code', 'number1', 'number2')
 
 

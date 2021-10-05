@@ -1,5 +1,4 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.crypto import get_random_string

@@ -4,8 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from betting.choices import GAME_CHOICES, DEPOSIT_WITHDRAW_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
-    STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED
+from betting.choices import GAME_CHOICES, DEPOSIT_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
+    STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED, METHOD_TYPE_CHOICES, \
+    METHOD_TYPE_PERSONAL
 from users.models import User, Club
 
 default_configs = {
@@ -202,8 +203,10 @@ class Bet(models.Model):
         ordering = ['bet_question', '-created_at']
 
 
-class DepositWithdrawMethod(models.Model):
-    method = models.CharField(max_length=255, help_text="Method name to be shown to users")
+class DepositMethod(models.Model):
+    convert_rate = models.FloatField(default=1.00)
+    method = models.CharField(max_length=255, choices=DEPOSIT_CHOICES[:8])
+    method_type = models.CharField(max_length=255, choices=METHOD_TYPE_CHOICES, default=METHOD_TYPE_PERSONAL)
     number1 = models.CharField(max_length=32)
     number2 = models.CharField(max_length=32, null=True, blank=True)
 
@@ -220,7 +223,7 @@ class Deposit(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE, default='bank',
                                       help_text="Options are, commission|bank|refer")
-    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
+    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES,
                               help_text="method used to do transaction")
     site_account = models.CharField(max_length=255, blank=True, null=True,
                                     help_text="bank account number of the website")
@@ -260,7 +263,7 @@ class Transfer(models.Model):
 
 class Withdraw(models.Model):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    method = models.CharField(max_length=50, choices=DEPOSIT_WITHDRAW_CHOICES,
+    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES,
                               help_text="method used to do transaction")
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
     user_account = models.CharField(max_length=255, blank=True, null=True,

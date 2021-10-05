@@ -1,23 +1,22 @@
 from django.contrib.auth import get_user_model
-from django.http import Http404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets, permissions, views, mixins, generics
-from rest_framework.decorators import action, api_view
+from rest_framework import viewsets, permissions, views, mixins
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from betting.actions import *
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
-    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
-from betting.models import Bet, BetQuestion, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
+    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
+    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR
+from betting.models import Bet, BetQuestion, Match, DepositMethod, Announcement, Deposit, Withdraw, Transfer, \
     QuestionOption
 from users.backends import jwt_writer, get_current_club
-from users.models import Club, User as MainUser, login_key, Notification
+from users.models import Club, User as MainUser, Notification
 from .action_data import action_data
-from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
-    ClubPermissionClass, TransactionPermissionClass, UserViewPermission
-from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
+from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPermissionClass, \
+    TransactionPermissionClass, UserViewPermission, IsAdminOrReadOnly
+from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
     TransferClubSerializer, BetQuestionDetailsSerializer
@@ -75,15 +74,19 @@ class ActionView(views.APIView):
         Select Question Winner\n
         To select a question winner. payload should be\n
         ['action_code': {A_QUESTION_SELECT_WINNER}, 'question_id': question id, 'option_id': option id]\n\n
-        Pay Question\n
-        To pay a question. payload should be\n
-        ['action_code': {A_QUESTION_PAY}, 'question_id': question id]\n\n
-        Revert Payment Question\n
+        Unselect Question Winner\n
         If a question is paid and you use this, everything will be changed 
         to as it was before payment. payload should be\n
-        ['action_code': {A_QUESTION_UN_PAY}, 'question_id': question id]\n\n
+        ['action_code': {A_QUESTION_UNSELECT_WINNER}, 'question_id': question id]\n\n
+        Refund a question\n
         Refund a question. payload should be\n
         ['action_code': {A_QUESTION_REFUND}, 'question_id': question id]\n\n
+        Make Game Editor\n
+        User will be converted to game editor. payload should be\n
+        ['action_code': {A_MAKE_GAME_EDITOR}, 'user_id': user id]\n\n
+        Remove Game Editor\n
+        User will be converted to regular user. payload should be\n
+        ['action_code': {A_REMOVE_GAME_EDITOR}, 'user_id': user id]\n\n
         """
         user: User = self.request.user
         club: Club = get_current_club(self.request)
@@ -218,29 +221,6 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['match', 'match__game_name', 'status', 'winner']
 
 
-class ChangePassword(views.APIView):
-    """
-    Change user password\n
-    Only post is allowed. User must be logged in. Use this API to change user password.
-    Payload\n
-    {'password': 'New Password'}
-    """
-
-    def post(self, *args, **kwargs):
-        user = self.request.user
-        password = self.request.POST.get('password') or self.request.data.get('password')
-        if password and user and user.is_authenticated:
-            user.set_password(password)
-            user.last_login = timezone.now()
-            user.login_key = login_key()
-            user.save()
-            data = RegisterSerializer(user).data
-            data.pop('jwt')
-            jwt_str = jwt_writer(**data)
-            return Response({'jwt': jwt_str})
-        return Response({'detail': 'Password is not supplied or user is not logged in.'}, status=400)
-
-
 class ClubViewSet(viewsets.ModelViewSet):
     """
     list:
@@ -252,6 +232,16 @@ class ClubViewSet(viewsets.ModelViewSet):
     permission_classes = [ClubPermissionClass]
     filter_backends = [SearchFilter]
     search_fields = ['name']
+
+
+class DepositMethodViewSet(viewsets.ModelViewSet):
+    """
+    Only superuser can add, change and delete. Anyone can view.
+    """
+    queryset = DepositMethod.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['number1', 'number2']
 
 
 class DepositViewSet(viewsets.ModelViewSet):
@@ -303,7 +293,7 @@ class Login(views.APIView):
         if user.check_password(password):
             user.last_login = timezone.now()
             user.save()
-            data = RegisterSerializer(user).data
+            data = UserDetailsSerializer(user).data
             data.pop('jwt')
             jwt_str = jwt_writer(**data)
             return Response({'jwt': jwt_str})
@@ -346,48 +336,6 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user)
-
-
-class RegisterViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin,
-                      mixins.DestroyModelMixin, viewsets.GenericViewSet):
-    """
-    partial_update:
-    Update part of user profile
-    update:
-    Update current user
-    retrieve:
-    Return the given user.
-    list:
-    ***********This is not allowed here.***********
-    create:
-    Create a new user instance. Logged in at same time. Use *jwt* sent through response.
-    """
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    permission_classes = [RegisterPermissionClass]
-
-
-@api_view(['GET'])
-def available_methods(request):
-    """
-    get:
-    Returns a list of available methods for deposit and withdraw methods
-    """
-    methods = [{
-        "id": method.code,
-        "to_show": method.name,
-        "numbers": [
-            {
-                "id": 1,
-                "number": method.number1
-            },
-            {
-                "id": 2,
-                "number": method.number2
-            }
-        ]} for
-        method in DepositWithdrawMethod.objects.all()]
-    return Response({'methods': methods})
 
 
 class WithdrawViewSet(viewsets.ModelViewSet):

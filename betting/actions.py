@@ -1,6 +1,5 @@
 from typing import Union, Type
 
-from django.db.models import F
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -55,19 +54,19 @@ def end_match_now(match_id) -> Union[Match, bool]:
 def hide_question(question_id: int) -> Union[BetQuestion, bool]:
     if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
         return False
-    return BetQuestion.objects.filter(pk=question_id).update(hidden=True)
+    return BetQuestion.objects.filter(pk=question_id).update(status=STATUS_HIDDEN)
 
 
 def end_question_now(question_id: int) -> Union[BetQuestion, bool]:
     if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
         return False
-    return BetQuestion.objects.filter(pk=question_id).update(end_time=timezone.now())
+    return BetQuestion.objects.filter(pk=question_id).update(status=STATUS_CLOSED)
 
 
 def lock_question(question_id: int) -> Union[BetQuestion, bool]:
     if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
         return False
-    return BetQuestion.objects.filter(pk=question_id).update(locked=True)
+    return BetQuestion.objects.filter(pk=question_id).update(status=STATUS_LOCKED)
 
 
 def select_question_winner(question_id: int, option_id: int) -> Union[BetQuestion, bool]:
@@ -75,45 +74,46 @@ def select_question_winner(question_id: int, option_id: int) -> Union[BetQuestio
         return False
     if not option_id or not QuestionOption.objects.filter(pk=option_id).exists():
         return False
-    return BetQuestion.objects.filter(pk=question_id).update(winner_id=option_id)
-
-
-def pay_question(question_id: int) -> bool:
-    question = get_object_or_404(BetQuestion, pk=question_id)
-    if question.paid:
-        return False
-    question.paid = True  # To avoid reprocessing the bet scope
-    if not question.winner:
-        return False
-
-    bet_winners = question.bet_set.values('id').filter(choice=question.winner)
-    bet_losers = question.bet_set.exclude(choice=question.winner)
+    question = BetQuestion.objects.get(pk=question_id)
+    winner = QuestionOption.objects.get(pk=option_id)
+    question.status = STATUS_PAID
+    question.winner = winner
+    bet_winners = question.bet_set.values('id').filter(choice=winner)
+    bet_losers = question.bet_set.exclude(choice=winner)
     for bet in bet_winners:
         pay_bet(bet.id)
     bet_losers.update(is_winner=False, status=STATUS_PAID)
     question.save()  # To avoid reprocessing the bet scope
-    return True
+    return question
 
 
-def un_pay_question(question_id: int) -> bool:
-    question = get_object_or_404(BetQuestion, pk=question_id)
-    if not question.paid:
+def unselect_question_winner(question_id: int, option_id: int) -> Union[BetQuestion, bool]:
+    if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
         return False
-    question.paid = False  # To avoid reprocessing the bet scope
-    bet_winners = question.bet_set.filter(choice=question.winner)
-    bet_losers = question.bet_set.exclude(choice=question.winner)
+    if not option_id or not QuestionOption.objects.filter(pk=option_id).exists():
+        return False
+    question = BetQuestion.objects.get(pk=question_id)
+    winner = QuestionOption.objects.get(pk=option_id)
+    if not question.winner:
+        return False
+    question.status = STATUS_LOCKED
+    question.winner = None
+    bet_winners = question.bet_set.values('id').filter(choice=winner)
+    bet_losers = question.bet_set.exclude(choice=winner)
     for bet in bet_winners:
         un_pay_bet(bet.id)
     bet_losers.update(is_winner=None, status=STATUS_PENDING)
     question.save()  # To avoid reprocessing the bet scope
-    return True
+    return question
 
 
 def refund_question(question_id: int) -> bool:
-    question = get_object_or_404(BetQuestion, pk=question_id)
+    if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
+        return False
+    question = BetQuestion.objects.get(pk=question_id)
     for bet in question.bet_set.all():
         refund_bet(bet.id)
-    question.paid = False
+    question.status = STATUS_REFUNDED
     question.save()  # To avoid reprocessing the bet scope
     return True
 

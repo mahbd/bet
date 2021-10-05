@@ -1,5 +1,6 @@
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
-    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
+    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
+    A_QUESTION_REFUND, A_MAKE_GAME_EDITOR, A_REMOVE_GAME_EDITOR
 
 action_data = {
     # Match Actions
@@ -36,16 +37,20 @@ action_data = {
         'permission': 'user.is_staff or user.game_editor or user.is_superuser',
         'function': 'select_question_winner(data.get("question_id"), data.get("option_id"))',
     },
-    A_QUESTION_PAY: {
+    A_QUESTION_UNSELECT_WINNER: {
         'permission': 'user.is_staff or user.game_editor or user.is_superuser',
-        'function': 'pay_question(data.get("question_id"))',
-    },
-    A_QUESTION_UN_PAY: {
-        'permission': 'user.is_staff or user.game_editor or user.is_superuser',
-        'function': 'un_pay_question(data.get("question_id"))',
+        'function': 'unselect_question_winner(data.get("question_id"), data.get("option_id"))',
     },
     A_QUESTION_REFUND: {
         'permission': 'user.is_staff or user.game_editor or user.is_superuser',
         'function': 'refund_question(data.get("question_id"))',
+    },
+    A_MAKE_GAME_EDITOR: {
+        'permission': 'user.is_superuser',
+        'function': 'make_game_editor(data.get("user_id"))',
+    },
+    A_REMOVE_GAME_EDITOR: {
+        'permission': 'user.is_superuser',
+        'function': 'remove_game_editor(data.get("user_id"))',
     }
 }
