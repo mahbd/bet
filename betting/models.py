@@ -5,7 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from betting.choices import GAME_CHOICES, DEPOSIT_WITHDRAW_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
-    STATUS_AWAITING_RESULT
+    STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN
 from users.models import User, Club
 
 default_configs = {
@@ -141,24 +141,21 @@ config = Config()
 
 
 class Match(models.Model):
-    end_time = models.DateTimeField(help_text="When match will be locked for betting.")
+    created_at = models.DateTimeField(auto_now_add=True)
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
-    hidden = models.BooleanField(default=False)
-    locked = models.BooleanField(default=False)
-    start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
-    title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
-
-    def is_live(self):
-        return not self.locked and self.start_time <= timezone.now() <= self.end_time
-
-    def is_locked(self):
-        return self.locked or self.end_time < timezone.now()
+    score = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=255, choices=MATCH_STATUS_CHOICES, default=STATUS_HIDDEN)
+    start_time = models.DateTimeField(default=timezone.now, blank=True, null=True)
+    team_a_name = models.CharField(max_length=255)
+    team_b_name = models.CharField(max_length=255)
+    team_a_color = models.CharField(max_length=255, blank=True, null=True)
+    team_b_color = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
-        return f'{self.title}'
+        return f'{self.team_a_name} vs {self.team_b_name}'
 
     class Meta:
-        ordering = ['-end_time', '-start_time', 'game_name']
+        ordering = ['-created_at']
 
 
 class QuestionOption(models.Model):
@@ -179,7 +176,7 @@ class BetQuestion(models.Model):
 
     def is_locked(self):
         return bool(
-            self.locked or self.match.is_locked() or self.winner or (self.end_time and self.end_time <= timezone.now()))
+            self.locked or self.match.locked or self.winner or (self.end_time and self.end_time <= timezone.now()))
 
     def __str__(self):
         return f'{self.question}'

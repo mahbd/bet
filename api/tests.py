@@ -28,7 +28,7 @@ def set_up_helper() -> (Club, Club, User, User, str, str, str, dict, dict, int, 
     jwt2 = c.post('/api/login/', data={'username': 'test2', 'password': '1234'}).json()['jwt']
     headers_super = {'HTTP_x-auth-token': jwt1, 'content_type': 'application/json', }
     headers_user = {'HTTP_x-auth-token': jwt2, 'content_type': 'application/json', }
-    match_id = Match.objects.create(title='ABC', game_name='football', end_time=timezone.now() + timedelta(days=1)).id
+    match_id = Match.objects.create(team_a_name='A', team_b_name='B', game_name='football').id
     question_id = BetQuestion.objects.create(match_id=match_id, question='Winner?').id
     option_id = QuestionOption.objects.create(option='Bad Way', rate='1.3').id
     BetQuestion.objects.get(pk=question_id).options.add(question_id)
@@ -453,52 +453,36 @@ class MatchTest(TestCase):
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id) = (data[i] for i in range(10))
+        self.match_data = {
+            'game_name': 'football',
+            'team_a_name': 'A',
+            'team_b_name': 'B',
+        }
 
     def test_create_match_superuser(self):
         headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
+        response = c.post('/api/match/', self.match_data, **headers)
         self.assertEqual(response.status_code, 201, f'Super user should be able to create match.\n{response.content}')
 
     def test_create_match_regular_user(self):
         headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
-        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
+        response = c.post('/api/match/', self.match_data, **headers)
         self.assertNotEqual(response.status_code, 201, f'User shouldn\'t be able to create match')
 
     def test_update_match_superuser(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        response = c.get(f'/api/match/{mid}/', **headers)
-        self.assertEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
+        response = c.patch(f'/api/match/{self.match_id}/', data={'team_a_name': 'India'}, **self.headers_super)
+        self.assertEqual(response.json()['team_a_name'], 'India', f'Must be able to update.\n{response.content}')
 
     def test_update_match_user(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))}, **headers).json()['id']
-        headers['HTTP_x-auth-token'] = self.jwt2
-        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        response = c.get(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        self.assertNotEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
+        response = c.patch(f'/api/match/{self.match_id}/', data={'team_a_name': 'India'}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, f'Must not be able to update.\n{response.content}')
 
     def test_delete_match_superuser(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        response = c.delete(f'/api/match/{mid}/', **headers)
+        response = c.delete(f'/api/match/{self.match_id}/', **self.headers_super)
         self.assertEqual(response.status_code, 204, 'Should be able to delete')
 
     def test_delete_match_user(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
-        response = c.delete(f'/api/match/{mid}/', **headers)
+        response = c.delete(f'/api/match/{self.match_id}/', **self.headers_user)
         self.assertEqual(response.status_code, 403, 'Should not be able to delete')
 
 

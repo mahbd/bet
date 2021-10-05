@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
+
 api_view
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator
@@ -178,20 +179,10 @@ class DepositSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
-    is_live = serializers.SerializerMethodField(read_only=True)
-    is_locked = serializers.SerializerMethodField(read_only=True)
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_live(self, match: Match) -> bool:
-        return match.is_live()
-
-    # noinspection PyMethodMayBeStatic
-    def get_is_locked(self, match: Match) -> bool:
-        return match.is_locked()
-
     class Meta:
         model = Match
-        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'locked', 'hidden', 'start_time', 'title',)
+        fields = ('created_at', 'game_name', 'score', 'status', 'start_time', 'team_a_name', 'team_b_name',
+                  'team_a_color', 'team_b_color')
         read_only_fields = ('id',)
 
 

@@ -343,12 +343,8 @@ class MatchViewSet(viewsets.ModelViewSet):
     list:
     Return a list of matches\n
     To get list of matches of a game \n
-    /api/match/?game_name={{ game_name }}\n
-    To get only active matches \n
-    /api/match/?active_only=true \n
-    To get only active matches of a game\n
-    /api/match/?active_only=true&game_name={{ game_name }} \n
-    Allowed game names: football|cricket|tennis|others
+    You can filter by status and game_name\n
+    You can search by game_name, team_a_name and team_b_name\n
     create:
     Create an instance of match. Only game_editor enabled user and superuser can create new match
     retrieve:
@@ -358,19 +354,12 @@ class MatchViewSet(viewsets.ModelViewSet):
     partial_update:
     Update the match. Only game_editor enabled user and superuser can update match.
     """
-
-    def get_queryset(self, *args, **kwargs):
-        game_name = self.request.GET.get('game_name')
-        active_only = self.request.GET.get('active_only', False)
-        match_list = Match.objects.all()
-        if active_only:
-            match_list = match_list.filter(end_time__gte=timezone.now())
-        if game_name:
-            match_list = match_list.filter(game_name=game_name)
-        return match_list
-
+    queryset = Match.objects.all()
     serializer_class = MatchSerializer
     permission_classes = [MatchPermissionClass]
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['game_name', 'team_a_name', 'team_b_name']
+    filterset_fields = ['game_name', 'status']
 
 
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):

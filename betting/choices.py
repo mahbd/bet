@@ -52,7 +52,16 @@ COMMISSION_CHOICES = (
     (COMMISSION_REFER, 'Refer commission'),
     (COMMISSION_CLUB, 'Club commission'),
 )
-
+STATUS_LIVE = 'live'
+STATUS_HIDDEN = 'hidden'
+STATUS_CLOSED = 'closed'
+STATUS_LOCKED = 'locked'
+MATCH_STATUS_CHOICES = (
+    (STATUS_LIVE, 'Live'),
+    (STATUS_HIDDEN, 'Hidden'),
+    (STATUS_CLOSED, 'Closed'),
+    (STATUS_LOCKED, 'Locked'),
+)
 STATUS_PENDING = 'pending'
 STATUS_PAID = 'paid'
 STATUS_REFUNDED = 'refunded'
