@@ -10,14 +10,13 @@ def login_key():
 
 
 class Club(models.Model):
-    admin = models.OneToOneField('User', on_delete=models.SET_NULL, null=True, blank=True, help_text="Club admin id")
-    name = models.CharField(max_length=255, help_text="Name of the club")
-    balance = models.FloatField(default=0,
-                                validators=[MinValueValidator(0)],
-                                help_text='Club\'s current balance.')
+    admin = models.OneToOneField('User', on_delete=models.SET_NULL,
+                                 null=True, blank=True, help_text="Club admin id")
+    balance = models.FloatField(default=0)
     club_commission = models.FloatField(default=2)
-    username = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
+    username = models.CharField(max_length=255, unique=True)
 
     def __str__(self):
         return self.name

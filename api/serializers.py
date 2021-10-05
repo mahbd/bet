@@ -148,10 +148,21 @@ class BetSerializer(serializers.ModelSerializer):
         return attrs
 
 
+# noinspection PyMethodMayBeStatic
 class ClubSerializer(serializers.ModelSerializer):
+    total_user = serializers.SerializerMethodField(read_only=True)
+    total_user_balance = serializers.SerializerMethodField(read_only=True)
+
+    def get_total_user(self, club: Club) -> int:
+        return club.user_set.all().count()
+
+    def get_total_user_balance(self, club: Club):
+        return club.user_set.all().aggregate(Sum('balance'))['balance__sum'] or 0
+
     class Meta:
         model = Club
-        fields = ('admin', 'balance', 'id', 'name', 'username', 'password', 'club_commission')
+        fields = ('admin', 'balance', 'club_commission', 'id', 'name', 'password', 'username',
+                  'total_user', 'total_user_balance')
         read_only_fields = ('admin', 'id',)
         extra_kwargs = {
             'password': {'write_only': True},
@@ -181,7 +192,7 @@ class DepositSerializer(serializers.ModelSerializer):
 class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
-        fields = ('created_at', 'game_name', 'score', 'status', 'start_time', 'team_a_name', 'team_b_name',
+        fields = ('created_at', 'game_name', 'id', 'score', 'status', 'start_time', 'team_a_name', 'team_b_name',
                   'team_a_color', 'team_b_color')
         read_only_fields = ('id',)
 

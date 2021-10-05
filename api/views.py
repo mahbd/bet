@@ -253,27 +253,14 @@ class ChangePassword(views.APIView):
 class ClubViewSet(viewsets.ModelViewSet):
     """
     list:
-    Returns list of clubs
-    update:
-    Update club name. User must be club admin.
-    partial_update:
-    Update club name. User must be club admin.
-    retrieve:
-    Returns club details of that id
+    Returns list of clubs\n
+    You can search club by name\n
     """
     queryset = Club.objects.all()
     serializer_class = ClubSerializer
     permission_classes = [ClubPermissionClass]
-
-    @action(methods=['GET'], detail=True, permission_classes=[permissions.IsAuthenticated])
-    def club_users(self, request, pk, *args, **kwargs):
-        """
-        get:
-        Returns list of club users. User must be a member of that club
-        """
-        club = get_object_or_404(Club, id=pk)
-        users = User.objects.filter(user_club=club)
-        return Response({"results": UserListSerializer(users, many=True).data})
+    filter_backends = [SearchFilter]
+    search_fields = ['name']
 
 
 class DepositViewSet(viewsets.ModelViewSet):
