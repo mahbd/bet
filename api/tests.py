@@ -4,6 +4,8 @@ from django.test import TestCase, Client
 from django.utils import timezone
 
 from api.serializers import UserSerializer
+from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
+    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer
 from users.models import User, Club
 
@@ -15,7 +17,7 @@ def increase_balance(user: User, amount):
     user.save()
 
 
-def set_up_helper():
+def set_up_helper() -> (Club, Club, User, User, str, str, str, dict, dict, int, int, int):
     club1 = Club.objects.create(name='Test Club1', balance=5000, username='test_club1', password='test_pass1')
     club2 = Club.objects.create(name='Test Club2', balance=5000, username='test_club2', password='test_pass2')
     user1 = User.objects.create_superuser(username='test1', email='teng@gmail.com',
@@ -26,242 +28,172 @@ def set_up_helper():
     jwt2 = c.post('/api/login/', data={'username': 'test2', 'password': '1234'}).json()['jwt']
     headers_super = {'HTTP_x-auth-token': jwt1, 'content_type': 'application/json', }
     headers_user = {'HTTP_x-auth-token': jwt2, 'content_type': 'application/json', }
-    match_id = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                           'end_time': str(timezone.now() + timedelta(days=1))},
-                      **headers_super).json()['id']
-    question = c.post('/api/bet-question/',
-                      data={'match': match_id, 'question': 'who will win?',
-                            'options': [{'option': 'hello', 'rate': 1.6}]}, **headers_super).json()
-    question_id, option_id = question['id'], question['options'][0]['id']
+    match_id = Match.objects.create(title='ABC', game_name='football', end_time=timezone.now() + timedelta(days=1)).id
+    question_id = BetQuestion.objects.create(match_id=match_id, question='Winner?').id
+    option_id = QuestionOption.objects.create(option='Bad Way', rate='1.3').id
+    BetQuestion.objects.get(pk=question_id).options.add(question_id)
     return club1, club2, user1, user2, jwt1, jwt2, headers_super, headers_user, match_id, question_id, option_id
 
 
-class ClubTest(TestCase):
-    def setUp(self):
+class ActionTestCase(TestCase):
+    def setUp(self) -> None:
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id) = (data[i] for i in range(10))
-        self.api = '/api/club/'
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.api = '/api/actions/'
+        self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
+        self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
 
-    def test_create_club(self):
-        response = c.post(self.api, {'name': 'Hi Club', 'username': 'abc_ab', 'password': '123456'},
+    def test_lock_match(self):
+        response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to lock match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.locked, True, 'Should be able to lock match')
+
+    def test_lock_match_staff(self):
+        self.user2.is_staff = True
+        self.user2.save()
+        response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'Should be able to lock match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.locked, True, 'Should be able to lock match')
+
+    def test_lock_match_game_editor(self):
+        self.user2.game_editor = True
+        self.user2.save()
+        response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'Should be able to lock match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.locked, True, 'Should be able to lock match')
+
+    def test_lock_match_user(self):
+        response = c.post(self.api, {'action_code': A_MATCH_LOCK, 'match_id': self.match_id}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Should not be able to lock match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.locked, False, 'Should not be able to lock match')
+
+    def test_hide_match(self):
+        response = c.post(self.api, {'action_code': A_MATCH_HIDE, 'match_id': self.match_id}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to hide match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.hidden, True, 'Should be able to hide match')
+
+    def test_hide_match_user(self):
+        response = c.post(self.api, {'action_code': A_MATCH_HIDE, 'match_id': self.match_id}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Should not be able to hide match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.hidden, False, 'Should not be able to hide match')
+
+    def test_match_go_live(self):
+        response = c.post(self.api, {'action_code': A_MATCH_GO_LIVE, 'match_id': self.match_id}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.is_live(), True, 'Should be able to change start time of match')
+
+    def test_match_end_match(self):
+        response = c.post(self.api, {'action_code': A_MATCH_END_NOW, 'match_id': self.match_id}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        match = Match.objects.get(pk=self.match_id)
+        self.assertEqual(match.end_time <= timezone.now(), True, 'Should be able to change start time of match')
+
+    def test_lock_question(self):
+        response = c.post(self.api, {'action_code': A_QUESTION_LOCK, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 201, f'Should be able to create club\n{response.content}')
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        question = BetQuestion.objects.get(pk=self.question_id)
+        self.assertEqual(question.locked, True, 'Should be able to change start time of match')
 
-    def test_create_club_duplicate_club_username(self):
-        response = c.post(self.api, {'name': 'Hi Club', 'username': 'test_club1', 'password': '123456'},
+    def test_hide_question(self):
+        response = c.post(self.api, {'action_code': A_QUESTION_HIDE, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 400, 'Should not be able to create club')
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        question = BetQuestion.objects.get(pk=self.question_id)
+        self.assertEqual(question.hidden, True, 'Should be able to change start time of match')
 
-    def test_create_club_duplicate_username(self):
-        response = c.post(self.api, {'name': 'Hi Club', 'username': 'test1', 'password': '123456'},
+    def test_end_question_now(self):
+        response = c.post(self.api, {'action_code': A_QUESTION_END_NOW, 'question_id': self.question_id},
                           **self.headers_super)
-        self.assertEqual(response.status_code, 400, 'Should be able to create club')
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        question = BetQuestion.objects.get(pk=self.question_id)
+        self.assertEqual(question.end_time <= timezone.now(), True, 'Should be able to change start time of match')
 
-    def test_create_club_regular_user(self):
-        response = c.post(self.api, {'name': 'Hi Club', 'username': 'club_bb', 'password': '123456'},
-                          **self.headers_user)
-        self.assertEqual(response.status_code, 403, 'Should not be able to create club')
+    def test_question_select_winner(self):
+        response = c.post(self.api, {'action_code': A_QUESTION_SELECT_WINNER, 'question_id': self.question_id,
+                                     'option_id': self.option_id}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        question = BetQuestion.objects.get(pk=self.question_id)
+        self.assertEqual(question.winner_id, self.option_id, 'Should be able to change start time of match')
 
-    # Update club details
-    def test_update_club(self):
-        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
-                                                           'username': 'abc_ab1', 'password': '123457'},
-                           **self.headers_super)
-        self.assertEqual(response.status_code, 200, f'Should be able to update club\n{response.content}')
-        data = response.json()
-        self.club1.refresh_from_db()
-        self.assertEqual(data['name'], 'Hi Club2', f'Should be able to update club\n{response.content}')
-        self.assertEqual(data['club_commission'], 5.0, f'Should be able to update club\n{response.content}')
-        self.assertEqual(data['username'], 'abc_ab1', f'Should be able to update club\n{response.content}')
-        self.assertEqual(self.club1.password, '123457', f'Should be able to update club\n{response.content}')
+    def test_question_pay(self):
+        question = BetQuestion.objects.get(pk=self.question_id)
+        question.winner_id = self.option_id
+        question.save()
+        response = c.post(self.api, {'action_code': A_QUESTION_PAY, 'question_id': self.question_id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to pay question')
+        question.refresh_from_db()
+        self.assertEqual(question.paid, True, 'Should be able to pay question')
 
-    def test_update_club_admin(self):
-        self.club1.admin = self.user2
-        self.club1.save()
-        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
-                                                           'username': 'abc_ab1', 'password': '123457'},
-                           **self.headers_user)
-        self.assertEqual(response.status_code, 200, f'Should be able to update club\n{response.content}')
-        data = response.json()
-        self.assertEqual(data['name'], 'Hi Club2', f'Should be able to update club\n{response.content}')
-        self.assertEqual(data['club_commission'], 5.0, f'Should be able to update club\n{response.content}')
-        self.assertEqual(data['username'], 'abc_ab1', f'Should be able to update club\n{response.content}')
+    def test_question_un_pay(self):
+        question = BetQuestion.objects.get(pk=self.question_id)
+        question.paid = True
+        question.save()
+        response = c.post(self.api, {'action_code': A_QUESTION_UN_PAY, 'question_id': self.question_id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to un pay question')
+        question.refresh_from_db()
+        self.assertEqual(question.paid, False, 'Should be able to un pay question')
 
-    def test_update_club_user(self):
-        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
-                                                           'username': 'abc_ab1', 'password': '123457'},
-                           **self.headers_user)
-        self.assertEqual(response.status_code, 403, f'Should not be able to update club')
-
-    def test_update_club_duplicate_username(self):
-        response = c.patch(f'{self.api}{self.club1.id}/', {'username': 'test1'}, **self.headers_super)
-        self.assertEqual(response.status_code, 400, f'duplicate username should be prohibited\n{response.content}')
+    def test_question_refund(self):
+        response = c.post(self.api, {'action_code': A_QUESTION_REFUND, 'question_id': self.question_id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
+        question = BetQuestion.objects.get(pk=self.question_id)
+        self.assertEqual(question.paid, False, 'Should be able to change start time of match')
 
 
-class RegisterTest(TestCase):
-    def setUp(self):
-        data = set_up_helper()
-        (self.club, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id) = (data[i] for i in range(10))
-
-    # Creation Test
-    def test_can_register_valid_data(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'user_club': self.club.id,
-                                            'password': 'fds sdf'})
-        self.assertEqual(request.status_code, 201, msg=f'Should be able to create user.\n{request.content}')
-
-    def test_can_register_without_club(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
-        self.assertNotEqual(request.status_code, 201, msg=f"Should not be able to create user without club.")
-
-    def test_duplicate_username(self):
-        request = c.post('/api/register/', {'username': 'test2',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
-        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
-
-    def test_duplicate_username_club(self):
-        request = c.post('/api/register/', {'username': 'test_club1',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
-        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
-
-    def test_duplicate_email(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'teng@gmail.com',
-                                            'phone': '017745445',
-                                            'password': 'fd sdf fd'})
-        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
-
-    def test_duplicate_phone(self):
-        request = c.post('/api/register/', {'username': 'test3',
-                                            'email': 'testing@gmail.com',
-                                            'phone': '01774545',
-                                            'password': 'fd sdf fd'})
-        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
-
-    # Update test
-    def test_update_user_club(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.get('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
-        self.assertEqual(response.json()['club_detail']['name'], self.club.name, msg='Wrong club name')
-        response = c.patch('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
-        self.assertEqual(response.json()['club_detail']['name'], self.club2.name, msg='Club should be changed')
-
-    def test_update_user_email_phone(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.patch('/api/user-detail-update/', {'email': 'himan@gma.com', 'phone': '45454545'}, **headers)
-        self.assertEqual(response.json()['phone'], '45454545', msg='Phone is not updated')
-        self.assertEqual(response.json()['email'], 'himan@gma.com', msg='Email is not updated')
-
-
-class LoginTest(TestCase):
-    def setUp(self):
+class AllTransactionTestCase(TestCase):
+    def setUp(self) -> None:
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id) = (data[i] for i in range(10))
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
+        self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
 
-    def test_login_user(self):
-        request = c.post('/api/login/', data={'username': 'test2', 'password': '1234'})
-        self.assertEqual(request.status_code, 200, msg=f'User should be able to login.\n{request.content}')
-        request = c.post('/api/login/', data={'username': 'test1', 'password': '12354'})
-        self.assertEqual(request.status_code, 200, msg=f'User should be able to login.\n{request.content}')
+    def test_get_all(self):
+        Transfer.objects.create(amount=500, sender=self.user2, recipient=self.user1)
+        Transfer.objects.create(amount=500, sender=self.user2, recipient=self.user1)
+        Deposit.objects.create(amount=500, user=self.user2)
+        Withdraw.objects.create(amount=500, user=self.user2)
+        response = c.get('/api/all_transactions/', **self.headers_user)
+        self.assertEqual(response.status_code, 200, 'Should be able to get list')
+        self.assertEqual(response.json()['count'], 4, '4 transactions present')
+        for response in response.json()['results']:
+            if response['type'] == 'deposit':
+                deposit = Deposit.objects.get(pk=response['id'])
+                self.assertEqual(deposit.status, response['status'], 'status is not same')
+            if response['type'] == 'withdraw':
+                withdraw = Withdraw.objects.get(pk=response['id'])
+                self.assertEqual(withdraw.status, response['status'], 'status is not same')
+            if response['type'] == 'transfer':
+                transfer = Transfer.objects.get(pk=response['id'])
+                self.assertEqual(transfer.status, response['status'], 'status is not same')
 
-    def test_login_club(self):
-        request = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'})
-        self.assertEqual(request.status_code, 200, msg=f'Club should be able to login.\n{request.content}')
-
-    def test_login_user_wrong_password(self):
-        request = c.post('/api/login/', data={'username': 'test1', 'password': '1254'})
-        self.assertNotEqual(request.status_code, 200, msg='User should not be able to login')
-
-    def test_login_user_wrong_username(self):
-        request = c.post('/api/login/', data={'username': 'test5', 'password': '1254'})
-        self.assertNotEqual(request.status_code, 200, msg='User should not be able to login')
-
-
-class MatchTest(TestCase):
-    def setUp(self):
-        data = set_up_helper()
-        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id) = (data[i] for i in range(10))
-
-    def test_create_match_superuser(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
-        self.assertEqual(response.status_code, 201, f'Super user should be able to create match.\n{response.content}')
-
-    def test_create_match_regular_user(self):
-        headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
-        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
-        self.assertNotEqual(response.status_code, 201, f'User shouldn\'t be able to create match')
-
-    def test_update_match_superuser(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        response = c.get(f'/api/match/{mid}/', **headers)
-        self.assertEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
-
-    def test_update_match_user(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))}, **headers).json()['id']
-        headers['HTTP_x-auth-token'] = self.jwt2
-        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        response = c.get(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
-        self.assertNotEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
-
-    def test_delete_match_superuser(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        response = c.delete(f'/api/match/{mid}/', **headers)
-        self.assertEqual(response.status_code, 204, 'Should be able to delete')
-
-    def test_delete_match_user(self):
-        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
-        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
-                                          'end_time': str(timezone.now() + timedelta(days=1))},
-                     **headers).json()['id']
-        headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
-        response = c.delete(f'/api/match/{mid}/', **headers)
-        self.assertEqual(response.status_code, 403, 'Should not be able to delete')
-
-
-class QuestionOptionTest(TestCase):
-    def setUp(self):
-        data = set_up_helper()
-        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id) = (data[i] for i in range(10))
-
-    def test_update_question_option(self):
-        response = c.patch(f'/api/question-option/1/',
-                           {'option': 'hello2', 'rate': '1.7'}, **self.headers_super)
-        self.assertEqual(response.status_code, 200, msg=f'Should be able to update option\n{response.content}')
-        self.assertEqual(response.json()['option'], 'hello2',
-                         msg=f'Should be able to update option\n{response.content}')
-        self.assertEqual(response.json()['rate'], 1.7,
-                         msg=f'Should be able to update option\n{response.content}')
-
-    def test_update_question_option_regular_user(self):
-        response = c.patch(f'/api/question-option/1/',
-                           {'option': 'hello2', 'rate': '1.7'}, **self.headers_user)
-        self.assertEqual(response.status_code, 403, msg=f'Should be able to update option\n{response.content}')
+    def test_get_all_club(self):
+        increase_balance(self.user2, 5000)
+        c.post('/api/bet/', data={'amount': 100, 'bet_question': self.question_id, 'choice': self.option_id},
+               **self.headers_user)
+        Deposit.objects.create(club=self.club1, amount=500)
+        response = c.get('/api/all_transactions/?club=true', **self.club_header)
+        self.assertEqual(response.status_code, 200, 'Should be able to get list')
+        self.assertEqual(response.json()['count'], 2, '2 transactions present')
+        for response in response.json()['results']:
+            if response['type'] == 'deposit':
+                deposit = Deposit.objects.get(pk=response['id'])
+                self.assertEqual(deposit.status, response['status'], 'status is not same')
+            if response['type'] == 'transfer':
+                transfer = Transfer.objects.get(pk=response['id'])
+                self.assertEqual(transfer.status, response['status'], 'status is not same')
 
 
 class BetQuestionTest(TestCase):
@@ -382,6 +314,69 @@ class BetTestCase(TestCase):
         self.assertEqual(response.status_code, 400, msg=f'Should not be able to bet to ended question')
 
 
+class ClubTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+        self.api = '/api/club/'
+
+    def test_create_club(self):
+        response = c.post(self.api, {'name': 'Hi Club', 'username': 'abc_ab', 'password': '123456'},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 201, f'Should be able to create club\n{response.content}')
+
+    def test_create_club_duplicate_club_username(self):
+        response = c.post(self.api, {'name': 'Hi Club', 'username': 'test_club1', 'password': '123456'},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 400, 'Should not be able to create club')
+
+    def test_create_club_duplicate_username(self):
+        response = c.post(self.api, {'name': 'Hi Club', 'username': 'test1', 'password': '123456'},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 400, 'Should be able to create club')
+
+    def test_create_club_regular_user(self):
+        response = c.post(self.api, {'name': 'Hi Club', 'username': 'club_bb', 'password': '123456'},
+                          **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Should not be able to create club')
+
+    # Update club details
+    def test_update_club(self):
+        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
+                                                           'username': 'abc_ab1', 'password': '123457'},
+                           **self.headers_super)
+        self.assertEqual(response.status_code, 200, f'Should be able to update club\n{response.content}')
+        data = response.json()
+        self.club1.refresh_from_db()
+        self.assertEqual(data['name'], 'Hi Club2', f'Should be able to update club\n{response.content}')
+        self.assertEqual(data['club_commission'], 5.0, f'Should be able to update club\n{response.content}')
+        self.assertEqual(data['username'], 'abc_ab1', f'Should be able to update club\n{response.content}')
+        self.assertEqual(self.club1.password, '123457', f'Should be able to update club\n{response.content}')
+
+    def test_update_club_admin(self):
+        self.club1.admin = self.user2
+        self.club1.save()
+        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
+                                                           'username': 'abc_ab1', 'password': '123457'},
+                           **self.headers_user)
+        self.assertEqual(response.status_code, 200, f'Should be able to update club\n{response.content}')
+        data = response.json()
+        self.assertEqual(data['name'], 'Hi Club2', f'Should be able to update club\n{response.content}')
+        self.assertEqual(data['club_commission'], 5.0, f'Should be able to update club\n{response.content}')
+        self.assertEqual(data['username'], 'abc_ab1', f'Should be able to update club\n{response.content}')
+
+    def test_update_club_user(self):
+        response = c.patch(f'{self.api}{self.club1.id}/', {'name': 'Hi Club2', 'club_commission': 5.0,
+                                                           'username': 'abc_ab1', 'password': '123457'},
+                           **self.headers_user)
+        self.assertEqual(response.status_code, 403, f'Should not be able to update club')
+
+    def test_update_club_duplicate_username(self):
+        response = c.patch(f'{self.api}{self.club1.id}/', {'username': 'test1'}, **self.headers_super)
+        self.assertEqual(response.status_code, 400, f'duplicate username should be prohibited\n{response.content}')
+
+
 class DepositTestCase(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()
@@ -428,41 +423,213 @@ class DepositTestCase(TestCase):
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
 
-class WithdrawTestCase(TestCase):
+class LoginTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+
+    def test_login_user(self):
+        request = c.post('/api/login/', data={'username': 'test2', 'password': '1234'})
+        self.assertEqual(request.status_code, 200, msg=f'User should be able to login.\n{request.content}')
+        request = c.post('/api/login/', data={'username': 'test1', 'password': '12354'})
+        self.assertEqual(request.status_code, 200, msg=f'User should be able to login.\n{request.content}')
+
+    def test_login_club(self):
+        request = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'})
+        self.assertEqual(request.status_code, 200, msg=f'Club should be able to login.\n{request.content}')
+
+    def test_login_user_wrong_password(self):
+        request = c.post('/api/login/', data={'username': 'test1', 'password': '1254'})
+        self.assertNotEqual(request.status_code, 200, msg='User should not be able to login')
+
+    def test_login_user_wrong_username(self):
+        request = c.post('/api/login/', data={'username': 'test5', 'password': '1254'})
+        self.assertNotEqual(request.status_code, 200, msg='User should not be able to login')
+
+
+class MatchTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+
+    def test_create_match_superuser(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
+        self.assertEqual(response.status_code, 201, f'Super user should be able to create match.\n{response.content}')
+
+    def test_create_match_regular_user(self):
+        headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
+        response = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                               'end_time': str(timezone.now() + timedelta(days=1))}, **headers)
+        self.assertNotEqual(response.status_code, 201, f'User shouldn\'t be able to create match')
+
+    def test_update_match_superuser(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                          'end_time': str(timezone.now() + timedelta(days=1))},
+                     **headers).json()['id']
+        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
+        response = c.get(f'/api/match/{mid}/', **headers)
+        self.assertEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
+
+    def test_update_match_user(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                          'end_time': str(timezone.now() + timedelta(days=1))}, **headers).json()['id']
+        headers['HTTP_x-auth-token'] = self.jwt2
+        c.patch(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
+        response = c.get(f'/api/match/{mid}/', data={'title': 'Fine Game', 'game_name': 'football'}, **headers)
+        self.assertNotEqual(response.json()['title'], 'Fine Game', f'Must be able to update.\n{response.content}')
+
+    def test_delete_match_superuser(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                          'end_time': str(timezone.now() + timedelta(days=1))},
+                     **headers).json()['id']
+        response = c.delete(f'/api/match/{mid}/', **headers)
+        self.assertEqual(response.status_code, 204, 'Should be able to delete')
+
+    def test_delete_match_user(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        mid = c.post('/api/match/', data={'title': 'Super Game', 'game_name': 'football',
+                                          'end_time': str(timezone.now() + timedelta(days=1))},
+                     **headers).json()['id']
+        headers = {'HTTP_x-auth-token': self.jwt2, 'content_type': 'application/json', }
+        response = c.delete(f'/api/match/{mid}/', **headers)
+        self.assertEqual(response.status_code, 403, 'Should not be able to delete')
+
+
+class QuestionOptionTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+
+    def test_update_question_option(self):
+        response = c.patch(f'/api/question-option/1/',
+                           {'option': 'hello2', 'rate': '1.7'}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, msg=f'Should be able to update option\n{response.content}')
+        self.assertEqual(response.json()['option'], 'hello2',
+                         msg=f'Should be able to update option\n{response.content}')
+        self.assertEqual(response.json()['rate'], 1.7,
+                         msg=f'Should be able to update option\n{response.content}')
+
+    def test_update_question_option_regular_user(self):
+        response = c.patch(f'/api/question-option/1/',
+                           {'option': 'hello2', 'rate': '1.7'}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, msg=f'Should be able to update option\n{response.content}')
+
+
+class RegisterTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+
+    # Creation Test
+    def test_can_register_valid_data(self):
+        request = c.post('/api/register/', {'username': 'test3',
+                                            'email': 'testing@gmail.com',
+                                            'phone': '017745445',
+                                            'user_club': self.club.id,
+                                            'password': 'fds sdf'})
+        self.assertEqual(request.status_code, 201, msg=f'Should be able to create user.\n{request.content}')
+
+    def test_can_register_without_club(self):
+        request = c.post('/api/register/', {'username': 'test3',
+                                            'email': 'testing@gmail.com',
+                                            'phone': '017745445',
+                                            'password': 'fd sdf fd'})
+        self.assertNotEqual(request.status_code, 201, msg=f"Should not be able to create user without club.")
+
+    def test_duplicate_username(self):
+        request = c.post('/api/register/', {'username': 'test2',
+                                            'email': 'testing@gmail.com',
+                                            'phone': '017745445',
+                                            'password': 'fd sdf fd'})
+        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
+
+    def test_duplicate_username_club(self):
+        request = c.post('/api/register/', {'username': 'test_club1',
+                                            'email': 'testing@gmail.com',
+                                            'phone': '017745445',
+                                            'password': 'fd sdf fd'})
+        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
+
+    def test_duplicate_email(self):
+        request = c.post('/api/register/', {'username': 'test3',
+                                            'email': 'teng@gmail.com',
+                                            'phone': '017745445',
+                                            'password': 'fd sdf fd'})
+        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
+
+    def test_duplicate_phone(self):
+        request = c.post('/api/register/', {'username': 'test3',
+                                            'email': 'testing@gmail.com',
+                                            'phone': '01774545',
+                                            'password': 'fd sdf fd'})
+        self.assertEqual(request.status_code, 400, msg=f"Should not be able to register with duplicate username.")
+
+    # Update test
+    def test_update_user_club(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        response = c.get('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
+        self.assertEqual(response.json()['club_detail']['name'], self.club.name, msg='Wrong club name')
+        response = c.patch('/api/user-detail-update/', {'user_club': self.club2.id}, **headers)
+        self.assertEqual(response.json()['club_detail']['name'], self.club2.name, msg='Club should be changed')
+
+    def test_update_user_email_phone(self):
+        headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }
+        response = c.patch('/api/user-detail-update/', {'email': 'himan@gma.com', 'phone': '45454545'}, **headers)
+        self.assertEqual(response.json()['phone'], '45454545', msg='Phone is not updated')
+        self.assertEqual(response.json()['email'], 'himan@gma.com', msg='Email is not updated')
+
+
+class TransferClubTestCase(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
-        self.api = '/api/withdraw/'
-        increase_balance(self.user2, 5000)
-        self.withdraw_id = c.post(self.api,
-                                  data={'amount': 500, 'user_account': '01445154', 'method': 'rocket', },
-                                  **self.headers_user).json()['id']
+        self.api = '/api/transfer/'
+        self.api_full = '/api/transfer/?club=true'
+        self.club1: Club = self.club1
+        self.club1.admin = self.user2
+        self.club1.balance = 500000
+        self.club1.save()
+        self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
+        self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
+        self.transfer_id = c.post(self.api_full,
+                                  data={'amount': 500}, **self.club_header).json()['id']
 
-    def test_create_withdraw(self):
-        response = c.post(self.api,
-                          data={'amount': 500, 'user_account': '01445154', 'method': 'rocket', }, **self.headers_user)
+    def test_create_club_transfer(self):
+        response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 201, msg=f'to withdraw\n{response.content}')
-        self.assertEqual(Withdraw.objects.get(id=response.json()['id']).user, self.user2, 'Wrong user')
+        self.assertEqual(Transfer.objects.get(id=response.json()['id']).club, self.club1, 'Wrong user')
+        self.assertEqual(Transfer.objects.get(id=response.json()['id']).recipient, self.club1.admin, 'Wrong user')
 
-    def test_create_withdraw_low(self):
-        response = c.post(self.api,
-                          data={'amount': 10, 'user_account': '01445154', 'method': 'rocket', }, **self.headers_user)
+    def test_create_transfer_multi(self):
+        c.post(self.api_full, data={'amount': 500}, **self.club_header)
+        response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
+        self.assertEqual(response.status_code, 400, msg=f'not to withdraw\n{response.content}\n '
+                                                        f'TC: {Transfer.objects.filter(sender=self.user2).count()}')
+
+    def test_create_transfer_low(self):
+        response = c.post(self.api_full, data={'amount': 5}, **self.club_header)
         self.assertEqual(response.status_code, 400, msg=f'low amount of withdraw should not be allowed')
 
-    def test_create_withdraw_high(self):
-        response = c.post(self.api,
-                          data={'amount': 100000, 'user_account': '01445', 'method': 'rocket'}, **self.headers_user)
+    def test_create_transfer_high(self):
+        response = c.post(self.api_full, data={'amount': 50000}, **self.club_header)
         self.assertEqual(response.status_code, 400, msg=f'high amount of deposit should not be allowed')
 
-    def test_update_withdraw(self):
-        response = c.patch(f'{self.api}{self.withdraw_id}/',
-                           data={'amount': 800, 'user_account': '014454548', 'method': 'rocket'}, **self.headers_user)
+    def test_update_transfer(self):
+        response = c.patch(f'{self.api}{self.transfer_id}/?club=true', data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
-    def test_update_withdraw_superuser(self):
-        response = c.patch(f'{self.api}{self.withdraw_id}/',
-                           data={'amount': 800, 'site_account': '014454548', 'method': 'rocket'}, **self.headers_super)
+    def test_update_transfer_superuser(self):
+        response = c.patch(f'{self.api}{self.transfer_id}/', data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
 
@@ -513,46 +680,39 @@ class TransferTestCase(TestCase):
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
 
-class TransferClubTestCase(TestCase):
+class WithdrawTestCase(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
-        self.api = '/api/transfer/'
-        self.api_full = '/api/transfer/?club=true'
-        self.club1: Club = self.club1
-        self.club1.admin = self.user2
-        self.club1.balance = 500000
-        self.club1.save()
-        self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
-        self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
-        self.transfer_id = c.post(self.api_full,
-                                  data={'amount': 500}, **self.club_header).json()['id']
+        self.api = '/api/withdraw/'
+        increase_balance(self.user2, 5000)
+        self.withdraw_id = c.post(self.api,
+                                  data={'amount': 500, 'user_account': '01445154', 'method': 'rocket', },
+                                  **self.headers_user).json()['id']
 
-    def test_create_club_transfer(self):
-        response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
+    def test_create_withdraw(self):
+        response = c.post(self.api,
+                          data={'amount': 500, 'user_account': '01445154', 'method': 'rocket', }, **self.headers_user)
         self.assertEqual(response.status_code, 201, msg=f'to withdraw\n{response.content}')
-        self.assertEqual(Transfer.objects.get(id=response.json()['id']).club, self.club1, 'Wrong user')
-        self.assertEqual(Transfer.objects.get(id=response.json()['id']).recipient, self.club1.admin, 'Wrong user')
+        self.assertEqual(Withdraw.objects.get(id=response.json()['id']).user, self.user2, 'Wrong user')
 
-    def test_create_transfer_multi(self):
-        c.post(self.api_full, data={'amount': 500}, **self.club_header)
-        response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
-        self.assertEqual(response.status_code, 400, msg=f'not to withdraw\n{response.content}\n '
-                                                        f'TC: {Transfer.objects.filter(sender=self.user2).count()}')
-
-    def test_create_transfer_low(self):
-        response = c.post(self.api_full, data={'amount': 5}, **self.club_header)
+    def test_create_withdraw_low(self):
+        response = c.post(self.api,
+                          data={'amount': 10, 'user_account': '01445154', 'method': 'rocket', }, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'low amount of withdraw should not be allowed')
 
-    def test_create_transfer_high(self):
-        response = c.post(self.api_full, data={'amount': 50000}, **self.club_header)
+    def test_create_withdraw_high(self):
+        response = c.post(self.api,
+                          data={'amount': 100000, 'user_account': '01445', 'method': 'rocket'}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'high amount of deposit should not be allowed')
 
-    def test_update_transfer(self):
-        response = c.patch(f'{self.api}{self.transfer_id}/?club=true', data={'amount': 500}, **self.club_header)
+    def test_update_withdraw(self):
+        response = c.patch(f'{self.api}{self.withdraw_id}/',
+                           data={'amount': 800, 'user_account': '014454548', 'method': 'rocket'}, **self.headers_user)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
-    def test_update_transfer_superuser(self):
-        response = c.patch(f'{self.api}{self.transfer_id}/', data={'amount': 500}, **self.club_header)
+    def test_update_withdraw_superuser(self):
+        response = c.patch(f'{self.api}{self.withdraw_id}/',
+                           data={'amount': 800, 'site_account': '014454548', 'method': 'rocket'}, **self.headers_super)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')

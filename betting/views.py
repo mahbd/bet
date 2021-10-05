@@ -6,9 +6,12 @@ from django.dispatch import receiver
 from django.http import HttpResponse
 from django.utils import timezone
 
+from log.views import data_error_log
 from users.views import total_user_balance, total_club_balance, notify_user
-from .models import TYPE_WITHDRAW, METHOD_TRANSFER, Bet, BetQuestion, METHOD_CLUB, Deposit, Withdraw, Transfer, Match, \
-    config, SOURCE_REFER, SOURCE_COMMISSION, ConfigModel, default_configs
+from .actions import accept_deposit, create_deposit, cancel_withdraw, cancel_deposit, cancel_transfer, refund_bet
+from .choices import SOURCE_REFER, SOURCE_COMMISSION, TYPE_WITHDRAW, METHOD_TRANSFER, METHOD_CLUB
+from .models import Bet, BetQuestion, Deposit, Withdraw, Transfer, Match, \
+    config, ConfigModel, default_configs
 
 
 def get_config_from_model(name: str, default=False) -> str:
@@ -20,96 +23,9 @@ def get_config_from_model(name: str, default=False) -> str:
         return str(default or default_configs[name])
 
 
-def create_deposit(user_id, amount, source, method=None, description=None, club=False):
-    deposit = Deposit()
-    if not club:
-        deposit.user_id = user_id
-    else:
-        deposit.club_id = user_id
-    deposit.method = method
-    deposit.amount = amount
-    deposit.description = description
-    deposit.deposit_source = source
-    deposit.save()
-    return deposit
-
-
-def pay_deposit(deposit: Deposit):
-    if deposit.user:
-        deposit.user.balance += deposit.amount
-        deposit.user.save()
-        deposit.balance = deposit.user.balance
-        notify_user(deposit.user, f"Deposit request on {deposit.created_at} amount"
-                                  f"{deposit.amount} confirmed")
-    elif deposit.club:
-        deposit.club.balance += deposit.amount
-        deposit.club.save()
-        deposit.balance = deposit.club.balance
-    deposit.status = True
-    deposit.save()
-
-
-def cancel_deposit(deposit: Deposit):
-    if deposit.status:
-        # Change user Balance
-        if deposit.user:
-            deposit.user.balance -= deposit.amount
-            deposit.user.save()
-            # Change deposit status
-            notify_user(deposit.user, f"Deposit request has been canceled placed on {deposit.created_at}."
-                                      f"Contact admin if you think it was wrong. Transaction id: "
-                                      f"{deposit.transaction_id} Amount: {deposit.amount} From "
-                                      f"account: {deposit.user_account} To account {deposit.site_account} "
-                                      f"Method: {deposit.method}")
-        elif deposit.club:
-            deposit.club.balance -= deposit.amount
-            deposit.club.save()
-            deposit.balance = deposit.club.balance
-            # Change deposit status
-            notify_user(deposit.club, f"Deposit request has been canceled placed on {deposit.created_at}."
-                                      f"Contact admin if you think it was wrong. Transaction id: "
-                                      f"{deposit.transaction_id} Amount: {deposit.amount} From "
-                                      f"account: {deposit.user_account} To account {deposit.site_account} "
-                                      f"Method: {deposit.method}", club=True)
-    deposit.status = False
-    deposit.save()
-
-
-@receiver(post_delete, sender=Deposit)
+@receiver(pre_delete, sender=Deposit)
 def post_delete_deposit(instance: Deposit, *args, **kwargs):
-    cancel_deposit(instance)
-
-
-def cancel_withdraw(withdraw: Withdraw):
-    """
-    Increase user balance and make withdraw status false
-    """
-    withdraw.status = False
-    withdraw.user.balance += withdraw.amount
-    withdraw.user.save()
-    withdraw.user_balance = withdraw.user.balance
-    withdraw.save()
-    notify_user(withdraw.user,
-                f"Withdraw of {withdraw.amount}BDT via {withdraw.method} to number {withdraw.user_account} "
-                f"placed on {withdraw.created_at} has been canceled and refunded")
-
-
-def accept_withdraw(withdraw):
-    """
-    Mark status true if status is null
-    Reduce balance and mark status true if status is False
-    """
-
-    if withdraw.status is None:
-        withdraw.status = True
-        withdraw.save()
-    else:
-        withdraw.status = True
-        withdraw.user.balance -= withdraw.amount
-        withdraw.user.save()
-        withdraw.balance = withdraw.user.balance
-        withdraw.save()
-    notify_user(withdraw.user, f'Withdraw request create on {withdraw.created_at} is accepted.')
+    cancel_deposit(instance.id, delete=True)
 
 
 @receiver(post_save, sender=Withdraw)
@@ -119,42 +35,13 @@ def post_save_withdraw(instance: Withdraw, created: bool, *args, **kwargs):
         instance.user.balance -= instance.amount
         instance.user.save()
         # Update user balance during withdraw
-        instance.user_balance = instance.user.balance
+        instance.balance = instance.user.balance
         instance.save()
 
 
 @receiver(post_delete, sender=Withdraw)
 def post_delete_withdraw(instance: Withdraw, *args, **kwargs):
-    cancel_withdraw(instance)
-
-
-def pay_transfer(transfer: Transfer):
-    deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
-    pay_deposit(deposit)
-    notify_user(transfer.recipient, f'You  received {transfer.amount} tk from user ##{transfer.sender.username}##, '
-                                    f'with transfer id ##{transfer.id}##')
-    transfer.status = True
-    transfer.save()
-
-
-def cancel_transfer(transfer: Transfer):
-    if transfer.sender:
-        notify_user(transfer.sender_id, f"Transfer of {transfer.amount}BDT to user {transfer.recipient.username} "
-                                        f"placed on {transfer.created_at} has been canceled and refunded")
-    notify_user(transfer.recipient_id, f"Transfer of {transfer.amount}BDT to you from {transfer.sender.username} "
-                                       f"placed on {transfer.created_at} has been canceled")
-    if transfer.status:
-        transfer.recipient.balance -= transfer.amount
-        transfer.recipient.save()
-    if transfer.status is None:
-        if transfer.sender:
-            transfer.sender.balance += transfer.amount
-            transfer.sender.save()
-        if transfer.club:
-            transfer.club.balance += transfer.amount
-            transfer.club.save()
-    transfer.status = False
-    transfer.save()
+    cancel_withdraw(instance.id)
 
 
 @receiver(post_save, sender=Transfer)
@@ -176,7 +63,7 @@ def post_save_transfer(instance: Transfer, created: bool, *args, **kwargs):
 
 @receiver(pre_delete, sender=Transfer)
 def post_delete_transfer(instance: Transfer, *args, **kwargs):
-    cancel_transfer(instance)
+    cancel_transfer(instance.id)
 
 
 def pay_refer(bet: Bet) -> float:
@@ -186,7 +73,7 @@ def pay_refer(bet: Bet) -> float:
         bet.user.referred_by.earn_from_refer += commission
         bet.user.referred_by.save()
         deposit = create_deposit(bet.user.referred_by_id, commission, SOURCE_REFER, SOURCE_REFER)
-        pay_deposit(deposit)
+        accept_deposit(deposit.id)
         notify_user(bet.user.referred_by, f"You earned {commission} from user "
                                           f"{bet.user.username}. Keep referring and "
                                           f"earn {refer_commission * 100}% commission from each bet")
@@ -200,18 +87,18 @@ def pay_commission(bet: Bet) -> float:
         commission = bet.amount * club.club_commission / 100
         deposit = create_deposit(user_id=club.id, amount=commission,
                                  source=SOURCE_COMMISSION, method=SOURCE_COMMISSION, club=True)
-        pay_deposit(deposit)
-        notify_user(bet.user.user_club, f"{bet.user.user_club.name} has "
-                                        f"earned {commission} from "
-                                        f"{bet.user.username}", club=True)
+        accept_deposit(deposit.id, message=f"{bet.user.user_club.name} has "
+                                           f"earned {commission} from "
+                                           f"{bet.user.username}")
         bet.user.userclubinfo.total_commission += commission
         bet.user.userclubinfo.save()
         return commission
+    data_error_log(description=f'User {bet.user_id} does not have valid club')
     return 0
 
 
 @receiver(post_save, sender=Bet)
-def post_process_bet(instance: Bet, created, *args, **kwargs):
+def post_save_bet(instance: Bet, created, *args, **kwargs):
     if created:
         # Reduce balance on bet
         instance.user.balance -= instance.amount
@@ -229,23 +116,9 @@ def post_process_bet(instance: Bet, created, *args, **kwargs):
         instance.user.userclubinfo.save()
 
 
-def refund_bet(bet: Bet):
-    # TODO: Verify logic
-    change = bet.win_amount / bet.win_rate - bet.win_amount
-    if not bet.paid or (bet.paid and not bet.is_winner):
-        change = bet.win_amount / bet.win_rate
-    bet.user.balance += change
-    bet.user.save()
-    notify_user(bet.user, f'Bet cancelled for match ##{bet.bet_question.match.title}## '
-                          f'on ##{bet.bet_question.question}##. Balance '
-                          f'refunded by {change} BDT')
-    bet.paid = False
-    bet.save()
-
-
 @receiver(post_delete, sender=Bet)
 def post_delete_bet(instance: Bet, *args, **kwargs):
-    refund_bet(instance)
+    refund_bet(instance.id)
 
 
 def sum_aggregate(queryset: QuerySet, field='amount'):

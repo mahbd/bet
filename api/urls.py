@@ -45,9 +45,10 @@ urlpatterns = [
     url(r'^swagger/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     url(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('transactions/available_methods/', views.available_methods),
-    path('all_transactions/', views.AllTransaction.as_view()),
+    path('all_transactions/', views.AllTransactionView.as_view()),
     path('', include(router.urls), name='main_api'),
     path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
     path('user-detail-update/', views.UserDetailsUpdateRetrieveDestroy.as_view()),
     path('change-password/', views.ChangePassword.as_view()),
+    path('actions/', views.ActionView.as_view()),
 ]

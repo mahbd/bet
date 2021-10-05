@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # 3rd party apps
     'django_admin_json_editor',
+    'django_filters',
+    'debug_toolbar',
     'rest_framework',
     'drf_yasg',
     'corsheaders',
@@ -53,6 +55,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',  # Debug toolbar
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Corsheaders Middleware
@@ -206,7 +209,13 @@ EMAIL_HOST_PASSWORD = 'e4mCoP,O'  #
 EMAIL_PORT = 465  #
 EMAIL_USE_SSL = True
 
-if os.environ.get('LOG', False):
+INTERNAL_IPS = [
+    # ...
+    '127.0.0.1',
+    # ...
+]
+
+if os.environ.get('LOG', 'False') == 'True':
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': False,

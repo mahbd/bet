@@ -1,15 +1,20 @@
 from django.contrib.auth import get_user_model
 from django.http import Http404
-from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, views, mixins, generics
 from rest_framework.decorators import action, api_view
+from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
+from betting.actions import *
+from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
+    A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_PAY, A_QUESTION_UN_PAY, A_QUESTION_REFUND
 from betting.models import Bet, BetQuestion, Match, DepositWithdrawMethod, Announcement, Deposit, Withdraw, Transfer, \
-    METHOD_CLUB, QuestionOption
+    QuestionOption
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, login_key, Notification
+from .action_data import action_data
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, RegisterPermissionClass, \
     ClubPermissionClass, TransactionPermissionClass, IsUser
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
@@ -20,15 +25,6 @@ from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, Matc
 User: MainUser = get_user_model()
 
 
-def determine_status(status):
-    if status is None:
-        return 'pending'
-    elif status:
-        return 'accepted'
-    else:
-        return 'denied'
-
-
 def determine_type(query):
     if hasattr(query, 'recipient'):
         return 'transfer'
@@ -37,7 +33,75 @@ def determine_type(query):
     return 'withdraw'
 
 
-class AllTransaction(views.APIView):
+def permission_error():
+    return Response({'details': 'User does not have enough permission'}, status=403)
+
+
+def failed_to_do(data):
+    return Response({'details': f'Failed to complete the action due to data.\n{data}'}, status=400)
+
+
+def completed_successfully(data):
+    return Response({'details': f'Failed to complete the action due to data.'}, status=200)
+
+
+class ActionView(views.APIView):
+    def post(self, request):
+        f"""
+        Do various operation\n
+        *************  Match Actions ******************\n
+        Lock Match\n
+        To lock a match. payload should be\n
+        ['action_code': {A_MATCH_LOCK}, 'match_id': match id]\n\n
+        Hide Match\n
+        To hide a match. payload should be\n
+        ['action_code': {A_MATCH_HIDE}, 'match_id': match id]\n\n
+        Go Live Match\n
+        To hide a match. payload should be\n
+        ['action_code': {A_MATCH_GO_LIVE}, 'match_id': match id]\n\n
+        End Match now\n
+        To hide a match. payload should be\n
+        ['action_code': {A_MATCH_END_NOW}, 'match_id': match id]\n\n
+        **************** Question Actions *****************\n
+        Lock Question\n
+        To lock a question. payload should be\n
+        ['action_code': {A_QUESTION_LOCK}, 'question_id': question id]\n\n
+        Hide Question\n
+        To hide a question. payload should be\n
+        ['action_code': {A_QUESTION_HIDE}, 'question_id': question id]\n\n
+        Question End Now\n
+        To end a question. payload should be\n
+        ['action_code': {A_QUESTION_END_NOW}, 'question_id': question id]\n\n
+        Select Question Winner\n
+        To select a question winner. payload should be\n
+        ['action_code': {A_QUESTION_SELECT_WINNER}, 'question_id': question id, 'option_id': option id]\n\n
+        Pay Question\n
+        To pay a question. payload should be\n
+        ['action_code': {A_QUESTION_PAY}, 'question_id': question id]\n\n
+        Revert Payment Question\n
+        If a question is paid and you use this, everything will be changed 
+        to as it was before payment. payload should be\n
+        ['action_code': {A_QUESTION_UN_PAY}, 'question_id': question id]\n\n
+        Refund a question. payload should be\n
+        ['action_code': {A_QUESTION_REFUND}, 'question_id': question id]\n\n
+        """
+        user: User = self.request.user
+        club: Club = get_current_club(self.request)
+        data = dict(self.request.data)
+        action_code = data.get('action_code')
+        to_do = action_data.get(action_code, None)
+        if not to_do:
+            return Response({'details': 'Invalid action'}, status=400)
+        if eval(to_do['permission']):
+            eval(to_do.get('prepare', 'True'))
+            response = eval(to_do['function'])
+            if not response:
+                return failed_to_do(data)
+            return completed_successfully(data)
+        return permission_error()
+
+
+class AllTransactionView(views.APIView):
     """
     get:
     User must be logged in
@@ -46,15 +110,17 @@ class AllTransaction(views.APIView):
     def get(self, *args, **kwargs):
         if self.request.GET.get('club'):
             club = get_current_club(self.request)
-            all_deposit = Deposit.objects.filter(club__isnull=False).filter(club=club)[:40]
+            all_deposit = Deposit.objects.filter(club=club)[:40]
             all_withdraw = []
-            all_transfer = Transfer.objects.filter(club__isnull=False).filter(club=club)[:40]
+            all_transfer = Transfer.objects.filter(club=club)[:40]
         else:
-            all_deposit = Deposit.objects.exclude(method=METHOD_CLUB).filter(user=self.request.user)[:40]
+            if not (self.request.user and self.request.user.is_authenticated):
+                return Response({'details': 'User is not authenticated'}, status=401)
+            all_deposit = Deposit.objects.filter(user=self.request.user)[:40]
             all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
-            all_transfer = Transfer.objects.filter(user=self.request.user)[:40]
+            all_transfer = Transfer.objects.filter(sender=self.request.user)[:40]
         all_transaction = []
-        for query in all_deposit + all_withdraw + all_transfer:
+        for query in list(all_deposit) + list(all_withdraw) + list(all_transfer):
             all_transaction.append({
                 'id': query.id,
                 'type': determine_type(query),
@@ -65,12 +131,11 @@ class AllTransaction(views.APIView):
                 'amount': query.amount,
                 'user_balance': query.balance,
                 'transaction_id': (hasattr(query, 'transaction_id') and query.transaction_id) or None,
-                'status': determine_status(query.status),
+                'status': query.status,
                 'created_at': query.created_at
             })
-
         all_transaction.sort(key=lambda x: x['created_at'], reverse=True)
-        return Response({'results': all_transaction})
+        return Response({'results': all_transaction, 'count': len(all_transaction)})
 
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
@@ -403,6 +468,9 @@ class UserListViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.values('id', 'username', 'first_name', 'last_name').all()
     serializer_class = UserListSerializer
     lookup_field = 'username'
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['username', 'first_name', 'last_name', 'email']
+    filterset_fields = ['user_club']
 
 
 class UserListViewSetClub(viewsets.ReadOnlyModelViewSet):

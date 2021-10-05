@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from betting.choices import GAME_CHOICES, DEPOSIT_WITHDRAW_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
+    STATUS_AWAITING_RESULT
 from users.models import User, Club
 
 default_configs = {
@@ -22,61 +24,6 @@ default_configs = {
     'max_bet': 25000,
     'refer_commission': 0.5,
 }
-
-TYPE_DEPOSIT = 'deposit'
-TYPE_WITHDRAW = 'withdraw'
-METHOD_TRANSFER = 'transfer'
-METHOD_BKASH = 'bkash'
-METHOD_ROCKET = 'rocket'
-METHOD_NAGAD = 'nagad'
-METHOD_UPAY = 'upay'
-METHOD_MCASH = 'mcash'
-METHOD_MYCASH = 'mycash'
-METHOD_SURECASH = 'surecash'
-METHOD_TRUSTPAY = 'trustpay'
-METHOD_CLUB = 'club'
-SOURCE_REFER = 'refer'
-SOURCE_COMMISSION = 'commission'
-SOURCE_BANK = 'bank'
-
-DEPOSIT_SOURCE = (
-    (SOURCE_BANK, 'From Bank'),
-    (SOURCE_REFER, 'Referral'),
-    (SOURCE_COMMISSION, 'Club Commission'),
-)
-
-DEPOSIT_WITHDRAW_CHOICES = (
-    (METHOD_BKASH, 'bKash'),
-    (METHOD_ROCKET, 'DBBL Rocket'),
-    (METHOD_NAGAD, 'Nagad'),
-    (METHOD_UPAY, 'Upay'),
-    (METHOD_MCASH, 'Mcash'),
-    (METHOD_MYCASH, 'My Cash'),
-    (METHOD_SURECASH, 'Sure Cash'),
-    (METHOD_TRUSTPAY, 'Trust Axiata Pay'),
-    (METHOD_TRANSFER, 'Transfer'),
-    (METHOD_CLUB, 'Club W/D'),
-    (SOURCE_COMMISSION, 'Commission'),
-    (SOURCE_REFER, 'Referral'),
-)
-
-GAME_FOOTBALL = 'football'
-GAME_CRICKET = 'cricket'
-GAME_TENNIS = 'tennis'
-GAME_OTHERS = 'others'
-GAME_CHOICES = (
-    (GAME_FOOTBALL, 'Football'),
-    (GAME_CRICKET, 'Cricket'),
-    (GAME_TENNIS, 'Tennis'),
-    (GAME_OTHERS, 'Others')
-)
-
-COMMISSION_REFER = 'refer'
-COMMISSION_CLUB = 'club'
-COMMISSION_CHOICES = (
-    (COMMISSION_REFER, 'Refer commission'),
-    (COMMISSION_CLUB, 'Club commission'),
-)
 
 
 def club_validator(sender: User, receiver: User):
@@ -196,7 +143,7 @@ config = Config()
 class Match(models.Model):
     end_time = models.DateTimeField(help_text="When match will be locked for betting.")
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
-    hide = models.BooleanField(default=False)
+    hidden = models.BooleanField(default=False)
     locked = models.BooleanField(default=False)
     start_time = models.DateTimeField(default=timezone.now, help_text="When match will be unlocked for betting.")
     title = models.CharField(max_length=255, help_text="title of the match. eg: Canada vs USA")
@@ -221,7 +168,7 @@ class QuestionOption(models.Model):
 
 class BetQuestion(models.Model):
     end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
-    hide = models.BooleanField(default=False, help_text="If the game is hidden")
+    hidden = models.BooleanField(default=False, help_text="If the game is hidden")
     locked = models.BooleanField(default=False, help_text="Force lock question before end time")
     match = models.ForeignKey(Match, on_delete=models.CASCADE, help_text="Id of the match under which this is question")
     options = models.ManyToManyField(QuestionOption, help_text="Question options for user")
@@ -249,7 +196,7 @@ class Bet(models.Model):
     choice = models.ForeignKey(QuestionOption, help_text="Choice for question", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, help_text="Time when bet is created")
     is_winner = models.BooleanField(default=None, blank=True, null=True, help_text="If this bet is winner")
-    paid = models.BooleanField(default=False, help_text="If this bet is paid")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_AWAITING_RESULT)
     win_rate = models.FloatField(default=1.00, blank=True, null=True, help_text="Multiplication with bet amount")
     user = models.ForeignKey(User, on_delete=models.CASCADE, help_text="User id who betting")
     user_balance = models.FloatField(default=0.0, help_text="User balance after bet")
@@ -287,9 +234,7 @@ class Deposit(models.Model):
                              help_text="User id of transaction maker")
     user_account = models.CharField(max_length=255, blank=True, null=True,
                                     help_text="bank account number. Used for deposit and withdraw")
-    status = models.BooleanField(default=None, null=True, blank=True,
-                                 help_text="Status if admin had verified. After verification(for deposit), "
-                                           "user account will be deposited")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
 
     def __str__(self):
         return str(self.id)
@@ -308,9 +253,7 @@ class Transfer(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
                                   help_text="User id to whom money transferred")
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    status = models.BooleanField(default=None, blank=True, null=True,
-                                 help_text="Status if admin had verified. After verification(for deposit), "
-                                           "user account will be deposited")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
 
     def __str__(self):
         return str(self.id)
@@ -329,11 +272,9 @@ class Withdraw(models.Model):
     site_account = models.CharField(max_length=255, blank=True, null=True,
                                     help_text="bank account number of the website")
     transaction_id = models.CharField(max_length=255, blank=True, null=True)
-    user_balance = models.FloatField(default=0, blank=True, null=True)
+    balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    status = models.BooleanField(default=None, null=True, blank=True,
-                                 help_text="Status if admin had verified. After verification(for deposit), "
-                                           "user account will be deposited")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

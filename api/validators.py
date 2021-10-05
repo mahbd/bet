@@ -7,7 +7,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
 from betting.views import get_config_from_model
-from users.models import User, Club
+from users.models import User
 
 
 def qs_exists(queryset):

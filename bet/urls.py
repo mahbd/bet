@@ -1,3 +1,4 @@
+import debug_toolbar
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -11,6 +12,7 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('bet/', include('betting.urls')),
     path('users/', include('users.urls')),
+    path('__debug__/', include(debug_toolbar.urls)),
     re_path('$', lambda x: render(x, 'build/index.html'), name='home'),
 ]
 

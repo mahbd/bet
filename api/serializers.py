@@ -2,7 +2,9 @@ from django.core.validators import MaxValueValidator
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
+from rest_framework.decorators import api_view
 from rest_framework.exceptions import ValidationError
+api_view
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator
 from betting.models import Announcement, Bet, BetQuestion, Config, Deposit, Match, Withdraw, Transfer, \
@@ -93,7 +95,7 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BetQuestion
-        fields = ('end_time', 'id', 'is_locked', 'locked', 'hide', 'match',
+        fields = ('end_time', 'id', 'is_locked', 'locked', 'hidden', 'match',
                   'details', 'match_name', 'match_start_time',
                   'options', 'question', 'winner',)
         read_only_fields = ('id',)
@@ -129,7 +131,7 @@ class BetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bet
         fields = ('answer', 'amount', 'bet_question', 'choice', 'id', 'match_start_time', 'match_name', 'question',
-                  'win_rate', 'is_winner', 'user', 'your_answer', 'win_amount', 'paid',
+                  'win_rate', 'is_winner', 'user', 'your_answer', 'win_amount', 'status',
                   'created_at', 'user_details', 'user_balance')
         read_only_fields = ('id', 'user', 'win_rate', 'is_winner')
 
@@ -189,7 +191,7 @@ class MatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Match
-        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'locked', 'hide', 'start_time', 'title',)
+        fields = ('end_time', 'game_name', 'id', 'is_locked', 'is_live', 'locked', 'hidden', 'start_time', 'title',)
         read_only_fields = ('id',)
 
 
