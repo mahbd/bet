@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 import sys
 from pathlib import Path
+import django_heroku
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 from corsheaders.defaults import default_headers
@@ -161,6 +162,7 @@ AUTHENTICATION_BACKENDS = (
     'users.backends.ModelBackendWithJWT',  # default
 )
 AUTH_USER_MODEL = 'users.User'
+django_heroku.settings(locals())
 
 # Corsheaders settings
 CORS_ALLOW_ALL_ORIGINS = True
