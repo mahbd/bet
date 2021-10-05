@@ -56,7 +56,6 @@ class QuestionOptionSerializer(serializers.ModelSerializer):
 class BetQuestionSerializer(serializers.ModelSerializer):
     options = QuestionOptionSerializer(many=True)
     is_locked = serializers.SerializerMethodField(read_only=True)
-    details = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     match_start_time = serializers.SerializerMethodField(read_only=True)
 
@@ -67,13 +66,7 @@ class BetQuestionSerializer(serializers.ModelSerializer):
         return str(bet_question.match.start_time)
 
     def get_details(self, bet_question: BetQuestion) -> dict:
-        details = {}
-        total_bet = bet_question.bet_set.all().aggregate(Sum('amount'))[f'amount__sum'] or 0
-        for option in bet_question.options.all():
-            details[f'{option.option}_bet'] = sum_filter_bet_set(bet_question, option, 'amount')
-            details[f'{option.option}_bet_count'] = count_filter_bet_set(bet_question, option)
-            details[f'{option.option}_benefit'] = total_bet - sum_filter_bet_set(bet_question, option)
-        return details
+        return {}
 
     def get_is_locked(self, bet_scope: BetQuestion) -> bool:
         return bet_scope.is_locked()
@@ -93,10 +86,22 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BetQuestion
-        fields = ('end_time', 'id', 'is_locked', 'locked', 'hidden', 'match',
-                  'details', 'match_name', 'match_start_time',
-                  'options', 'question', 'winner',)
-        read_only_fields = ('id',)
+        fields = ('details', 'id', 'is_locked', 'match',
+                  'match_name', 'match_start_time',
+                  'options', 'question', 'status', 'winner',)
+
+
+class BetQuestionDetailsSerializer(BetQuestionSerializer):
+    details = serializers.SerializerMethodField(read_only=True)
+
+    def get_details(self, bet_question: BetQuestion) -> dict:
+        details = {}
+        total_bet = bet_question.bet_set.all().aggregate(Sum('amount'))[f'amount__sum'] or 0
+        for option in bet_question.options.all():
+            details[f'{option.id}_bet'] = sum_filter_bet_set(bet_question, option, 'amount')
+            details[f'{option.id}_bet_count'] = count_filter_bet_set(bet_question, option)
+            details[f'{option.id}_benefit'] = total_bet - sum_filter_bet_set(bet_question, option)
+        return details
 
 
 # noinspection PyMethodMayBeStatic

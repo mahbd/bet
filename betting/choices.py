@@ -62,6 +62,12 @@ MATCH_STATUS_CHOICES = (
     (STATUS_CLOSED, 'Closed'),
     (STATUS_LOCKED, 'Locked'),
 )
+QUESTION_STATUS_CHOICES = (
+    (STATUS_LIVE, 'Live'),
+    (STATUS_HIDDEN, 'Hidden'),
+    (STATUS_CLOSED, 'Closed'),
+    (STATUS_LOCKED, 'Locked'),
+)
 STATUS_PENDING = 'pending'
 STATUS_PAID = 'paid'
 STATUS_REFUNDED = 'refunded'

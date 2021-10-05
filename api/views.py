@@ -20,7 +20,7 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, Regist
 from .serializers import ClubSerializer, RegisterSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
-    TransferClubSerializer
+    TransferClubSerializer, BetQuestionDetailsSerializer
 
 User: MainUser = get_user_model()
 
@@ -190,24 +190,8 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
     This is the place where user can bet.
     list:
     Returns list of bet scopes. \n
-    To get only active/bet_able scope list\n
-    /api/bet_scope/?active=true\n
-    ?active=true can be used for all GET request in this api\n
-    To get list of scopes of a match \n
-    /api/bet_scope/?match_id={{ match_id }}
-    To get list of scopes of a game \n
-    /api/bet_scope/?game_name={{ game_name }}\n
-    Allowed game names: football|cricket|tennis|others
-    create:
-    Create an instance of bet scope. Only game_editor enabled user and superuser can create new bet scope
-    retrieve:
-    Returns bet_scope details of the id
-    update:
-    Update the bet_scope. Only game_editor enabled user and superuser can update bet_scope. PATCH is suggested than PUT
-    partial_update:
-    Update the bet_scope. Only game_editor enabled user and superuser can update bet_scope.
-    retrieve:
-    Returns bet_scope details
+    Filterable fields: match, match__game_name, status\n
+    Searchable fields: question, match__team_a_name, match__team_b_name, winner
     """
 
     def get_queryset(self):
@@ -223,8 +207,15 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
             return all_scope
         return all_scope.filter(winner__isnull=True)
 
-    serializer_class = BetQuestionSerializer
+    def get_serializer_class(self):
+        if self.request.GET.get('fast'):
+            return BetQuestionSerializer
+        return BetQuestionDetailsSerializer
+    queryset = BetQuestion.objects.all()
     permission_classes = [MatchPermissionClass]
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['question', 'match__team_a_name', 'match__team_b_name']
+    filterset_fields = ['match', 'match__game_name', 'status', 'winner']
 
 
 class ChangePassword(views.APIView):

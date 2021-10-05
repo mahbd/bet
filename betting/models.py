@@ -5,7 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from betting.choices import GAME_CHOICES, DEPOSIT_WITHDRAW_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
-    STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN
+    STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED
 from users.models import User, Club
 
 default_configs = {
@@ -161,29 +161,28 @@ class Match(models.Model):
 class QuestionOption(models.Model):
     option = models.CharField(max_length=255)
     rate = models.FloatField(default=1)
+    hidden = models.BooleanField(default=False)
+    limit = models.IntegerField(default=10_000_000)
 
 
 class BetQuestion(models.Model):
-    end_time = models.DateTimeField(help_text="when this question will no longer accept bet", blank=True, null=True)
-    hidden = models.BooleanField(default=False, help_text="If the game is hidden")
-    locked = models.BooleanField(default=False, help_text="Force lock question before end time")
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, help_text="Id of the match under which this is question")
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
     options = models.ManyToManyField(QuestionOption, help_text="Question options for user")
-    paid = models.BooleanField(default=False, help_text="If all bet under this question is paid")
     question = models.CharField(max_length=1023, help_text="Question of bet")
+    status = models.CharField(max_length=255, choices=MATCH_STATUS_CHOICES, default=STATUS_HIDDEN)
     winner = models.ForeignKey(QuestionOption, on_delete=models.CASCADE, blank=True, null=True, related_name='gnn',
                                help_text="Winner option id")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def is_locked(self):
-        return bool(
-            self.locked or self.match.locked or self.winner or (self.end_time and self.end_time <= timezone.now()))
+        return self.status == STATUS_LOCKED or self.match.status == STATUS_LOCKED or self.winner
 
     def __str__(self):
         return f'{self.question}'
 
     class Meta:
         verbose_name_plural = 'Bet Options'
-        ordering = ['-end_time']
+        ordering = ['-created_at']
 
 
 class Bet(models.Model):
