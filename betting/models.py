@@ -31,7 +31,7 @@ default_configs = {
 
 class Announcement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    expired = models.BooleanField()
+    expired = models.BooleanField(default=False)
     text = models.TextField()
 
     class Meta:

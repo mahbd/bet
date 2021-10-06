@@ -142,8 +142,15 @@ class AllTransactionView(views.APIView):
 
 
 class AnnouncementViewSet(viewsets.ModelViewSet):
+    """
+    Return list of announcement\n
+    Filterable fields: expired\n
+    """
     queryset = Announcement.objects.filter(expired=False)
     serializer_class = AnnouncementSerializer
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['expired']
 
 
 class BetViewSet(mixins.CreateModelMixin,

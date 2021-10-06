@@ -9,7 +9,7 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     A_QUESTION_REFUND, \
     STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
     METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING
-from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod
+from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod, Announcement
 from betting.views import set_config_to_model
 from users.models import User, Club
 
@@ -218,6 +218,37 @@ class AllTransactionTestCase(TestCase):
             if response['type'] == 'transfer':
                 transfer = Transfer.objects.get(pk=response['id'])
                 self.assertEqual(transfer.status, response['status'], 'status is not same')
+
+
+class AnnouncementTest(TestCase):
+    def setUp(self):
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id) = (data[i] for i in range(10))
+        self.api = '/api/announcement/'
+
+    def test_create_announcement(self):
+        response = c.post(self.api, {'text': 'Test Announcement'}, **self.headers_super)
+        self.assertEqual(response.status_code, 201, f'Create announcement by superuser\n {response.content}')
+        self.assertEqual(response.json()['text'], 'Test Announcement', f'Wrong text')
+
+    def test_create_announcement_user(self):
+        response = c.post(self.api, {'text': 'Test Announcement'}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, f'Create announcement by superuser\n{response.content_type}')
+
+    def test_update_announcement(self):
+        response = c.post(self.api, {'text': 'Test Announcement'}, **self.headers_super)
+        self.assertEqual(response.status_code, 201, f'Create announcement by superuser\n{response.content_type}')
+        announcement = Announcement.objects.get(pk=response.json()['id'])
+        response = c.patch(f'{self.api}{announcement.id}/', {'text': 'Test Announcement'}, **self.headers_super)
+        self.assertEqual(response.json()['text'], 'Test Announcement', f'Wrong text')
+
+    def test_update_announcement_user(self):
+        response = c.post(self.api, {'text': 'Test Announcement'}, **self.headers_super)
+        self.assertEqual(response.status_code, 201, f'Create announcement by superuser\n{response.content_type}')
+        announcement = Announcement.objects.get(pk=response.json()['id'])
+        response = c.patch(f'{self.api}{announcement.id}/', {'text': 'Test Announcement'}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, f'User can not update announcement\n')
 
 
 class BetQuestionTest(TestCase):
