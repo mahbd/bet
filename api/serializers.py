@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator, \
     BetQuestionValidator, QuestionOptionValidator, TransferUserValidator
 from betting.models import Announcement, Bet, BetQuestion, Deposit, Match, Withdraw, Transfer, \
-    QuestionOption, DepositMethod
+    QuestionOption, DepositMethod, ConfigModel
 from betting.views import get_last_bet, get_config_from_model
 from users.backends import jwt_writer, get_current_club
 from users.models import User, Club, Notification
@@ -173,6 +173,12 @@ class ClubSerializer(serializers.ModelSerializer):
             'password': {'write_only': True},
             'username': {'validators': [UniqueMultiQuerysetValidator(User.objects.all(), Club.objects.all())]}
         }
+
+
+class ConfigModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigModel
+        fields = '__all__'
 
 
 class DepositMethodSerializer(serializers.ModelSerializer):

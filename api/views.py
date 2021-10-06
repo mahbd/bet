@@ -10,7 +10,7 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
     A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR
 from betting.models import Bet, BetQuestion, Match, DepositMethod, Announcement, Deposit, Withdraw, Transfer, \
-    QuestionOption
+    QuestionOption, ConfigModel
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, Notification
 from .action_data import action_data
@@ -19,7 +19,7 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPe
 from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
-    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer
+    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer, ConfigModelSerializer
 
 User: MainUser = get_user_model()
 
@@ -233,6 +233,17 @@ class ClubViewSet(viewsets.ModelViewSet):
     permission_classes = [ClubPermissionClass]
     filter_backends = [SearchFilter]
     search_fields = ['name']
+
+
+class ConfigModelViewSet(viewsets.ModelViewSet):
+    """
+    Only superuser can add, change and delete. Anyone can view.
+    """
+    queryset = ConfigModel.objects.all()
+    serializer_class = ConfigModelSerializer
+    permission_classes = [permissions.IsAdminUser]
+    lookup_field = 'name'
+    http_method_names = ['get', 'post', 'patch', 'head', 'options']
 
 
 class DepositMethodViewSet(viewsets.ModelViewSet):

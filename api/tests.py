@@ -401,6 +401,37 @@ class ClubTest(TestCase):
         self.assertEqual(response.status_code, 400, f'duplicate username should be prohibited\n{response.content}')
 
 
+class ConfigTestCase(TestCase):
+    def setUp(self) -> None:
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.api = '/api/configuration/'
+        c.get('/bet/initialize/')
+
+    def test_update_config(self):
+        response = c.patch(f'{self.api}max_bet/', {'value': 10000}, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Settings should be changeable')
+        self.assertEqual(response.json()['value'], '10000', 'Settings should be changeable')
+
+    def test_update_config_user(self):
+        response = c.patch(f'{self.api}max_bet/', {'value': 10000}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Settings should be changeable')
+
+    def test_get_config(self):
+        response = c.get(f'{self.api}max_bet/', **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['value'], '25000')
+
+    def test_get_config_user(self):
+        response = c.get(f'{self.api}max_bet/', **self.headers_user)
+        self.assertEqual(response.status_code, 403)
+
+    def test_delete_config(self):
+        response = c.delete(f'{self.api}max_bet/', **self.headers_super)
+        self.assertEqual(response.status_code, 405)
+
+
 class DepositMethodTest(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()

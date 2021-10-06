@@ -14,6 +14,12 @@ from .models import Bet, BetQuestion, Deposit, Withdraw, Transfer, Match, \
     ConfigModel, default_configs
 
 
+def initialize_configuration(request):
+    for key, value in default_configs.items():
+        get_config_from_model(key)
+    return HttpResponse('Ok')
+
+
 def get_config_from_model(name: str, default=False) -> str:
     obj = ConfigModel.objects.filter(name=name)
     if obj:
