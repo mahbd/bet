@@ -76,6 +76,9 @@ class Announcement(models.Model):
     expired = models.BooleanField()
     text = models.TextField()
 
+    class Meta:
+        ordering = ('-created_at', )
+
 
 class ConfigModel(models.Model):
     description = models.TextField(blank=True, null=True)
@@ -111,6 +114,10 @@ class QuestionOption(models.Model):
     rate = models.FloatField(default=1)
     hidden = models.BooleanField(default=False)
     limit = models.IntegerField(default=10_000_000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-created_at', )
 
 
 class BetQuestion(models.Model):
@@ -198,22 +205,16 @@ class Transfer(models.Model):
 
 
 class Withdraw(models.Model):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES,
-                              help_text="method used to do transaction")
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    user_account = models.CharField(max_length=255, blank=True, null=True,
-                                    help_text="bank account number. Used for deposit and withdraw")
-    site_account = models.CharField(max_length=255, blank=True, null=True,
-                                    help_text="bank account number of the website")
-    reference = models.CharField(max_length=255, blank=True, null=True)
     balance = models.FloatField(default=0, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return str(self.id)
+    description = models.TextField(blank=True, null=True)
+    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES)
+    reference = models.CharField(max_length=255, blank=True, null=True)
+    site_account = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
+    user_account = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         ordering = ['-created_at']
