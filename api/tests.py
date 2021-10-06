@@ -679,6 +679,10 @@ class UserTestCase(TestCase):
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
         user = User.objects.get(pk=response.json()['id'])
         self.assertEqual(user.check_password('fds_sdf'), True, 'Password should be correct')
+        self.assertEqual(user.username, 'test3', 'Username should be correct')
+        self.assertEqual(user.phone, '017745445', 'Username should be correct')
+        self.assertEqual(user.email, 'testing@gmail.com', 'Username should be correct')
+        self.assertEqual(user.user_club_id, self.club.id, 'Username should be correct')
 
     def test_register_referrer(self):
         response = c.post('/api/user/', {'username': 'test3', 'email': 'testing@gmail.com',

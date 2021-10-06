@@ -2,6 +2,7 @@ from django.core.validators import MaxValueValidator
 from django.db.models import Sum
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator, \
     BetQuestionValidator, QuestionOptionValidator, TransferUserValidator
@@ -362,7 +363,7 @@ class UserDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         exclude = ('groups', 'user_permissions')
-        read_only_fields = ('id', 'balance', 'game_editor', 'is_superuser', 'is_staff', 'referred_by', 'username')
+        read_only_fields = ('id', 'balance', 'game_editor', 'is_superuser', 'is_staff', 'referred_by')
         extra_kwargs = {
             'password': {'write_only': True},
             'user_club': {'required': True},
