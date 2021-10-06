@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import DataError
-from django.db.models import Model
+from django.db.models import Model, Sum
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -62,6 +62,22 @@ class UniqueMultiQuerysetValidator(UniqueValidator):
         queryset1 = self.exclude_current_instance(queryset1, instance)
         if qs_exists(queryset1) or qs_exists(queryset2):
             raise ValidationError(self.message, code='unique')
+
+
+class BetQuestionValidator:
+    def __call__(self, value, *args, **kwargs):
+        if value.is_locked():
+            raise ValidationError('Bet Question is locked or closed')
+
+
+class QuestionOptionValidator:
+    def __init__(self, model):
+        self.model = model
+
+    def __call__(self, value, *args, **kwargs):
+        total_bet = self.model.objects.filter(choice=value).aggregate(Sum('amount'))['amount__sum'] or 0
+        if total_bet >= value.limit:
+            raise ValidationError('Bet limit for this option exceeded')
 
 
 class CountLimitValidator:

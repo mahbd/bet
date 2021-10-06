@@ -11,7 +11,7 @@ from users.views import total_user_balance, total_club_balance, notify_user
 from .actions import accept_deposit, create_deposit, cancel_withdraw, cancel_deposit, cancel_transfer, refund_bet
 from .choices import SOURCE_REFER, SOURCE_COMMISSION, TYPE_WITHDRAW, METHOD_TRANSFER, METHOD_CLUB
 from .models import Bet, BetQuestion, Deposit, Withdraw, Transfer, Match, \
-    config, ConfigModel, default_configs
+    ConfigModel, default_configs
 
 
 def get_config_from_model(name: str, default=False) -> str:
@@ -21,6 +21,13 @@ def get_config_from_model(name: str, default=False) -> str:
     else:
         ConfigModel.objects.create(name=name, value=str(default or default_configs[name]))
         return str(default or default_configs[name])
+
+
+def set_config_to_model(name: str, value: str) -> None:
+    if ConfigModel.objects.filter(name=name).exists():
+        ConfigModel.objects.filter(name=name).update(value=value)
+    else:
+        ConfigModel.objects.create(name=name, value=value)
 
 
 @receiver(pre_delete, sender=Deposit)
@@ -67,7 +74,7 @@ def post_delete_transfer(instance: Transfer, *args, **kwargs):
 
 
 def pay_refer(bet: Bet) -> float:
-    refer_commission = float(config.get_config_str('refer_commission')) / 100
+    refer_commission = float(get_config_from_model('refer_commission')) / 100
     if bet.user.referred_by:
         commission = bet.amount * refer_commission
         bet.user.referred_by.earn_from_refer += commission

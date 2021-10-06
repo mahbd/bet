@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from betting.choices import GAME_CHOICES, DEPOSIT_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
     STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED, METHOD_TYPE_CHOICES, \
-    METHOD_TYPE_PERSONAL
+    METHOD_TYPE_PERSONAL, STATUS_CLOSED
 from users.models import User, Club
 
 default_configs = {
@@ -24,6 +24,11 @@ default_configs = {
     'min_bet': 10,
     'max_bet': 25000,
     'refer_commission': 0.5,
+    'disable_club_transfer': 0,
+    'disable_user_transfer': 0,
+    'disable_deposit': 0,
+    'disable_withdraw': 0,
+    'deposit_waiting_time': 15,
 }
 
 
@@ -55,14 +60,14 @@ def user_balance_validator(user: Union[User, Club], amount):
         raise ValidationError('User does not have enough balance.')
 
 
-def bet_scope_validator(bet_scope):
-    if isinstance(bet_scope, int):
-        bet_scope = BetQuestion.objects.filter(id=bet_scope)
-        if bet_scope:
-            bet_scope = bet_scope[0]
+def bet_question_validator(bet_question):
+    if isinstance(bet_question, int):
+        bet_question = BetQuestion.objects.filter(id=bet_question)
+        if bet_question:
+            bet_question = bet_question[0]
         else:
             raise ValidationError('Wrong bet scope id!')
-    if bet_scope.is_locked():
+    if bet_question.is_locked():
         raise ValidationError('This bet_scope is locked!')
 
 
@@ -81,64 +86,6 @@ class ConfigModel(models.Model):
         verbose_name = 'Configuration'
         verbose_name_plural = 'Configurations'
         ordering = ('name',)
-
-
-class Config:
-    def __init__(self):
-        self.defaults = {
-            'min_balance': 10,
-            'limit_deposit': 50,
-            'min_deposit': 100,
-            'max_deposit': 25000,
-            'limit_withdraw': 10,
-            'min_withdraw': 500,
-            'max_withdraw': 25000,
-            'limit_transfer': 50,
-            'min_transfer': 10,
-            'max_transfer': 25000,
-            'limit_bet': 50,
-            'min_bet': 10,
-            'max_bet': 25000,
-            'refer_commission': 0.5,
-        }
-
-    def get_from_model(self, name, default=False):
-        obj = ConfigModel.objects.filter(name=name)
-        if obj:
-            return obj[0].value
-        else:
-            ConfigModel.objects.create(name=name, value=str(default or self.defaults[name]))
-            return str(default or self.defaults[name])
-
-    def get_config(self, name) -> int:
-        return int(self.get_from_model(name))
-
-    def get_config_str(self, name):
-        return str(self.get_from_model(name))
-
-    def validate_count_limit(self, user: User, model, des, md=0):
-        limit_count = int(self.get_from_model(f'limit_{des}'))
-        total_today = model.objects.filter(user=user, created_at__day=timezone.now().day).count()
-        if total_today >= limit_count + md:
-            raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_today}")
-
-    def validate_maximum_limit(self, amount, des):
-        maximum = int(self.get_from_model(f'max_{des}'))
-        if amount > maximum:
-            raise ValidationError(f"{amount} exceed maximum {maximum} limit of {des}")
-
-    def validate_minimum_limit(self, amount, des):
-        minimum = int(self.get_from_model(f'min_{des}'))
-        if minimum > amount:
-            raise ValidationError(f"{amount} is below minimum {minimum} limit of {des}")
-
-    def config_validator(self, user: User, amount, model, des, md=0):
-        self.validate_count_limit(user, model, des, md)
-        self.validate_minimum_limit(amount, des)
-        self.validate_maximum_limit(amount, des)
-
-
-config = Config()
 
 
 class Match(models.Model):
@@ -176,7 +123,8 @@ class BetQuestion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_locked(self):
-        return self.status == STATUS_LOCKED or self.match.status == STATUS_LOCKED or self.winner
+        disabled = [STATUS_LOCKED, STATUS_CLOSED]
+        return self.status in disabled or self.match.status in disabled or self.winner
 
     def __str__(self):
         return f'{self.question}'
@@ -188,7 +136,7 @@ class BetQuestion(models.Model):
 
 class Bet(models.Model):
     amount = models.IntegerField(help_text='How much he/she bet')
-    bet_question = models.ForeignKey(BetQuestion, on_delete=models.PROTECT, validators=[bet_scope_validator],
+    bet_question = models.ForeignKey(BetQuestion, on_delete=models.PROTECT, validators=[bet_question_validator],
                                      help_text="For which question bet is done")
     choice = models.ForeignKey(QuestionOption, help_text="Choice for question", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, help_text="Time when bet is created")
@@ -253,9 +201,6 @@ class Transfer(models.Model):
                                   help_text="User id to whom money transferred")
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
-
-    def __str__(self):
-        return str(self.id)
 
     class Meta:
         ordering = ['-created_at']

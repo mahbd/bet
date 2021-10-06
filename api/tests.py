@@ -10,6 +10,7 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
     METHOD_BKASH, METHOD_ROCKET
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod
+from betting.views import set_config_to_model
 from users.models import User, Club
 
 c = Client()
@@ -719,10 +720,25 @@ class TransferTestCase(TestCase):
         increase_balance(self.user2, 500000)
         self.club1.admin = self.user2
         self.club1.save()
-        self.transfer_id = c.post(self.api,
-                                  data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user).json()['id']
+        self.transfer_id = Transfer.objects.create(amount=500, recipient=self.user1, sender=self.user2).id
 
     def test_create_transfer(self):
+        response = c.post(self.api,
+                          data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 201, msg=f'to withdraw\n{response.content}')
+        transfer = Transfer.objects.get(id=response.json()['id'])
+        self.assertEqual(transfer.sender, self.user2, 'Wrong user')
+        self.assertEqual(transfer.recipient, self.user1, 'Wrong user')
+
+    def test_create_transfer_when_disabled(self):
+        set_config_to_model('disable_user_transfer', '1')
+        response = c.post(self.api,
+                          data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 400, msg=f'transfer disabled temporary')
+
+    def test_create_transfer_when_enabled(self):
+        set_config_to_model('disable_user_transfer', '1')
+        set_config_to_model('disable_user_transfer', '0')
         response = c.post(self.api,
                           data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
         self.assertEqual(response.status_code, 201, msg=f'to withdraw\n{response.content}')

@@ -160,7 +160,7 @@ class Migration(migrations.Migration):
                 ('win_rate', models.FloatField(blank=True, default=1.0, help_text='Multiplication with bet amount', null=True)),
                 ('user_balance', models.FloatField(default=0.0, help_text='User balance after bet')),
                 ('win_amount', models.FloatField(default=0, help_text='How much will get if wins')),
-                ('bet_question', models.ForeignKey(help_text='For which question bet is done', on_delete=django.db.models.deletion.PROTECT, to='betting.betquestion', validators=[betting.models.bet_scope_validator])),
+                ('bet_question', models.ForeignKey(help_text='For which question bet is done', on_delete=django.db.models.deletion.PROTECT, to='betting.betquestion', validators=[betting.models.bet_question_validator])),
                 ('choice', models.ForeignKey(help_text='Choice for question', on_delete=django.db.models.deletion.CASCADE, to='betting.questionoption')),
                 ('user', models.ForeignKey(help_text='User id who betting', on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
