@@ -185,7 +185,7 @@ class DepositSerializer(serializers.ModelSerializer):
     class Meta:
         model = Deposit
         fields = ('id', 'amount', 'balance', 'club', 'created_at', 'deposit_source', 'method', 'site_account',
-                  'transaction_id', 'user', 'user_account', 'status')
+                  'reference', 'user', 'user_account', 'status')
         read_only_fields = ('id', 'balance', 'user', 'deposit_source', 'status')
         extra_kwargs = {
             'user_account': {'required': True},
@@ -196,6 +196,8 @@ class DepositSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         attrs['user'] = self.context['request'].user
+        if get_config_from_model('disable_deposit') != '0':
+            raise ValidationError('Money transfer is temporary disabled.')
         CountLimitValidator('deposit', Deposit).__call__(attrs.get('user'))
         return attrs
 
@@ -376,6 +378,8 @@ class WithdrawSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         attrs['user'] = self.context['request'].user
         user, amount = attrs.get('user'), attrs.get('amount')
+        if get_config_from_model('disable_withdraw') != '0':
+            raise ValidationError('Money withdraw is temporary disabled.')
         MaxValueValidator(user.balance - float(get_config_from_model('min_balance')), 'Not enough balance').__call__(
             amount)
         CountLimitValidator('withdraw', Withdraw).__call__(attrs.get('user'))

@@ -133,7 +133,7 @@ class AllTransactionView(views.APIView):
                 'site_account': (hasattr(query, 'site_account') and query.site_account) or None,
                 'amount': query.amount,
                 'user_balance': query.balance,
-                'transaction_id': (hasattr(query, 'transaction_id') and query.transaction_id) or None,
+                'transaction_id': (hasattr(query, 'transaction_id') and query.reference) or None,
                 'status': query.status,
                 'created_at': query.created_at
             })
@@ -214,6 +214,7 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
         if self.request.GET.get('fast'):
             return BetQuestionSerializer
         return BetQuestionDetailsSerializer
+
     queryset = BetQuestion.objects.all()
     permission_classes = [MatchPermissionClass]
     filter_backends = [SearchFilter, DjangoFilterBackend]
@@ -258,11 +259,17 @@ class DepositViewSet(viewsets.ModelViewSet):
     """
 
     def get_queryset(self):
-        return Deposit.objects.filter(user=self.request.user)
+        if self.request.GET.get('club'):
+            club = get_current_club(self.request)
+            return Deposit.objects.filter(club=club)
+        return Deposit.objects.filter(sender=self.request.user)
 
     serializer_class = DepositSerializer
     permission_classes = [TransactionPermissionClass]
     http_method_names = ['get', 'post', 'head', 'options']
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['user__username', 'user__first_name', 'user__last_name']
+    filterset_fields = ['status']
 
 
 class Login(views.APIView):
@@ -356,10 +363,12 @@ class WithdrawViewSet(viewsets.ModelViewSet):
 
 class TransferViewSet(viewsets.ModelViewSet):
     """
-        User must be logged in
-        create:
-        Request will be denied if user doesn't have enough balance or at least one of them is not club admin
-        or both of them is not of same club
+        list:
+        Returns list of transfers\n
+        add ?club=true   to do club transfer and related operation\n
+        Filterable field: status\n
+        Searchable fields: sender__username, sender__first_name, sender__last_name,
+                     recipient__username, recipient__first_name, recipient__last_name
     """
 
     def get_queryset(self):
@@ -374,6 +383,10 @@ class TransferViewSet(viewsets.ModelViewSet):
         return TransferClubSerializer if self.request.GET.get('club') else TransferSerializer
 
     http_method_names = ['get', 'post', 'head', 'options']
+    filter_backends = [SearchFilter, DjangoFilterBackend]
+    search_fields = ['sender__username', 'sender__first_name', 'sender__last_name',
+                     'recipient__username', 'recipient__first_name', 'recipient__last_name', ]
+    filterset_fields = ['status']
 
 
 class UserViewSet(viewsets.ModelViewSet):

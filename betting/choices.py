@@ -14,7 +14,7 @@ SOURCE_REFER = 'refer'
 SOURCE_COMMISSION = 'commission'
 SOURCE_BANK = 'bank'
 
-DEPOSIT_SOURCE = (
+DEPOSIT_SOURCE_CHOICES = (
     (SOURCE_BANK, 'From Bank'),
     (SOURCE_REFER, 'Referral'),
     (SOURCE_COMMISSION, 'Club Commission'),

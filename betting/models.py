@@ -4,9 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from betting.choices import GAME_CHOICES, DEPOSIT_CHOICES, DEPOSIT_SOURCE, STATUS_PENDING, STATUS_CHOICES, \
+from betting.choices import GAME_CHOICES, DEPOSIT_CHOICES, DEPOSIT_SOURCE_CHOICES, STATUS_PENDING, STATUS_CHOICES, \
     STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED, METHOD_TYPE_CHOICES, \
-    METHOD_TYPE_PERSONAL, STATUS_CLOSED
+    METHOD_TYPE_PERSONAL, STATUS_CLOSED, SOURCE_BANK
 from users.models import User, Club
 
 default_configs = {
@@ -165,26 +165,17 @@ class DepositMethod(models.Model):
 
 class Deposit(models.Model):
     amount = models.FloatField(help_text="how much money transacted in 2 point precession decimal number")
-    balance = models.FloatField(default=0, blank=True, null=True, help_text="User possible balance after deposit")
-    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True,
-                             help_text="Club id which balance will be updated")
+    balance = models.FloatField(default=0, blank=True, null=True)
+    club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE, default='bank',
+    deposit_source = models.CharField(max_length=50, choices=DEPOSIT_SOURCE_CHOICES, default=SOURCE_BANK,
                                       help_text="Options are, commission|bank|refer")
-    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES,
-                              help_text="method used to do transaction")
-    site_account = models.CharField(max_length=255, blank=True, null=True,
-                                    help_text="bank account number of the website")
-    transaction_id = models.CharField(max_length=255, blank=True, null=True,
-                                      help_text="Transaction id of user send money")
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                             help_text="User id of transaction maker")
-    user_account = models.CharField(max_length=255, blank=True, null=True,
-                                    help_text="bank account number. Used for deposit and withdraw")
+    method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES)
+    site_account = models.CharField(max_length=255, blank=True, null=True)
+    reference = models.CharField(max_length=255, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    user_account = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
-
-    def __str__(self):
-        return str(self.id)
 
     class Meta:
         ordering = ['-created_at']

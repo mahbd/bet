@@ -8,7 +8,7 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
     A_QUESTION_REFUND, \
     STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
-    METHOD_BKASH, METHOD_ROCKET
+    METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod
 from betting.views import set_config_to_model
 from users.models import User, Club
@@ -468,7 +468,9 @@ class DepositTestCase(TestCase):
                           data={'amount': 500, 'deposit_source': 'bank', 'user_account': '01445', 'site_account': '014',
                                 'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_user)
         self.assertEqual(response.status_code, 201, msg=f'to deposit\n{response.content}')
-        self.assertEqual(Deposit.objects.get(id=response.json()['id']).user, self.user2, 'Wrong user')
+        deposit = Deposit.objects.get(id=response.json()['id'])
+        self.assertEqual(deposit.user, self.user2, 'Wrong user')
+        self.assertEqual(deposit.status, STATUS_PENDING, 'Wrong user')
 
     def test_create_deposit_low(self):
         response = c.post(self.api,

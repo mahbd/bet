@@ -237,7 +237,7 @@ def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
             # Change deposit status
             notify_user(deposit.user, f"Deposit request has been canceled placed on {deposit.created_at}."
                                       f"Contact admin if you think it was wrong. Transaction id: "
-                                      f"{deposit.transaction_id} Amount: {deposit.amount} From "
+                                      f"{deposit.reference} Amount: {deposit.amount} From "
                                       f"account: {deposit.user_account} To account {deposit.site_account} "
                                       f"Method: {deposit.method}")
         elif deposit.club:
@@ -247,7 +247,7 @@ def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
             # Change deposit status
             notify_club(deposit.club, f"Deposit request has been canceled placed on {deposit.created_at}."
                                       f"Contact admin if you think it was wrong. Transaction id: "
-                                      f"{deposit.transaction_id} Amount: {deposit.amount} From "
+                                      f"{deposit.reference} Amount: {deposit.amount} From "
                                       f"account: {deposit.user_account} To account {deposit.site_account} "
                                       f"Method: {deposit.method}")
     deposit.status = False
