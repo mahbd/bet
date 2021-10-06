@@ -206,7 +206,7 @@ class Withdraw(models.Model):
                                     help_text="bank account number. Used for deposit and withdraw")
     site_account = models.CharField(max_length=255, blank=True, null=True,
                                     help_text="bank account number of the website")
-    transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    reference = models.CharField(max_length=255, blank=True, null=True)
     balance = models.FloatField(default=0, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)

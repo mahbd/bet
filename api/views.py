@@ -133,7 +133,7 @@ class AllTransactionView(views.APIView):
                 'site_account': (hasattr(query, 'site_account') and query.site_account) or None,
                 'amount': query.amount,
                 'user_balance': query.balance,
-                'transaction_id': (hasattr(query, 'transaction_id') and query.reference) or None,
+                'transaction_id': (hasattr(query, 'reference') and query.reference) or None,
                 'status': query.status,
                 'created_at': query.created_at
             })

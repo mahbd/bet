@@ -458,15 +458,13 @@ class DepositTestCase(TestCase):
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
         self.api = '/api/deposit/'
-        self.dep_id = c.post(self.api,
-                             data={'amount': 500, 'deposit_source': 'bank', 'user_account': '01445',
-                                   'site_account': '014454548', 'method': 'rocket',
-                                   'transaction_id': 'fd7sf454f78fad'}, **self.headers_user).json()['id']
+        self.dep_id = Deposit.objects.create(amount=500, user_account='01445', site_account='014454548',
+                                             method=METHOD_ROCKET, reference='fd7sf454f78fad').id
 
     def test_create_deposit(self):
         response = c.post(self.api,
                           data={'amount': 500, 'deposit_source': 'bank', 'user_account': '01445', 'site_account': '014',
-                                'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_user)
+                                'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_user)
         self.assertEqual(response.status_code, 201, msg=f'to deposit\n{response.content}')
         deposit = Deposit.objects.get(id=response.json()['id'])
         self.assertEqual(deposit.user, self.user2, 'Wrong user')
@@ -475,28 +473,28 @@ class DepositTestCase(TestCase):
     def test_create_deposit_low(self):
         response = c.post(self.api,
                           data={'amount': 10, 'deposit_source': 'bank', 'user_account': '01445', 'site_account': '014',
-                                'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_user)
+                                'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'low amount of deposit should not be allowed')
 
     def test_create_deposit_high(self):
         response = c.post(self.api,
                           data={'amount': 100000, 'deposit_source': 'bank', 'user_account': '01445',
                                 'site_account': '014454548',
-                                'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_user)
+                                'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_user)
         self.assertEqual(response.status_code, 400, msg=f'high amount of deposit should not be allowed')
 
     def test_update_deposit(self):
         response = c.patch(f'{self.api}{self.dep_id}/',
                            data={'amount': 800,
                                  'site_account': '014454548',
-                                 'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_user)
+                                 'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_user)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
     def test_update_deposit_superuser(self):
         response = c.patch(f'{self.api}{self.dep_id}/',
                            data={'amount': 800,
                                  'site_account': '014454548',
-                                 'method': 'rocket', 'transaction_id': 'fd7sf454f78fad'}, **self.headers_super)
+                                 'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_super)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
 

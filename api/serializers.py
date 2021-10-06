@@ -190,7 +190,7 @@ class DepositSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'user_account': {'required': True},
             'site_account': {'required': True},
-            'transaction_id': {'required': True},
+            'reference': {'required': True},
             'amount': {'validators': [MinMaxLimitValidator('deposit')]},
         }
 
