@@ -380,7 +380,9 @@ class TransferViewSet(viewsets.ModelViewSet):
         return Transfer.objects.filter(sender=self.request.user)
 
     def get_serializer_class(self):
-        return TransferClubSerializer if self.request.GET.get('club') else TransferSerializer
+        if self.request.GET.get('club'):
+            return TransferClubSerializer
+        return TransferSerializer
 
     http_method_names = ['get', 'post', 'head', 'options']
     filter_backends = [SearchFilter, DjangoFilterBackend]

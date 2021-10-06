@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import DataError
-from django.db.models import Model, Sum
+from django.db.models import Model, Sum, ObjectDoesNotExist
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -70,6 +70,30 @@ class BetQuestionValidator:
             raise ValidationError('Bet Question is locked or closed')
 
 
+class TransferUserValidator:
+    def __init__(self, sender):
+        self.sender = sender
+
+    def __call__(self, value, *args, **kwargs):
+        sender = self.sender
+        receiver = value
+        if sender.user_club != receiver.user_club:
+            raise ValidationError("Transaction outside club is not allowed.")
+        try:
+            sender_admin = bool(sender.club)
+        except ObjectDoesNotExist:
+            sender_admin = False
+        try:
+            receiver_admin = bool(receiver.club)
+        except ObjectDoesNotExist:
+            receiver_admin = False
+
+        if not sender_admin and not receiver_admin:
+            raise ValidationError("Transaction can not be done between regular users.")
+        if not receiver:
+            raise ValidationError("Recipients is not selected")
+
+
 class QuestionOptionValidator:
     def __init__(self, model):
         self.model = model
@@ -105,7 +129,7 @@ class CountLimitValidator:
         limit_count = int(get_config_from_model(f'limit_{self.des}'))
         query = self.generate_query_params(value)
         total_count = self.model.objects.filter(**query).count()
-        if total_count > limit_count:
+        if total_count >= limit_count:
             raise ValidationError(f"Maximum limit of {limit_count} per day exceed. {total_count}")
 
 

@@ -1,6 +1,3 @@
-from typing import Union
-
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -11,13 +8,13 @@ from users.models import User, Club
 
 default_configs = {
     'min_balance': 10,
-    'limit_deposit': 1,
+    'limit_deposit': 2,
     'min_deposit': 100,
     'max_deposit': 25000,
-    'limit_withdraw': 1,
+    'limit_withdraw': 2,
     'min_withdraw': 500,
     'max_withdraw': 25000,
-    'limit_transfer': 1,
+    'limit_transfer': 2,
     'min_transfer': 10,
     'max_transfer': 25000,
     'limit_bet': 50,
@@ -30,45 +27,6 @@ default_configs = {
     'disable_withdraw': 0,
     'deposit_waiting_time': 15,
 }
-
-
-def club_validator(sender: User, receiver: User):
-    if sender.user_club != receiver.user_club:
-        raise ValidationError("Transaction outside club is not allowed.")
-    try:
-        sender_admin = bool(sender.club)
-    except Club.DoesNotExist:
-        sender_admin = False
-    try:
-        receiver_admin = bool(receiver.club)
-    except Club.DoesNotExist:
-        receiver_admin = False
-
-    if not sender_admin and not receiver_admin:
-        raise ValidationError("Transaction can not be done between regular users.")
-    if not receiver:
-        raise ValidationError("Recipients is not selected")
-
-
-def club_admin_withdraw_validator(user: User):
-    if not user.is_club_admin():
-        raise ValidationError("Only club admin can withdraw club balance.")
-
-
-def user_balance_validator(user: Union[User, Club], amount):
-    if user.balance < amount:
-        raise ValidationError('User does not have enough balance.')
-
-
-def bet_question_validator(bet_question):
-    if isinstance(bet_question, int):
-        bet_question = BetQuestion.objects.filter(id=bet_question)
-        if bet_question:
-            bet_question = bet_question[0]
-        else:
-            raise ValidationError('Wrong bet scope id!')
-    if bet_question.is_locked():
-        raise ValidationError('This bet_scope is locked!')
 
 
 class Announcement(models.Model):
@@ -143,7 +101,7 @@ class BetQuestion(models.Model):
 
 class Bet(models.Model):
     amount = models.IntegerField(help_text='How much he/she bet')
-    bet_question = models.ForeignKey(BetQuestion, on_delete=models.PROTECT, validators=[bet_question_validator],
+    bet_question = models.ForeignKey(BetQuestion, on_delete=models.PROTECT,
                                      help_text="For which question bet is done")
     choice = models.ForeignKey(QuestionOption, help_text="Choice for question", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, help_text="Time when bet is created")

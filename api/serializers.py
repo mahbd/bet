@@ -4,9 +4,9 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator, \
-    BetQuestionValidator, QuestionOptionValidator
+    BetQuestionValidator, QuestionOptionValidator, TransferUserValidator
 from betting.models import Announcement, Bet, BetQuestion, Deposit, Match, Withdraw, Transfer, \
-    club_validator, bet_question_validator, QuestionOption, DepositMethod
+    QuestionOption, DepositMethod
 from betting.views import get_last_bet, get_config_from_model
 from users.backends import jwt_writer, get_current_club
 from users.models import User, Club, Notification
@@ -235,15 +235,14 @@ class TransferSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        recipient: User = attrs.get('recipient')
         user, amount = self.context['request'].user, attrs.get('amount')
         attrs['sender'] = user
         if get_config_from_model('disable_user_transfer') != '0':
             raise ValidationError('Money transfer is temporary disabled.')
+        TransferUserValidator(user).__call__(attrs.get('recipient'))
         MaxValueValidator(user.balance - float(get_config_from_model('min_balance')), 'Not enough balance').__call__(
             amount)
         CountLimitValidator('transfer', Transfer, field_check='sender').__call__(attrs.get('sender'))
-        club_validator(user, recipient)
         return attrs
 
 

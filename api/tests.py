@@ -666,7 +666,7 @@ class UserTestCase(TestCase):
         self.assertEqual(self.user2.check_password('fds_sdf'), True, 'Password should be correct')
 
 
-class TransferClubTestCase(TestCase):
+class TransferTestCase(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
@@ -677,6 +677,7 @@ class TransferClubTestCase(TestCase):
         self.club1.admin = self.user2
         self.club1.balance = 500000
         self.club1.save()
+        increase_balance(self.user2, 5000000)
         self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
         self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
         self.transfer_id = c.post(self.api_full,
@@ -688,39 +689,27 @@ class TransferClubTestCase(TestCase):
         self.assertEqual(Transfer.objects.get(id=response.json()['id']).club, self.club1, 'Wrong user')
         self.assertEqual(Transfer.objects.get(id=response.json()['id']).recipient, self.club1.admin, 'Wrong user')
 
-    def test_create_transfer_multi(self):
+    def test_create_club_transfer_multi(self):
         c.post(self.api_full, data={'amount': 500}, **self.club_header)
         response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 400, msg=f'not to withdraw\n{response.content}\n '
                                                         f'TC: {Transfer.objects.filter(sender=self.user2).count()}')
 
-    def test_create_transfer_low(self):
+    def test_create_club_transfer_low(self):
         response = c.post(self.api_full, data={'amount': 5}, **self.club_header)
         self.assertEqual(response.status_code, 400, msg=f'low amount of withdraw should not be allowed')
 
-    def test_create_transfer_high(self):
+    def test_create_club_transfer_high(self):
         response = c.post(self.api_full, data={'amount': 50000}, **self.club_header)
         self.assertEqual(response.status_code, 400, msg=f'high amount of deposit should not be allowed')
 
-    def test_update_transfer(self):
+    def test_update_club_transfer(self):
         response = c.patch(f'{self.api}{self.transfer_id}/?club=true', data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
 
-    def test_update_transfer_superuser(self):
-        response = c.patch(f'{self.api}{self.transfer_id}/', data={'amount': 500}, **self.club_header)
+    def test_update_club_transfer_superuser(self):
+        response = c.patch(f'{self.api}{self.transfer_id}/?club=true', data={'amount': 500}, **self.club_header)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
-
-
-class TransferTestCase(TestCase):
-    def setUp(self) -> None:
-        data = set_up_helper()
-        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
-         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
-        self.api = '/api/transfer/'
-        increase_balance(self.user2, 500000)
-        self.club1.admin = self.user2
-        self.club1.save()
-        self.transfer_id = Transfer.objects.create(amount=500, recipient=self.user1, sender=self.user2).id
 
     def test_create_transfer(self):
         response = c.post(self.api,
@@ -745,12 +734,16 @@ class TransferTestCase(TestCase):
         self.assertEqual(Transfer.objects.get(id=response.json()['id']).sender, self.user2, 'Wrong user')
 
     def test_create_transfer_multi(self):
-        c.post(self.api,
-               data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
+        response = c.post(self.api,
+                          data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 201, f'able to create transfer\n{response.content}')
+        response = c.post(self.api,
+                          data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
+        self.assertEqual(response.status_code, 201, f'able to create transfer\n{response.content}')
         response = c.post(self.api,
                           data={'amount': 500, 'recipient': self.user1.id}, **self.headers_user)
         self.assertEqual(response.status_code, 400,
-                         msg=f'not to withdraw\n{response.content}\n TC: {Transfer.objects.filter(sender=self.user2).count()}')
+                         msg=f'not to withdraw\n TC: {Transfer.objects.filter(sender=self.user2).count()}')
 
     def test_create_transfer_low(self):
         response = c.post(self.api,
