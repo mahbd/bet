@@ -60,21 +60,29 @@ COMMISSION_CHOICES = (
     (COMMISSION_REFER, 'Refer commission'),
     (COMMISSION_CLUB, 'Club commission'),
 )
-STATUS_LIVE = 'live'
-STATUS_HIDDEN = 'hidden'
+STATUS_ACCEPTED = 'accepted'
+STATUS_AWAITING_RESULT = 'no result'
+STATUS_CANCELLED = 'cancelled'
 STATUS_CLOSED = 'closed'
+STATUS_HIDDEN = 'hidden'
+STATUS_LIVE = 'live'
 STATUS_LOCKED = 'locked'
+STATUS_PENDING = 'pending'
+STATUS_PAID = 'paid'
+STATUS_REFUNDED = 'refunded'
+
+TRANSACTION_CHOICES = (
+    (STATUS_ACCEPTED, 'Accepted'),
+    (STATUS_CANCELLED, 'Cancelled'),
+    (STATUS_PENDING, 'Pending'),
+)
+
 MATCH_STATUS_CHOICES = (
     (STATUS_LIVE, 'Live'),
     (STATUS_HIDDEN, 'Hidden'),
     (STATUS_CLOSED, 'Closed'),
     (STATUS_LOCKED, 'Locked'),
 )
-STATUS_PENDING = 'pending'
-STATUS_PAID = 'paid'
-STATUS_REFUNDED = 'refunded'
-STATUS_CANCELLED = 'cancelled'
-STATUS_AWAITING_RESULT = 'no result'
 STATUS_CHOICES = (
     (STATUS_PENDING, 'Pending'),
     (STATUS_REFUNDED, 'Refunded'),

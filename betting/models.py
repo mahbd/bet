@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from betting.choices import GAME_CHOICES, DEPOSIT_CHOICES, DEPOSIT_SOURCE_CHOICES, STATUS_PENDING, STATUS_CHOICES, \
     STATUS_AWAITING_RESULT, MATCH_STATUS_CHOICES, STATUS_HIDDEN, STATUS_LOCKED, METHOD_TYPE_CHOICES, \
-    METHOD_TYPE_PERSONAL, STATUS_CLOSED, SOURCE_BANK
+    METHOD_TYPE_PERSONAL, STATUS_CLOSED, SOURCE_BANK, TRANSACTION_CHOICES
 from users.models import User, Club
 
 default_configs = {
@@ -140,7 +140,7 @@ class Deposit(models.Model):
     reference = models.CharField(max_length=255, blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     user_account = models.CharField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=20, choices=TRANSACTION_CHOICES, default=STATUS_PENDING)
 
     class Meta:
         ordering = ['-created_at']
@@ -156,7 +156,7 @@ class Transfer(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='recipients',
                                   help_text="User id to whom money transferred")
     sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=20, choices=TRANSACTION_CHOICES, default=STATUS_PENDING)
 
     class Meta:
         ordering = ['-created_at']
@@ -170,7 +170,7 @@ class Withdraw(models.Model):
     method = models.CharField(max_length=50, choices=DEPOSIT_CHOICES)
     reference = models.CharField(max_length=255, blank=True, null=True)
     site_account = models.CharField(max_length=255, blank=True, null=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    status = models.CharField(max_length=20, choices=TRANSACTION_CHOICES, default=STATUS_PENDING)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, help_text="User id of transaction maker")
     user_account = models.CharField(max_length=255, blank=True, null=True)
 

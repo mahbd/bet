@@ -274,10 +274,11 @@ class DashboardView(views.APIView):
             'total_user_balance': total_user_balance(),
             'total_club_balance': total_club_balance(),
             'total_user': User.objects.all().count(),
-            'total_user_deposit': Deposit.objects.filter(deposit_source=SOURCE_BANK
+            'total_user_deposit': Deposit.objects.filter(deposit_source=SOURCE_BANK, status=STATUS_ACCEPTED
                                                          ).aggregate(Sum('amount'))['amount__sum'] or 0,
-            'total_user_withdraw': Withdraw.objects.all().aggregate(Sum('amount'))['amount__sum'] or 0,
-            'total_club_transfer': Transfer.objects.filter(club__isnull=False
+            'total_user_withdraw': Withdraw.objects.filter(status=STATUS_ACCEPTED
+                                                           ).aggregate(Sum('amount'))['amount__sum'] or 0,
+            'total_club_transfer': Transfer.objects.filter(club__isnull=False, status=STATUS_ACCEPTED
                                                            ).aggregate(Sum('amount'))['amount__sum'] or 0
 
         }

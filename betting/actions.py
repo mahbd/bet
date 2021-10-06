@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from betting.choices import METHOD_TRANSFER, STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED, STATUS_LOCKED, STATUS_HIDDEN, \
-    STATUS_LIVE, STATUS_CLOSED
+    STATUS_LIVE, STATUS_CLOSED, STATUS_ACCEPTED, STATUS_CANCELLED
 from betting.models import Match, BetQuestion, Deposit, Transfer, Withdraw, Bet, QuestionOption
 from users.models import User
 from users.views import notify_user, notify_club
@@ -201,14 +201,26 @@ def accept_withdraw(withdraw_id: int) -> Withdraw:
     return withdraw
 
 
-def accept_transfer(transfer_id: int):
+def accept_transfer(transfer_id: int) -> Union[Transfer, bool]:
     transfer = get_object_or_404(Transfer, pk=transfer_id)
-    deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
-    accept_deposit(deposit.id)
-    notify_user(transfer.recipient, f'You  received {transfer.amount} tk from user ##{transfer.sender.username}##, '
-                                    f'with transfer id ##{transfer.id}##')
-    transfer.status = True
+    if transfer.status == STATUS_ACCEPTED:
+        return False
+    if transfer.status == STATUS_CANCELLED:
+        sender = transfer.sender or transfer.club
+        sender.balance -= transfer.amount
+        sender.save()
+        deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
+        accept_deposit(deposit.id)
+        notify_user(transfer.recipient, f'You  received {transfer.amount} tk '
+                                        f'with transfer id ##{transfer.id}##')
+    if transfer.status == STATUS_PENDING:
+        deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
+        accept_deposit(deposit.id)
+        notify_user(transfer.recipient, f'You  received {transfer.amount} tk from user ##{transfer.sender.username}##, '
+                                        f'with transfer id ##{transfer.id}##')
+    transfer.status = STATUS_ACCEPTED
     transfer.save()
+    return transfer
 
 
 def cancel_withdraw(withdraw_id: int) -> Withdraw:
@@ -216,7 +228,7 @@ def cancel_withdraw(withdraw_id: int) -> Withdraw:
     Increase user balance and make withdraw status false
     """
     withdraw = get_object_or_404(Withdraw, pk=withdraw_id)
-    withdraw.status = False
+    withdraw.status = STATUS_CANCELLED
     withdraw.user.balance += withdraw.amount
     withdraw.user.save()
     withdraw.balance = withdraw.user.balance
@@ -229,7 +241,7 @@ def cancel_withdraw(withdraw_id: int) -> Withdraw:
 
 def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
     deposit = get_object_or_404(Deposit, pk=deposit_id)
-    if deposit.status:
+    if deposit.status == STATUS_ACCEPTED:
         # Change user Balance
         if deposit.user:
             deposit.user.balance -= deposit.amount
@@ -250,7 +262,7 @@ def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
                                       f"{deposit.reference} Amount: {deposit.amount} From "
                                       f"account: {deposit.user_account} To account {deposit.site_account} "
                                       f"Method: {deposit.method}")
-    deposit.status = False
+    deposit.status = STATUS_CANCELLED
     if not delete:
         deposit.save()
         return deposit
@@ -258,13 +270,19 @@ def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
 
 
 def cancel_transfer(transfer_id: int) -> Transfer:
+    # TODO: Check logic
     transfer = get_object_or_404(Transfer, pk=transfer_id)
     if transfer.sender:
         notify_user(transfer.sender, f"Transfer of {transfer.amount}BDT to user {transfer.recipient.username} "
                                      f"placed on {transfer.created_at} has been canceled and refunded")
-    notify_user(transfer.recipient, f"Transfer of {transfer.amount}BDT to you from {transfer.sender.username} "
-                                    f"placed on {transfer.created_at} has been canceled")
-    if transfer.status:
+        notify_user(transfer.recipient, f"Transfer of {transfer.amount}BDT to you from {transfer.sender.username} "
+                                        f"placed on {transfer.created_at} has been canceled")
+    if transfer.club:
+        notify_club(transfer.club, f"Transfer of {transfer.amount}BDT to user {transfer.recipient.username} "
+                                   f"placed on {transfer.created_at} has been canceled and refunded")
+        notify_user(transfer.recipient, f"Transfer of {transfer.amount}BDT to you from {transfer.club.name} "
+                                        f"placed on {transfer.created_at} has been canceled")
+    if transfer.status == STATUS_ACCEPTED:
         transfer.recipient.balance -= transfer.amount
         transfer.recipient.save()
     if transfer.status is None:
@@ -274,7 +292,7 @@ def cancel_transfer(transfer_id: int) -> Transfer:
         if transfer.club:
             transfer.club.balance += transfer.amount
             transfer.club.save()
-    transfer.status = False
+    transfer.status = STATUS_CANCELLED
     transfer.save()
     return transfer
 
