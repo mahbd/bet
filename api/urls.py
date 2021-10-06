@@ -44,8 +44,10 @@ urlpatterns = [
     url(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     url(r'^swagger/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     url(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    path('all_transactions/', views.AllTransactionView.as_view()),
+
     path('', include(router.urls), name='main_api'),
-    path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
     path('actions/', views.ActionView.as_view()),
+    path('all_transactions/', views.AllTransactionView.as_view()),
+    path('dashboard/', views.DashboardView.as_view()),
+    path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
 ]

@@ -463,6 +463,27 @@ class ConfigTestCase(TestCase):
         self.assertEqual(response.status_code, 405)
 
 
+class DashboardTest(TestCase):
+    def setUp(self) -> None:
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.api = '/api/dashboard/'
+
+    def test_dashboard_data_super(self):
+        response = c.get(self.api, {}, **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(isinstance(response.json()['details'], dict), True)
+
+    def test_dashboard_data_user(self):
+        response = c.get(self.api, {}, **self.headers_user)
+        self.assertEqual(response.status_code, 403)
+
+    def test_dashboard_data_ann(self):
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 403)
+
+
 class DepositMethodTest(TestCase):
     def setUp(self) -> None:
         data = set_up_helper()

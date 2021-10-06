@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, views, mixins
 from rest_framework.filters import SearchFilter
@@ -8,11 +9,12 @@ from rest_framework.response import Response
 from betting.actions import *
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
-    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR
+    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, SOURCE_BANK
 from betting.models import Bet, BetQuestion, Match, DepositMethod, Announcement, Deposit, Withdraw, Transfer, \
     QuestionOption, ConfigModel
 from users.backends import jwt_writer, get_current_club
 from users.models import Club, User as MainUser, Notification
+from users.views import total_user_balance, total_club_balance
 from .action_data import action_data
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPermissionClass, \
     TransactionPermissionClass, UserViewPermission, IsAdminOrReadOnly
@@ -262,6 +264,24 @@ class DepositMethodViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['number1', 'number2']
+
+
+class DashboardView(views.APIView):
+    def get(self, request):
+        if not self.request.user or not self.request.user.is_superuser:
+            return Response({'details': 'You does not have permission'}, status=403)
+        data = {
+            'total_user_balance': total_user_balance(),
+            'total_club_balance': total_club_balance(),
+            'total_user': User.objects.all().count(),
+            'total_user_deposit': Deposit.objects.filter(deposit_source=SOURCE_BANK
+                                                         ).aggregate(Sum('amount'))['amount__sum'] or 0,
+            'total_user_withdraw': Withdraw.objects.all().aggregate(Sum('amount'))['amount__sum'] or 0,
+            'total_club_transfer': Transfer.objects.filter(club__isnull=False
+                                                           ).aggregate(Sum('amount'))['amount__sum'] or 0
+
+        }
+        return Response({'details': data})
 
 
 class DepositViewSet(viewsets.ModelViewSet):
