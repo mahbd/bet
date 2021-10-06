@@ -7,8 +7,9 @@ from api.serializers import UserDetailsSerializer
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
     A_QUESTION_REFUND, \
-    STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED
-from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer
+    STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
+    METHOD_BKASH, METHOD_ROCKET
+from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod
 from users.models import User, Club
 
 c = Client()
@@ -127,7 +128,6 @@ class ActionTestCase(TestCase):
         self.assertEqual(response.status_code, 200, 'Should be able to change start time of match')
         question = BetQuestion.objects.get(pk=self.question_id)
         self.assertEqual(question.winner_id, self.option_id, 'Should be able to change start time of match')
-
 
     def test_question_un_pay(self):
         question = BetQuestion.objects.get(pk=self.question_id)
@@ -398,6 +398,57 @@ class ClubTest(TestCase):
     def test_update_club_duplicate_username(self):
         response = c.patch(f'{self.api}{self.club1.id}/', {'username': 'test1'}, **self.headers_super)
         self.assertEqual(response.status_code, 400, f'duplicate username should be prohibited\n{response.content}')
+
+
+class DepositMethodTest(TestCase):
+    def setUp(self) -> None:
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.api = '/api/deposit-method/'
+        self.method1 = c.post(self.api, {'method': METHOD_BKASH, 'number1': '01454567'}, **self.headers_super).json()
+        self.method2 = c.post(self.api, {'method': METHOD_BKASH, 'number1': '01454567'}, **self.headers_super).json()
+
+    def test_create_deposit_method(self):
+        response = c.post(self.api, {'method': METHOD_BKASH, 'number1': '01454567'}, **self.headers_super)
+        self.assertEqual(response.status_code, 201, 'should be able to create deposit')
+
+    def test_create_deposit_method_wrong_method(self):
+        response = c.post(self.api, {'method': 'kkk', 'number1': '01454567'}, **self.headers_super)
+        self.assertEqual(response.status_code, 400, 'should not be able to create deposit, wrong data')
+
+    def test_create_deposit_method_user(self):
+        response = c.post(self.api, {'method': METHOD_BKASH, 'number1': '01454567'}, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'should not be able to create deposit')
+
+    def test_create_deposit_method_ann(self):
+        response = c.post(self.api, {'method': METHOD_BKASH, 'number1': '01454567'})
+        self.assertEqual(response.status_code, 403, 'should not be able to create deposit')
+
+    def test_get_deposit_method_ann(self):
+        response = c.get(self.api, {})
+        self.assertEqual(response.status_code, 200, 'should not be able to get deposit method list')
+        data = response.json()
+        self.assertEqual(data['count'], 2, 'Total amount of data')
+
+    def test_update_deposit_method(self):
+        method_id = self.method1['id']
+        response = c.patch(f'{self.api}{method_id}/', {
+            'convert_rate': 1.05, 'method': METHOD_ROCKET, 'number1': '454545212', 'number2': '0124575454'
+        }, **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to update')
+        method = DepositMethod.objects.get(pk=method_id)
+        self.assertEqual(method.method, METHOD_ROCKET)
+        self.assertEqual(method.convert_rate, 1.05)
+        self.assertEqual(method.number1, '454545212')
+        self.assertEqual(method.number2, '0124575454')
+
+    def test_update_deposit_method_user(self):
+        method_id = self.method1['id']
+        response = c.patch(f'{self.api}{method_id}/', {
+            'convert_rate': 1.05, 'method': METHOD_ROCKET, 'number1': '454545212', 'number2': '0124575454'
+        }, **self.headers_user)
+        self.assertEqual(response.status_code, 403, 'Should be able to update')
 
 
 class DepositTestCase(TestCase):

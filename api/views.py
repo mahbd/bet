@@ -19,7 +19,7 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPe
 from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
-    TransferClubSerializer, BetQuestionDetailsSerializer
+    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer
 
 User: MainUser = get_user_model()
 
@@ -239,6 +239,7 @@ class DepositMethodViewSet(viewsets.ModelViewSet):
     Only superuser can add, change and delete. Anyone can view.
     """
     queryset = DepositMethod.objects.all()
+    serializer_class = DepositMethodSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['number1', 'number2']
