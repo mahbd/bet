@@ -17,6 +17,9 @@ class Club(models.Model):
     password = models.CharField(max_length=255)
     username = models.CharField(max_length=255, unique=True)
 
+    class Meta:
+        ordering = ('-balance', )
+
     def __str__(self):
         return self.name
 

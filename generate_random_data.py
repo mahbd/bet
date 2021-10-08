@@ -42,3 +42,15 @@ def add_club(how_many, base_url='http://127.0.0.1:8000'):
         }
         response = requests.post(base_url + '/api/club/', data=data, headers={'x-auth-token': jwt})
         print(response.status_code)
+
+
+def add_announcement(how_many, base_url='http://127.0.0.1:8000'):
+    jwt = jwt_from_user(User.objects.filter(is_superuser=True).first())
+    for i in range(how_many):
+        print('Executing', i)
+        data = {'text': get_random_string(30)}
+        response = requests.post(base_url + '/api/announcement/', data=data, headers={'x-auth-token': jwt})
+        print(response.status_code)
+
+
+
