@@ -17,7 +17,7 @@ from users.models import Club, User as MainUser, Notification
 from users.views import total_user_balance, total_club_balance
 from .action_data import action_data
 from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPermissionClass, \
-    TransactionPermissionClass, UserViewPermission, IsAdminOrReadOnly
+    TransactionPermissionClass, UserViewPermission, IsAdminOrReadOnly, TransferPermissionClass
 from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
@@ -301,7 +301,7 @@ class DepositViewSet(viewsets.ModelViewSet):
         if self.request.GET.get('club'):
             club = get_current_club(self.request)
             return Deposit.objects.filter(club=club)
-        return Deposit.objects.filter(sender=self.request.user)
+        return Deposit.objects.filter(user=self.request.user)
 
     serializer_class = DepositSerializer
     permission_classes = [TransactionPermissionClass]
@@ -418,9 +418,7 @@ class TransferViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.GET.get('club'):
             club = get_current_club(self.request)
-            self.permission_classes = []
             return Transfer.objects.filter(club=club)
-        self.permission_classes = [TransactionPermissionClass]
         return Transfer.objects.filter(sender=self.request.user)
 
     def get_serializer_class(self):
@@ -433,6 +431,7 @@ class TransferViewSet(viewsets.ModelViewSet):
     search_fields = ['sender__username', 'sender__first_name', 'sender__last_name',
                      'recipient__username', 'recipient__first_name', 'recipient__last_name', ]
     filterset_fields = ['status']
+    permission_classes = [TransferPermissionClass]
 
 
 class UserViewSet(viewsets.ModelViewSet):

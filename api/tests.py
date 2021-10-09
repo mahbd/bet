@@ -585,6 +585,12 @@ class DepositTestCase(TestCase):
         self.dep_id = Deposit.objects.create(amount=500, user_account='01445', site_account='014454548',
                                              method=METHOD_ROCKET, reference='fd7sf454f78fad').id
 
+    def test_get_deposit(self):
+        response = c.get(self.api, {}, **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 403)
+
     def test_create_deposit(self):
         response = c.post(self.api,
                           data={'amount': 500, 'deposit_source': 'bank', 'user_account': '01445', 'site_account': '014',
@@ -817,8 +823,13 @@ class TransferTestCase(TestCase):
         increase_balance(self.user2, 5000000)
         self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
         self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
-        self.transfer_id = c.post(self.api_full,
-                                  data={'amount': 500}, **self.club_header).json()['id']
+        self.transfer_id = Transfer.objects.create(club=self.club1, amount=500).id
+
+    def test_get_transfer(self):
+        response = c.get(self.api, {}, **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 403)
 
     def test_create_club_transfer(self):
         response = c.post(self.api_full, data={'amount': 500}, **self.club_header)
@@ -913,6 +924,12 @@ class WithdrawTestCase(TestCase):
         self.withdraw_id = c.post(self.api,
                                   data={'amount': 500, 'user_account': '01445154', 'method': 'rocket', },
                                   **self.headers_user).json()['id']
+
+    def test_get_withdraw(self):
+        response = c.get(self.api, {}, **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 403)
 
     def test_create_withdraw(self):
         response = c.post(self.api,

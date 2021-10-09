@@ -114,10 +114,21 @@ class TransactionPermissionClass(permissions.IsAuthenticated):
         return False
 
 
-class ClubTransferPermissionClass(permissions.BasePermission):
+class TransferPermissionClass(permissions.BasePermission):
+    def has_permission(self, request, view):
+        club = get_current_club(request)
+        if (request.user and request.user.is_authenticated) or club:
+            return True
+
     def has_object_permission(self, request, view, obj):
         club = get_current_club(request)
         if club:
-            if request.method != 'DELETE' or not obj.status:
+            if request.method != 'DELETE':
                 return True
+        if request.user and request.user.is_authenticated:
+            if request.user.is_superuser:
+                return True
+            if request.user == obj.user:
+                if request.method != 'DELETE':
+                    return True
         return False

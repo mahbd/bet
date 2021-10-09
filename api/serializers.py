@@ -241,7 +241,8 @@ class TransferSerializer(serializers.ModelSerializer):
     account_type = serializers.SerializerMethodField(read_only=True)
 
     def get_account_type(self, *args, **kwargs):
-        if self.context['request'].user.is_club_admin():
+        user = self.context['request'].user
+        if user and user.is_club_admin():
             return 'club_admin'
         return 'user'
 
