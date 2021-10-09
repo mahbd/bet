@@ -256,38 +256,47 @@ class BetQuestionTest(TestCase):
         data = set_up_helper()
         (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id) = (data[i] for i in range(10))
+        self.api = '/api/bet-question/'
+
+    def test_get_bet_question(self):
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_bet_question_fast(self):
+        response = c.get(f'{self.api}?fast=true')
+        self.assertEqual(response.status_code, 200)
 
     def test_create_bet_question(self):
-        response = c.post('/api/bet-question/',
+        response = c.post(self.api,
                           data={'match': self.match_id, 'question': 'who will win?',
                                 'options': [{'option': 'hello', 'rate': 1.6}]},
                           **self.headers_super)
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create question\n{response.content}')
 
     def test_create_bet_question_regular(self):
-        response = c.post('/api/bet-question/',
+        response = c.post(self.api,
                           data={'match': self.match_id, 'question': 'who will win?'}, **self.headers_user)
         self.assertEqual(response.status_code, 403, msg=f'Should not be able to create question\n{response.content}')
 
     def test_update_question(self):
-        response = c.patch(f'/api/bet-question/{self.question_id}/',
+        response = c.patch(f'{self.api}{self.question_id}/',
                            data={'question': 'My winner?'}, **self.headers_super)
         self.assertEqual(response.status_code, 200, msg='should be able to update match')
         self.assertEqual(response.json()['question'], 'My winner?',
                          msg=f'should be able to update match, {response.content}')
 
     def test_update_question_user(self):
-        response = c.patch(f'/api/bet-question/{self.question_id}/',
+        response = c.patch(f'{self.api}{self.question_id}/',
                            data={'question': 'My winner?'}, **self.headers_user)
         self.assertEqual(response.status_code, 403, msg='should not be able to update match')
 
     def test_delete_question(self):
-        response = c.delete(f'/api/bet-question/{self.question_id}/',
+        response = c.delete(f'{self.api}{self.question_id}/',
                             data={'question': 'My winner?'}, **self.headers_super)
         self.assertEqual(response.status_code, 204, msg='should be able to delete match')
 
     def test_delete_question_user(self):
-        response = c.delete(f'/api/bet-question/{self.question_id}/',
+        response = c.delete(f'{self.api}{self.question_id}/',
                             data={'question': 'My winner?'}, **self.headers_user)
         self.assertEqual(response.status_code, 403, msg='should not be able to delete match')
 
@@ -616,6 +625,15 @@ class MatchTest(TestCase):
             'team_a_name': 'A',
             'team_b_name': 'B',
         }
+        self.api = '/api/match/'
+
+    def test_get_match(self):
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_match_fast(self):
+        response = c.get(f"{self.api}?fast=true")
+        self.assertEqual(response.status_code, 200)
 
     def test_create_match_superuser(self):
         headers = {'HTTP_x-auth-token': self.jwt1, 'content_type': 'application/json', }

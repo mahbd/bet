@@ -74,6 +74,9 @@ class QuestionOption(models.Model):
     limit = models.IntegerField(default=10_000_000)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f'{self.option} {self.rate} {self.limit}'
+
     class Meta:
         ordering = ('-created_at', )
 

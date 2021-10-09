@@ -21,7 +21,8 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPe
 from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
-    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer, ConfigModelSerializer
+    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer, ConfigModelSerializer, \
+    MatchDetailsSerializer
 
 User: MainUser = get_user_model()
 
@@ -206,25 +207,12 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
     Searchable fields: question, match__team_a_name, match__team_b_name, winner
     """
 
-    def get_queryset(self):
-        match_id = self.request.GET.get('match_id')
-        game_name = self.request.GET.get('game_name')
-        is_winner = self.request.GET.get('is_winner')
-        all_scope = BetQuestion.objects.select_related('match').all()
-        if match_id:
-            all_scope = all_scope.filter(match_id=match_id)
-        if game_name:
-            all_scope = all_scope.filter(match__game_name=game_name)
-        if is_winner:
-            return all_scope
-        return all_scope.filter(winner__isnull=True)
-
     def get_serializer_class(self):
         if self.request.GET.get('fast'):
             return BetQuestionSerializer
         return BetQuestionDetailsSerializer
 
-    queryset = BetQuestion.objects.all()
+    queryset = BetQuestion.objects.select_related('match').all()
     permission_classes = [MatchPermissionClass]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['question', 'match__team_a_name', 'match__team_b_name']
@@ -357,7 +345,7 @@ class MatchViewSet(viewsets.ModelViewSet):
     """
     list:
     Return a list of matches\n
-    To get list of matches of a game \n
+    To get only list of matches use ?fast=truen \n
     You can filter by status and game_name\n
     You can search by game_name, team_a_name and team_b_name\n
     create:
@@ -369,8 +357,12 @@ class MatchViewSet(viewsets.ModelViewSet):
     partial_update:
     Update the match. Only game_editor enabled user and superuser can update match.
     """
+    def get_serializer_class(self):
+        if self.request.GET.get('fast'):
+            return MatchSerializer
+        return MatchDetailsSerializer
+
     queryset = Match.objects.all()
-    serializer_class = MatchSerializer
     permission_classes = [MatchPermissionClass]
     filter_backends = [SearchFilter, DjangoFilterBackend]
     search_fields = ['game_name', 'team_a_name', 'team_b_name']

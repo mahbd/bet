@@ -55,8 +55,8 @@ class QuestionOptionSerializer(serializers.ModelSerializer):
 
 # noinspection PyMethodMayBeStatic
 class BetQuestionSerializer(serializers.ModelSerializer):
+    details = serializers.SerializerMethodField(read_only=True)
     options = QuestionOptionSerializer(many=True)
-    is_locked = serializers.SerializerMethodField(read_only=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     match_start_time = serializers.SerializerMethodField(read_only=True)
 
@@ -68,9 +68,6 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     def get_details(self, bet_question: BetQuestion) -> dict:
         return {}
-
-    def get_is_locked(self, bet_scope: BetQuestion) -> bool:
-        return bet_scope.is_locked()
 
     def create(self, validated_data):
         options = validated_data.pop('options', [])
@@ -87,7 +84,7 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BetQuestion
-        fields = ('details', 'id', 'is_locked', 'match',
+        fields = ('details', 'id', 'match',
                   'match_name', 'match_start_time',
                   'options', 'question', 'status', 'winner',)
 
@@ -210,10 +207,27 @@ class DepositSerializer(serializers.ModelSerializer):
 
 
 class MatchSerializer(serializers.ModelSerializer):
+    questions = serializers.SerializerMethodField(read_only=True)
+
+    def get_questions(self, match: Match) -> list:
+        return []
+
     class Meta:
         model = Match
-        fields = ('created_at', 'game_name', 'id', 'score', 'status', 'start_time', 'team_a_name', 'team_b_name',
-                  'team_a_color', 'team_b_color')
+        fields = ('created_at', 'game_name', 'id', 'questions', 'score', 'status', 'start_time',
+                  'team_a_name', 'team_b_name', 'team_a_color', 'team_b_color')
+        read_only_fields = ('id',)
+
+
+class MatchDetailsSerializer(MatchSerializer):
+    def get_questions(self, match: Match) -> list:
+        question_list = match.betquestion_set.all()
+        return BetQuestionSerializer(question_list, many=True).data
+
+    class Meta:
+        model = Match
+        fields = ('created_at', 'game_name', 'id', 'questions', 'score', 'status', 'start_time',
+                  'team_a_name', 'team_b_name', 'team_a_color', 'team_b_color')
         read_only_fields = ('id',)
 
 
