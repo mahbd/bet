@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.test import TestCase, Client
@@ -205,13 +206,14 @@ class AllTransactionTestCase(TestCase):
          self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
         self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
         self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
+        self.api = '/api/all-transactions/'
 
     def test_get_all(self):
         Transfer.objects.create(amount=500, sender=self.user2, recipient=self.user1)
         Transfer.objects.create(amount=500, sender=self.user2, recipient=self.user1)
         Deposit.objects.create(amount=500, user=self.user2)
         Withdraw.objects.create(amount=500, user=self.user2)
-        response = c.get('/api/all_transactions/', **self.headers_user)
+        response = c.get(self.api, **self.headers_user)
         self.assertEqual(response.status_code, 200, 'Should be able to get list')
         self.assertEqual(response.json()['count'], 4, '4 transactions present')
         for response in response.json()['results']:
@@ -225,12 +227,20 @@ class AllTransactionTestCase(TestCase):
                 transfer = Transfer.objects.get(pk=response['id'])
                 self.assertEqual(transfer.status, response['status'], 'status is not same')
 
+    def test_limit(self):
+        response = c.get(f'{self.api}?limit=10', **self.headers_user)
+        self.assertEqual(response.status_code, 200)
+
+    def test_limit_offset(self):
+        response = c.get(f'{self.api}?limit=10&offset=5', **self.headers_user)
+        self.assertEqual(response.status_code, 200)
+
     def test_get_all_club(self):
         increase_balance(self.user2, 5000)
         c.post('/api/bet/', data={'amount': 100, 'bet_question': self.question_id, 'choice': self.option_id},
                **self.headers_user)
         Deposit.objects.create(club=self.club1, amount=500)
-        response = c.get('/api/all_transactions/?club=true', **self.club_header)
+        response = c.get(f'{self.api}?club=true', **self.club_header)
         self.assertEqual(response.status_code, 200, 'Should be able to get list')
         self.assertEqual(response.json()['count'], 2, '2 transactions present')
         for response in response.json()['results']:

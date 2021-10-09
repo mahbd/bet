@@ -47,7 +47,7 @@ urlpatterns = [
 
     path('', include(router.urls), name='main_api'),
     path('actions/', views.ActionView.as_view()),
-    path('all_transactions/', views.AllTransactionView.as_view()),
+    path('all-transactions/', views.AllTransactionView.as_view()),
     path('dashboard/', views.DashboardView.as_view()),
     path('login/', csrf_exempt(views.Login.as_view()), name='api_login'),
 ]

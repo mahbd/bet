@@ -121,15 +121,15 @@ class AllTransactionView(views.APIView):
     def get(self, *args, **kwargs):
         if self.request.GET.get('club'):
             club = get_current_club(self.request)
-            all_deposit = Deposit.objects.filter(club=club)[:40]
+            all_deposit = Deposit.objects.filter(club=club)
             all_withdraw = []
-            all_transfer = Transfer.objects.filter(club=club)[:40]
+            all_transfer = Transfer.objects.filter(club=club)
         else:
             if not (self.request.user and self.request.user.is_authenticated):
                 return Response({'details': 'User is not authenticated'}, status=401)
-            all_deposit = Deposit.objects.filter(user=self.request.user)[:40]
-            all_withdraw = Withdraw.objects.filter(user=self.request.user)[:40]
-            all_transfer = Transfer.objects.filter(sender=self.request.user)[:40]
+            all_deposit = Deposit.objects.filter(user=self.request.user)
+            all_withdraw = Withdraw.objects.filter(user=self.request.user)
+            all_transfer = Transfer.objects.filter(sender=self.request.user)
         all_transaction = []
         for query in list(all_deposit) + list(all_withdraw) + list(all_transfer):
             all_transaction.append({
@@ -146,6 +146,13 @@ class AllTransactionView(views.APIView):
                 'created_at': query.created_at
             })
         all_transaction.sort(key=lambda x: x['created_at'], reverse=True)
+        try:
+            limit = int(self.request.GET.get('limit', 0))
+            offset = int(self.request.GET.get('offset', 0))
+            if limit:
+                all_transaction = all_transaction[offset: offset + limit]
+        except Exception as e:
+            print(e)
         return Response({'results': all_transaction, 'count': len(all_transaction)})
 
 

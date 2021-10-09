@@ -156,7 +156,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 100
 }
 if os.environ.get('LOCAL') == 'True':
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].append('rest_framework.authentication.SessionAuthentication')
+    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'].insert(0, 'rest_framework.authentication.SessionAuthentication')
 
 # Authentication Settings
 AUTHENTICATION_BACKENDS = (
