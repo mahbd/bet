@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from betting.actions import *
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
-    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, SOURCE_BANK
+    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, SOURCE_BANK, A_REFUND_BET
 from betting.models import Bet, BetQuestion, Match, DepositMethod, Announcement, Deposit, Withdraw, Transfer, \
     QuestionOption, ConfigModel
 from users.backends import jwt_writer, get_current_club
@@ -90,6 +90,11 @@ class ActionView(views.APIView):
         Remove Game Editor\n
         User will be converted to regular user. payload should be\n
         ['action_code': {A_REMOVE_GAME_EDITOR}, 'user_id': user id]\n\n
+        Refund bet\n
+        This will refund a bet. If you don't supply percent, function will 
+        automatically determine how much to refund. Using this API you can reduce 
+        balance of user. payload should be\n
+        ['action_code': {A_REFUND_BET}, 'bet_id': bet id, 'percent': Percent to refund]\n\n
         """
         user: User = self.request.user
         club: Club = get_current_club(self.request)
@@ -357,6 +362,7 @@ class MatchViewSet(viewsets.ModelViewSet):
     partial_update:
     Update the match. Only game_editor enabled user and superuser can update match.
     """
+
     def get_serializer_class(self):
         if self.request.GET.get('fast'):
             return MatchSerializer

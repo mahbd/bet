@@ -87,15 +87,13 @@ def select_question_winner(question_id: int, option_id: int) -> Union[BetQuestio
     return question
 
 
-def unselect_question_winner(question_id: int, option_id: int) -> Union[BetQuestion, bool]:
+def unselect_question_winner(question_id: int) -> Union[BetQuestion, bool]:
     if not question_id or not BetQuestion.objects.filter(pk=question_id).exists():
         return False
-    if not option_id or not QuestionOption.objects.filter(pk=option_id).exists():
-        return False
     question = BetQuestion.objects.get(pk=question_id)
-    winner = QuestionOption.objects.get(pk=option_id)
     if not question.winner:
         return False
+    winner = QuestionOption.objects.get(pk=question.winner_id)
     question.status = STATUS_LOCKED
     question.winner = None
     bet_winners = question.bet_set.values('id').filter(choice=winner)
@@ -119,13 +117,17 @@ def refund_question(question_id: int) -> bool:
 
 
 # Bet
-def refund_bet(bet_id: int):
+def refund_bet(bet_id: int, percent=None) -> Union[Bet, bool]:
     # TODO: Verify logic
-    bet = get_object_or_404(Bet, pk=bet_id)
+    if not bet_id or not Bet.objects.filter(pk=bet_id).exists():
+        return False
+    bet = Bet.objects.get(pk=bet_id)
     if bet.is_winner:
         change = (bet.win_amount / bet.win_rate) - bet.win_amount
     else:
         change = bet.win_amount / bet.win_rate
+    if percent:
+        change = bet.amount * float(percent) / 100
     bet.user.balance += change
     bet.user.save()
     notify_user(bet.user, f'Bet cancelled for match ##{bet.bet_question.match.__str__()}## '
@@ -133,6 +135,7 @@ def refund_bet(bet_id: int):
                           f'refunded by {change} BDT')
     bet.status = STATUS_REFUNDED
     bet.save()
+    return bet
 
 
 def pay_bet(bet_id: int):

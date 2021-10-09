@@ -8,8 +8,9 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
     A_QUESTION_REFUND, \
     STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
-    METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING
-from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod, Announcement
+    METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING, A_REFUND_BET
+from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod, Announcement, \
+    Bet
 from betting.views import set_config_to_model
 from users.models import User, Club
 
@@ -130,12 +131,12 @@ class ActionTestCase(TestCase):
         question = BetQuestion.objects.get(pk=self.question_id)
         self.assertEqual(question.winner_id, self.option_id, 'Should be able to change start time of match')
 
-    def test_question_un_pay(self):
+    def test_question_unselect_winner(self):
         question = BetQuestion.objects.get(pk=self.question_id)
         question.winner_id = self.option_id
         question.save()
-        response = c.post(self.api, {'action_code': A_QUESTION_UNSELECT_WINNER, 'question_id': self.question_id,
-                                     'option_id': self.option_id}, **self.headers_super)
+        response = c.post(self.api, {'action_code': A_QUESTION_UNSELECT_WINNER, 'question_id': self.question_id},
+                          **self.headers_super)
         self.assertEqual(response.status_code, 200, 'Should be able to un pay question')
         question.refresh_from_db()
         self.assertEqual(question.status, STATUS_LOCKED, 'Should be able to un pay question')
@@ -174,6 +175,27 @@ class ActionTestCase(TestCase):
                **self.headers_user)
         self.user2.refresh_from_db()
         self.assertEqual(self.user2.game_editor, True, 'Should not be able to make game editor')
+
+    def test_refund(self):
+        increase_balance(self.user2, 5000)
+        bet_id = c.post('/api/bet/', data={'amount': 100, 'bet_question': self.question_id, 'choice': self.option_id},
+                        **self.headers_user).json()['id']
+        self.user2.refresh_from_db()
+        self.assertEqual(4900, self.user2.balance, 'Balance should be decreased')
+        response = c.post(self.api, {'action_code': A_REFUND_BET, 'bet_id': bet_id, 'percent': 90},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to refund')
+        self.user2.refresh_from_db()
+        bet = Bet.objects.get(pk=bet_id)
+        self.assertEqual(bet.status, STATUS_REFUNDED, 'Status should be refunded')
+        self.assertEqual(4900 + 100 * 0.9, self.user2.balance, 'Should be able to refund')
+        response = c.post(self.api, {'action_code': A_REFUND_BET, 'bet_id': bet_id, 'percent': -90},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200, 'Should be able to refund')
+        self.user2.refresh_from_db()
+        bet = Bet.objects.get(pk=bet_id)
+        self.assertEqual(bet.status, STATUS_REFUNDED, 'Status should be refunded')
+        self.assertEqual(4900, self.user2.balance, 'Should be able to refund')
 
 
 class AllTransactionTestCase(TestCase):

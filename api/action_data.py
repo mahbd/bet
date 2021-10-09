@@ -1,6 +1,6 @@
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
-    A_QUESTION_REFUND, A_MAKE_GAME_EDITOR, A_REMOVE_GAME_EDITOR
+    A_QUESTION_REFUND, A_MAKE_GAME_EDITOR, A_REMOVE_GAME_EDITOR, A_REFUND_BET
 
 action_data = {
     # Match Actions
@@ -39,7 +39,7 @@ action_data = {
     },
     A_QUESTION_UNSELECT_WINNER: {
         'permission': 'user.is_staff or user.game_editor or user.is_superuser',
-        'function': 'unselect_question_winner(data.get("question_id"), data.get("option_id"))',
+        'function': 'unselect_question_winner(data.get("question_id"))',
     },
     A_QUESTION_REFUND: {
         'permission': 'user.is_staff or user.game_editor or user.is_superuser',
@@ -52,5 +52,9 @@ action_data = {
     A_REMOVE_GAME_EDITOR: {
         'permission': 'user.is_superuser',
         'function': 'remove_game_editor(data.get("user_id"))',
+    },
+    A_REFUND_BET: {
+        'permission': 'user.is_superuser',
+        'function': 'refund_bet(data.get("bet_id"), data.get("percent"))',
     }
 }
