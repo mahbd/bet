@@ -166,8 +166,10 @@ def un_pay_bet(bet_id: int):
     bet.save()
 
 
-def accept_deposit(deposit_id: int, message=None) -> Deposit:
-    deposit = get_object_or_404(Deposit, pk=deposit_id)
+def accept_deposit(deposit_id: int, message=None) -> Union[Deposit, bool]:
+    if not deposit_id or not Deposit.objects.filter(pk=deposit_id).exists():
+        return False
+    deposit = Deposit.objects.get(pk=deposit_id)
     if deposit.user:
         deposit.user.balance += deposit.amount
         deposit.user.save()
@@ -180,7 +182,7 @@ def accept_deposit(deposit_id: int, message=None) -> Deposit:
         deposit.balance = deposit.club.balance
         notify_club(deposit.club, message or f"Deposit request on {deposit.created_at} amount"
                                              f"{deposit.amount} confirmed")
-    deposit.status = True
+    deposit.status = STATUS_ACCEPTED
     deposit.save()
     return deposit
 
@@ -192,11 +194,10 @@ def accept_withdraw(withdraw_id: int) -> Withdraw:
     """
     withdraw: Withdraw = get_object_or_404(Withdraw, pk=withdraw_id)
     if withdraw.status is None:
-        withdraw.status = True
+        withdraw.status = STATUS_ACCEPTED
         withdraw.save()
     else:
-        withdraw.status = True
-        withdraw.user.balance -= withdraw.amount
+        withdraw.status = STATUS_ACCEPTED
         withdraw.user.save()
         withdraw.balance = withdraw.user.balance
         withdraw.save()
@@ -205,41 +206,31 @@ def accept_withdraw(withdraw_id: int) -> Withdraw:
 
 
 def accept_transfer(transfer_id: int) -> Union[Transfer, bool]:
-    transfer = get_object_or_404(Transfer, pk=transfer_id)
+    if not transfer_id or not Transfer.objects.filter(pk=transfer_id).exists():
+        return False
+    transfer = Transfer.objects.get(pk=transfer_id)
     if transfer.status == STATUS_ACCEPTED:
         return False
-    if transfer.status == STATUS_CANCELLED:
+    elif transfer.status == STATUS_CANCELLED:
         sender = transfer.sender or transfer.club
         sender.balance -= transfer.amount
         sender.save()
-        deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
-        accept_deposit(deposit.id)
+        transfer.recipient.balance += transfer.amount
+        transfer.recipient.save()
         notify_user(transfer.recipient, f'You  received {transfer.amount} tk '
                                         f'with transfer id ##{transfer.id}##')
-    if transfer.status == STATUS_PENDING:
-        deposit = create_deposit(transfer.recipient_id, transfer.amount, METHOD_TRANSFER, METHOD_TRANSFER)
-        accept_deposit(deposit.id)
-        notify_user(transfer.recipient, f'You  received {transfer.amount} tk from user ##{transfer.sender.username}##, '
+    elif transfer.status == STATUS_PENDING:
+        sender = transfer.sender or transfer.club
+        transfer.recipient.balance += transfer.amount
+        transfer.recipient.save()
+        notify_user(transfer.recipient, f'You  received {transfer.amount} tk '
                                         f'with transfer id ##{transfer.id}##')
+    else:
+        return False
     transfer.status = STATUS_ACCEPTED
+    transfer.balance = sender.balance
     transfer.save()
     return transfer
-
-
-def cancel_withdraw(withdraw_id: int) -> Withdraw:
-    """
-    Increase user balance and make withdraw status false
-    """
-    withdraw = get_object_or_404(Withdraw, pk=withdraw_id)
-    withdraw.status = STATUS_CANCELLED
-    withdraw.user.balance += withdraw.amount
-    withdraw.user.save()
-    withdraw.balance = withdraw.user.balance
-    withdraw.save()
-    notify_user(withdraw.user,
-                f"Withdraw of {withdraw.amount}BDT via {withdraw.method} to number {withdraw.user_account} "
-                f"placed on {withdraw.created_at} has been canceled and refunded")
-    return withdraw
 
 
 def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
@@ -269,7 +260,22 @@ def cancel_deposit(deposit_id: int, delete=False) -> Deposit:
     if not delete:
         deposit.save()
         return deposit
-    print("Trying to delete")
+
+
+def cancel_withdraw(withdraw_id: int) -> Withdraw:
+    """
+    Increase user balance and make withdraw status false
+    """
+    withdraw = get_object_or_404(Withdraw, pk=withdraw_id)
+    withdraw.status = STATUS_CANCELLED
+    withdraw.user.balance += withdraw.amount
+    withdraw.user.save()
+    withdraw.balance = withdraw.user.balance
+    withdraw.save()
+    notify_user(withdraw.user,
+                f"Withdraw of {withdraw.amount}BDT via {withdraw.method} to number {withdraw.user_account} "
+                f"placed on {withdraw.created_at} has been canceled and refunded")
+    return withdraw
 
 
 def cancel_transfer(transfer_id: int) -> Transfer:

@@ -9,7 +9,8 @@ from rest_framework.response import Response
 from betting.actions import *
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
-    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, SOURCE_BANK, A_REFUND_BET
+    A_QUESTION_REFUND, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, SOURCE_BANK, A_REFUND_BET, A_DEPOSIT_ACCEPT, \
+    A_DEPOSIT_CANCEL, A_WITHDRAW_ACCEPT, A_WITHDRAW_CANCEL, A_TRANSFER_ACCEPT, A_TRANSFER_CANCEL
 from betting.models import Bet, BetQuestion, Match, DepositMethod, Announcement, Deposit, Withdraw, Transfer, \
     QuestionOption, ConfigModel
 from users.backends import jwt_writer, get_current_club
@@ -95,6 +96,18 @@ class ActionView(views.APIView):
         automatically determine how much to refund. Using this API you can reduce 
         balance of user. payload should be\n
         ['action_code': {A_REFUND_BET}, 'bet_id': bet id, 'percent': Percent to refund]\n\n
+        Accept Deposit. payload should be\n
+        ['action_code': {A_DEPOSIT_ACCEPT}, 'deposit_id': deposit id]\n\n
+        Cancel Deposit. payload should be\n
+        ['action_code': {A_DEPOSIT_CANCEL}, 'deposit_id': deposit id]\n\n
+        Cancel Deposit. payload should be\n
+        ['action_code': {A_WITHDRAW_ACCEPT}, 'withdraw_id': withdraw id]\n\n
+        Cancel Deposit. payload should be\n
+        ['action_code': {A_WITHDRAW_CANCEL}, 'withdraw_id': withdraw id]\n\n
+        Cancel Deposit. payload should be\n
+        ['action_code': {A_TRANSFER_ACCEPT}, 'transfer_id': transfer id]\n\n
+        Cancel Deposit. payload should be\n
+        ['action_code': {A_TRANSFER_CANCEL}, 'transfer_id': transfer id]\n\n
         """
         user: User = self.request.user
         club: Club = get_current_club(self.request)

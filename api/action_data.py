@@ -1,6 +1,7 @@
 from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH_END_NOW, A_QUESTION_LOCK, \
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
-    A_QUESTION_REFUND, A_MAKE_GAME_EDITOR, A_REMOVE_GAME_EDITOR, A_REFUND_BET
+    A_QUESTION_REFUND, A_MAKE_GAME_EDITOR, A_REMOVE_GAME_EDITOR, A_REFUND_BET, A_TRANSFER_ACCEPT, A_WITHDRAW_ACCEPT, \
+    A_DEPOSIT_ACCEPT, A_DEPOSIT_CANCEL, A_WITHDRAW_CANCEL, A_TRANSFER_CANCEL
 
 action_data = {
     # Match Actions
@@ -56,5 +57,29 @@ action_data = {
     A_REFUND_BET: {
         'permission': 'user.is_superuser',
         'function': 'refund_bet(data.get("bet_id"), data.get("percent"))',
-    }
+    },
+    A_DEPOSIT_ACCEPT: {
+        'permission': 'user.is_superuser',
+        'function': 'accept_deposit(data.get("deposit_id"))',
+    },
+    A_DEPOSIT_CANCEL: {
+        'permission': 'user.is_superuser',
+        'function': 'cancel_deposit(data.get("deposit_id"))',
+    },
+    A_WITHDRAW_ACCEPT: {
+        'permission': 'user.is_superuser',
+        'function': 'accept_withdraw(data.get("withdraw_id"))',
+    },
+    A_WITHDRAW_CANCEL: {
+        'permission': 'user.is_superuser',
+        'function': 'cancel_withdraw(data.get("withdraw_id"))',
+    },
+    A_TRANSFER_ACCEPT: {
+        'permission': 'user.is_superuser',
+        'function': 'accept_transfer(data.get("transfer_id"))',
+    },
+    A_TRANSFER_CANCEL: {
+        'permission': 'user.is_superuser',
+        'function': 'cancel_transfer(data.get("transfer_id"))',
+    },
 }

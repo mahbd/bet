@@ -9,7 +9,8 @@ from betting.choices import A_MATCH_LOCK, A_MATCH_HIDE, A_MATCH_GO_LIVE, A_MATCH
     A_QUESTION_HIDE, A_QUESTION_END_NOW, A_QUESTION_SELECT_WINNER, A_QUESTION_UNSELECT_WINNER, \
     A_QUESTION_REFUND, \
     STATUS_LOCKED, STATUS_HIDDEN, STATUS_LIVE, STATUS_CLOSED, A_REMOVE_GAME_EDITOR, A_MAKE_GAME_EDITOR, STATUS_REFUNDED, \
-    METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING, A_REFUND_BET
+    METHOD_BKASH, METHOD_ROCKET, STATUS_PENDING, A_REFUND_BET, STATUS_ACCEPTED, A_DEPOSIT_ACCEPT, A_DEPOSIT_CANCEL, \
+    STATUS_CANCELLED, A_WITHDRAW_ACCEPT, A_WITHDRAW_CANCEL, A_TRANSFER_ACCEPT, A_TRANSFER_CANCEL
 from betting.models import Match, BetQuestion, QuestionOption, Deposit, Withdraw, Transfer, DepositMethod, Announcement, \
     Bet
 from betting.views import set_config_to_model
@@ -197,6 +198,137 @@ class ActionTestCase(TestCase):
         bet = Bet.objects.get(pk=bet_id)
         self.assertEqual(bet.status, STATUS_REFUNDED, 'Status should be refunded')
         self.assertEqual(4900, self.user2.balance, 'Should be able to refund')
+
+
+class TransactionTest(TestCase):
+    def setUp(self) -> None:
+        data = set_up_helper()
+        (self.club1, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
+         self.match_id, self.question_id, self.option_id) = (data[i] for i in range(11))
+        self.club_jwt = c.post('/api/login/', data={'username': 'test_club1', 'password': 'test_pass1'}).json()['jwt']
+        self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
+        self.api = '/api/actions/'
+
+    def test_accept_deposit(self):
+        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_DEPOSIT_ACCEPT, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user2.balance, balance + 500)
+        self.assertEqual(self.user2.balance, deposit.balance)
+        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance)
+
+    def test_cancel_deposit(self):
+        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance)
+
+    def test_accept_withdraw(self):
+        withdraw = Withdraw.objects.create(user=self.user2, amount=500)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_WITHDRAW_ACCEPT, 'withdraw_id': withdraw.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        withdraw.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(withdraw.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user2.balance, balance)
+        self.assertEqual(self.user2.balance, withdraw.balance)
+        response = c.post(self.api, {'action_code': A_WITHDRAW_CANCEL, 'withdraw_id': withdraw.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        withdraw.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(withdraw.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance + 500)
+
+    def test_cancel_withdraw(self):
+        withdraw = Withdraw.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_WITHDRAW_CANCEL, 'withdraw_id': withdraw.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        withdraw.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(withdraw.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance + withdraw.amount)
+
+    def test_accept_transfer(self):
+        transfer = Transfer.objects.create(sender=self.user2, amount=500, recipient=self.user1)
+        balance = self.user1.balance
+        response = c.post(self.api, {'action_code': A_TRANSFER_ACCEPT, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user1.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user1.balance, balance + 500)
+        self.assertEqual(self.user2.balance, transfer.balance)
+        response = c.post(self.api, {'action_code': A_TRANSFER_CANCEL, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user1.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_CANCELLED)
+        self.assertEqual(self.user1.balance, balance)
+
+    def test_cancel_transfer(self):
+        transfer = Transfer.objects.create(sender=self.user2, amount=500, recipient=self.user1)
+        balance = self.user1.balance
+        response = c.post(self.api, {'action_code': A_TRANSFER_CANCEL, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user1.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_CANCELLED)
+        self.assertEqual(self.user1.balance, balance)
+
+    def test_accept_transfer_club(self):
+        transfer = Transfer.objects.create(club=self.club1, amount=500, recipient=self.user1)
+        balance = self.user1.balance
+        response = c.post(self.api, {'action_code': A_TRANSFER_ACCEPT, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user1.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user1.balance, balance + 500)
+        self.assertEqual(self.club1.balance, transfer.balance)
+        response = c.post(self.api, {'action_code': A_TRANSFER_CANCEL, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user1.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_CANCELLED)
+        self.assertEqual(self.user1.balance, balance)
+
+    def test_cancel_transfer_club(self):
+        transfer = Transfer.objects.create(club=self.club1, amount=500, recipient=self.user1)
+        balance = self.user1.balance
+        response = c.post(self.api, {'action_code': A_TRANSFER_CANCEL, 'transfer_id': transfer.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        transfer.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(transfer.status, STATUS_CANCELLED)
+        self.assertEqual(self.user1.balance, balance)
 
 
 class AllTransactionTestCase(TestCase):
