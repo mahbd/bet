@@ -54,7 +54,6 @@ class ActionView(views.APIView):
         club: Club = get_current_club(self.request)
         data = dict(self.request.data)
         action_code = data.get('action_code')
-        print(action_code)
         to_do = action_data.get(action_code, None)
         if not to_do:
             return Response({'details': 'Invalid action'}, status=400)
@@ -459,9 +458,10 @@ class UserViewSet(viewsets.ModelViewSet):
     """
 
     def get_serializer_class(self):
+        user = self.request.user
         if self.request.method == 'POST':
             return UserDetailsSerializer
-        if self.request.user.id == int(self.kwargs.get('pk')) or self.request.user.is_superuser:
+        if user and (user.id == int(self.kwargs.get('pk')) or user.is_superuser):
             return UserDetailsSerializer
         elif self.request.GET.get('club'):
             return UserListSerializerClub

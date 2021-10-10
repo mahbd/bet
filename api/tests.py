@@ -858,10 +858,15 @@ class UserTestCase(TestCase):
         data = set_up_helper()
         (self.club, self.club2, self.user1, self.user2, self.jwt1, self.jwt2, self.headers_super, self.headers_user,
          self.match_id, self.question_id) = (data[i] for i in range(10))
+        self.api = '/api/user/'
+
+    def test_get_users(self):
+        response = c.get(self.api)
+        self.assertEqual(response.status_code, 200)
 
     # Creation Test
     def test_can_register_valid_data(self):
-        response = c.post('/api/user/', {'username': 'test3', 'email': 'testing@gmail.com',
+        response = c.post(self.api, {'username': 'test3', 'email': 'testing@gmail.com',
                                          'phone': '017745445', 'user_club': self.club.id,
                                          'password': 'fds_sdf'})
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
