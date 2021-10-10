@@ -50,7 +50,24 @@ def completed_successfully(data):
 
 class ActionView(views.APIView):
     def post(self, request):
-        f"""
+        user: User = self.request.user
+        club: Club = get_current_club(self.request)
+        data = dict(self.request.data)
+        action_code = data.get('action_code')
+        print(action_code)
+        to_do = action_data.get(action_code, None)
+        if not to_do:
+            return Response({'details': 'Invalid action'}, status=400)
+        if eval(to_do['permission']):
+            eval(to_do.get('prepare', 'True'))
+            response = eval(to_do['function'])
+            if not response:
+                return failed_to_do(data)
+            return completed_successfully(data)
+        return permission_error()
+
+    def get(self, request):
+        return Response({'details': f"""
         Do various operation\n
         *************  Match Actions ******************\n
         Lock Match\n
@@ -108,21 +125,7 @@ class ActionView(views.APIView):
         ['action_code': {A_TRANSFER_ACCEPT}, 'transfer_id': transfer id]\n\n
         Cancel Deposit. payload should be\n
         ['action_code': {A_TRANSFER_CANCEL}, 'transfer_id': transfer id]\n\n
-        """
-        user: User = self.request.user
-        club: Club = get_current_club(self.request)
-        data = dict(self.request.data)
-        action_code = data.get('action_code')
-        to_do = action_data.get(action_code, None)
-        if not to_do:
-            return Response({'details': 'Invalid action'}, status=400)
-        if eval(to_do['permission']):
-            eval(to_do.get('prepare', 'True'))
-            response = eval(to_do['function'])
-            if not response:
-                return failed_to_do(data)
-            return completed_successfully(data)
-        return permission_error()
+        """})
 
 
 class AllTransactionView(views.APIView):
