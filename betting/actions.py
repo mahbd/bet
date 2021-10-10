@@ -4,8 +4,8 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from betting.choices import METHOD_TRANSFER, STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED, STATUS_LOCKED, STATUS_HIDDEN, \
-    STATUS_LIVE, STATUS_CLOSED, STATUS_ACCEPTED, STATUS_CANCELLED
-from betting.models import Match, BetQuestion, Deposit, Transfer, Withdraw, Bet, QuestionOption
+    STATUS_LIVE, STATUS_CLOSED, STATUS_ACCEPTED, STATUS_CANCELLED, SOURCE_BANK
+from betting.models import Match, BetQuestion, Deposit, Transfer, Withdraw, Bet, QuestionOption, DepositMethod
 from users.models import User
 from users.views import notify_user, notify_club
 
@@ -169,9 +169,13 @@ def un_pay_bet(bet_id: int):
 def accept_deposit(deposit_id: int, message=None) -> Union[Deposit, bool]:
     if not deposit_id or not Deposit.objects.filter(pk=deposit_id).exists():
         return False
+    rate = 1.00
     deposit = Deposit.objects.get(pk=deposit_id)
+    deposit_method_q = DepositMethod.objects.filter(method=deposit.method)
+    if deposit_method_q.exists() and deposit.deposit_source == SOURCE_BANK:
+        rate = DepositMethod.objects.filter(method=deposit.method).first().convert_rate
     if deposit.user:
-        deposit.user.balance += deposit.amount
+        deposit.user.balance += deposit.amount * rate
         deposit.user.save()
         deposit.balance = deposit.user.balance
         notify_user(deposit.user, message or f"Deposit request on {deposit.created_at} amount"
