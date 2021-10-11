@@ -209,36 +209,6 @@ class TransactionTest(TestCase):
         self.club_header = {'HTTP_club-token': self.club_jwt, 'content_type': 'application/json'}
         self.api = '/api/actions/'
 
-    def test_accept_deposit(self):
-        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
-        balance = self.user2.balance
-        response = c.post(self.api, {'action_code': A_DEPOSIT_ACCEPT, 'deposit_id': deposit.id},
-                          **self.headers_super)
-        self.assertEqual(response.status_code, 200)
-        deposit.refresh_from_db()
-        self.user2.refresh_from_db()
-        self.assertEqual(deposit.status, STATUS_ACCEPTED)
-        self.assertEqual(self.user2.balance, balance + 500)
-        self.assertEqual(self.user2.balance, deposit.balance)
-        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
-                          **self.headers_super)
-        self.assertEqual(response.status_code, 200)
-        deposit.refresh_from_db()
-        self.user2.refresh_from_db()
-        self.assertEqual(deposit.status, STATUS_CANCELLED)
-        self.assertEqual(self.user2.balance, balance)
-
-    def test_cancel_deposit(self):
-        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
-        balance = self.user2.balance
-        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
-                          **self.headers_super)
-        self.assertEqual(response.status_code, 200)
-        deposit.refresh_from_db()
-        self.user2.refresh_from_db()
-        self.assertEqual(deposit.status, STATUS_CANCELLED)
-        self.assertEqual(self.user2.balance, balance)
-
     def test_accept_withdraw(self):
         withdraw = Withdraw.objects.create(user=self.user2, amount=500)
         balance = self.user2.balance
@@ -699,6 +669,24 @@ class DepositMethodTest(TestCase):
         self.assertEqual(method.convert_rate, 1.05)
         self.assertEqual(method.number1, '454545212')
         self.assertEqual(method.number2, '0124575454')
+        self.api = '/api/actions/'
+        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_DEPOSIT_ACCEPT, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user2.balance, balance + 500 * 1.05)
+        self.assertEqual(self.user2.balance, deposit.balance)
+        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance + 500 * 0.05)
 
     def test_update_deposit_method_user(self):
         method_id = self.method1['id']
@@ -758,6 +746,38 @@ class DepositTestCase(TestCase):
                                  'site_account': '014454548',
                                  'method': 'rocket', 'reference': 'fd7sf454f78fad'}, **self.headers_super)
         self.assertEqual(response.status_code, 405, msg=f'Not updatable')
+
+    def test_accept_deposit(self):
+        self.api = '/api/actions/'
+        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_DEPOSIT_ACCEPT, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_ACCEPTED)
+        self.assertEqual(self.user2.balance, balance + 500)
+        self.assertEqual(self.user2.balance, deposit.balance)
+        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance)
+
+    def test_cancel_deposit(self):
+        self.api = '/api/actions/'
+        deposit = Deposit.objects.create(user=self.user2, amount=500, method=METHOD_ROCKET)
+        balance = self.user2.balance
+        response = c.post(self.api, {'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit.id},
+                          **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+        deposit.refresh_from_db()
+        self.user2.refresh_from_db()
+        self.assertEqual(deposit.status, STATUS_CANCELLED)
+        self.assertEqual(self.user2.balance, balance)
 
 
 class LoginTest(TestCase):
@@ -867,8 +887,8 @@ class UserTestCase(TestCase):
     # Creation Test
     def test_can_register_valid_data(self):
         response = c.post(self.api, {'username': 'test3', 'email': 'testing@gmail.com',
-                                         'phone': '017745445', 'user_club': self.club.id,
-                                         'password': 'fds_sdf'})
+                                     'phone': '017745445', 'user_club': self.club.id,
+                                     'password': 'fds_sdf'})
         self.assertEqual(response.status_code, 201, msg=f'Should be able to create user.\n{response.content}')
         user = User.objects.get(pk=response.json()['id'])
         self.assertEqual(user.check_password('fds_sdf'), True, 'Password should be correct')

@@ -1,9 +1,8 @@
 from typing import Union, Type
 
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 
-from betting.choices import METHOD_TRANSFER, STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED, STATUS_LOCKED, STATUS_HIDDEN, \
+from betting.choices import STATUS_PAID, STATUS_PENDING, STATUS_REFUNDED, STATUS_LOCKED, STATUS_HIDDEN, \
     STATUS_LIVE, STATUS_CLOSED, STATUS_ACCEPTED, STATUS_CANCELLED, SOURCE_BANK
 from betting.models import Match, BetQuestion, Deposit, Transfer, Withdraw, Bet, QuestionOption, DepositMethod
 from users.models import User
