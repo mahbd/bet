@@ -77,6 +77,10 @@ class TransferUserValidator:
     def __call__(self, value, *args, **kwargs):
         sender = self.sender
         receiver = value
+        if not sender:
+            raise ValidationError("User is not logged in")
+        if not receiver:
+            raise ValidationError("Recipient is not filled")
         if sender.user_club != receiver.user_club:
             raise ValidationError("Transaction outside club is not allowed.")
         try:

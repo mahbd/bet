@@ -820,6 +820,8 @@ class MatchTest(TestCase):
     def test_get_match(self):
         response = c.get(self.api)
         self.assertEqual(response.status_code, 200)
+        response = c.get(self.api, {}, **self.headers_user)
+        self.assertEqual(response.status_code, 200)
 
     def test_get_match_fast(self):
         response = c.get(f"{self.api}?fast=true")

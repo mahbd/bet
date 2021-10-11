@@ -252,7 +252,7 @@ class TransferSerializer(serializers.ModelSerializer):
                   'id', 'recipient', 'sender', 'status')
         read_only_fields = ('sender', 'status', 'balance')
         extra_kwargs = {
-            'amount': {'validators': [MinMaxLimitValidator('withdraw')]},
+            'amount': {'validators': [MinMaxLimitValidator('transfer')]},
             'recipient': {'required': True}
         }
 
@@ -276,7 +276,7 @@ class TransferClubSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('id', 'sender', 'status', 'balance')
         extra_kwargs = {
-            'amount': {'validators': [MinMaxLimitValidator('withdraw')]}
+            'amount': {'validators': [MinMaxLimitValidator('transfer')]}
         }
 
     def validate(self, attrs):
