@@ -462,7 +462,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if self.request.method == 'POST':
             return UserDetailsSerializer
-        if user and (user.id == int(self.kwargs.get('pk')) or user.is_superuser):
+        if user and (self.kwargs.get('pk') and user.id == int(self.kwargs.get('pk')) or user.is_superuser):
             return UserDetailsSerializer
         elif self.request.GET.get('club'):
             return UserListSerializerClub

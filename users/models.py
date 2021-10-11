@@ -35,6 +35,9 @@ class User(AbstractUser):
                                     null=True, blank=True, related_name='refer_set')
     user_club = models.ForeignKey(Club, on_delete=models.SET_NULL, null=True)
 
+    class Meta:
+        ordering = ('balance', )
+
     def is_club_admin(self):
         try:
             bool(self.club)

@@ -884,6 +884,10 @@ class UserTestCase(TestCase):
         response = c.get(self.api)
         self.assertEqual(response.status_code, 200)
 
+    def test_get_users_logged(self):
+        response = c.get(self.api, {}, **self.headers_super)
+        self.assertEqual(response.status_code, 200)
+
     # Creation Test
     def test_can_register_valid_data(self):
         response = c.post(self.api, {'username': 'test3', 'email': 'testing@gmail.com',

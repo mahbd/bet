@@ -91,6 +91,40 @@ def add_withdraw(how_many, base_url='http://127.0.0.1:8000'):
             print(response.status_code)
 
 
+def add_transfer(how_many, base_url='http://127.0.0.1:8000'):
+    super_jwt = jwt_from_user(User.objects.filter(is_superuser=True).first())
+    status = [True, True, True, False, None]
+    for i in range(how_many):
+        print('Executing', i)
+        amount = randint(500, 1000)
+        acceptable_users = User.objects.filter(balance__gt=amount + 50).count()
+        if not acceptable_users:
+            print('No user has enough balance')
+        choice_index = choice(range(acceptable_users))
+        sender = User.objects.filter(balance__gt=amount + 50)[choice_index]
+        jwt = jwt_from_user(sender)
+        recipient = sender.first().user_club.admin_id
+        data = {
+            'amount': amount,
+            'method': choice(DEPOSIT_CHOICES)[0],
+            'recipient': recipient,
+        }
+        response = requests.post(base_url + '/api/transfer/', data=data, headers={'x-auth-token': jwt})
+        print(response.json())
+        withdraw_id = response.json()['id']
+        choosed = choice(status)
+        if choosed:
+            response = requests.post(base_url + '/api/actions/',
+                                     json={'action_code': A_WITHDRAW_ACCEPT, 'withdraw_id': withdraw_id},
+                                     headers={'x-auth-token': super_jwt})
+            print(response.status_code)
+        elif choosed == False:
+            response = requests.post(base_url + '/api/actions/',
+                                     json={'action_code': A_WITHDRAW_CANCEL, 'withdraw_id': withdraw_id},
+                                     headers={'x-auth-token': super_jwt})
+            print(response.status_code)
+
+
 def add_deposit(how_many, base_url='http://127.0.0.1:8000'):
     super_jwt = jwt_from_user(User.objects.filter(is_superuser=True).first())
     status = [True, True, True, False, None]
