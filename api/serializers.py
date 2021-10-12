@@ -2,7 +2,6 @@ from django.core.validators import MaxValueValidator
 from django.db.models import Sum
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.validators import UniqueValidator
 
 from api.validators import MinMaxLimitValidator, CountLimitValidator, UniqueMultiQuerysetValidator, \
     BetQuestionValidator, QuestionOptionValidator, TransferUserValidator
@@ -226,7 +225,7 @@ class MatchSerializer(serializers.ModelSerializer):
 class MatchDetailsSerializer(MatchSerializer):
     def get_questions(self, match: Match) -> list:
         question_list = match.betquestion_set.all()
-        return BetQuestionSerializer(question_list, many=True).data
+        return BetQuestionDetailsSerializer(question_list, many=True).data
 
     class Meta:
         model = Match
