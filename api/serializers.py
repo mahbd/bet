@@ -131,7 +131,7 @@ class BetSerializer(serializers.ModelSerializer):
         return bet.choice.option
 
     def get_useless(self, bet: Bet):
-        return bet.win_amount if bet.is_winner else bet.amount
+        return bet.win_amount if bet.is_winner else 0
 
     class Meta:
         model = Bet
