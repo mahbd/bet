@@ -218,7 +218,7 @@ class MatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Match
-        fields = ('created_at', 'game_name', 'id', 'questions', 'score', 'status', 'start_time',
+        fields = ('created_at', 'game_name', 'id', 'questions', 'match_type', 'score', 'status', 'start_time',
                   'team_a_name', 'team_b_name', 'team_a_color', 'team_b_color')
         read_only_fields = ('id',)
 

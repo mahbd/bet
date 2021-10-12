@@ -52,6 +52,7 @@ class ConfigModel(models.Model):
 class Match(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     game_name = models.CharField(max_length=255, choices=GAME_CHOICES, help_text="name of the game")
+    match_type = models.CharField(max_length=255, default="Not Defined")
     score = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=255, choices=MATCH_STATUS_CHOICES, default=STATUS_HIDDEN)
     start_time = models.DateTimeField(default=timezone.now, blank=True, null=True)
