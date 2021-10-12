@@ -22,7 +22,7 @@ from .custom_permissions import MatchPermissionClass, BetPermissionClass, ClubPe
 from .serializers import ClubSerializer, BetSerializer, MatchSerializer, \
     UserListSerializer, BetQuestionSerializer, UserDetailsSerializer, AnnouncementSerializer, DepositSerializer, \
     WithdrawSerializer, TransferSerializer, NotificationSerializer, UserListSerializerClub, QuestionOptionSerializer, \
-    TransferClubSerializer, BetQuestionDetailsSerializer, DepositMethodSerializer, ConfigModelSerializer, \
+    TransferClubSerializer, DepositMethodSerializer, ConfigModelSerializer, \
     MatchDetailsSerializer
 
 User: MainUser = get_user_model()
@@ -224,11 +224,7 @@ class BetQuestionViewSet(viewsets.ModelViewSet):
     Searchable fields: question, match__team_a_name, match__team_b_name, winner
     """
 
-    def get_serializer_class(self):
-        if self.request.GET.get('fast'):
-            return BetQuestionSerializer
-        return BetQuestionDetailsSerializer
-
+    serializer_class = BetQuestionSerializer
     queryset = BetQuestion.objects.select_related('match').all()
     permission_classes = [MatchPermissionClass]
     filter_backends = [SearchFilter, DjangoFilterBackend]

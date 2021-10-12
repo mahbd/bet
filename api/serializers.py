@@ -47,14 +47,23 @@ def count_filter_bet_set(bet_question, choice):
 
 
 class QuestionOptionSerializer(serializers.ModelSerializer):
+    details = serializers.SerializerMethodField(read_only=True)
+
+    def get_details(self, option: QuestionOption) -> dict:
+        details = {
+            'bet_count': option.bet_set.all().count(),
+            'bet': option.bet_set.all().aggregate(Sum('amount'))[f'amount__sum'] or 0,
+            'to_return': option.bet_set.all().aggregate(Sum('win_amount'))[f'win_amount__sum'] or 0,
+        }
+        return details
+
     class Meta:
         model = QuestionOption
-        fields = '__all__'
+        fields = ['details', 'option', 'rate', 'hidden', 'limit', 'created_at']
 
 
 # noinspection PyMethodMayBeStatic
 class BetQuestionSerializer(serializers.ModelSerializer):
-    details = serializers.SerializerMethodField(read_only=True)
     options = QuestionOptionSerializer(many=True)
     match_name = serializers.SerializerMethodField(read_only=True)
     match_start_time = serializers.SerializerMethodField(read_only=True)
@@ -64,9 +73,6 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     def get_match_start_time(self, bet_question: BetQuestion):
         return str(bet_question.match.start_time)
-
-    def get_details(self, bet_question: BetQuestion) -> dict:
-        return {}
 
     def create(self, validated_data):
         options = validated_data.pop('options', [])
@@ -83,22 +89,9 @@ class BetQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BetQuestion
-        fields = ('details', 'id', 'match',
+        fields = ('id', 'match',
                   'match_name', 'match_start_time',
                   'options', 'question', 'status', 'winner',)
-
-
-class BetQuestionDetailsSerializer(BetQuestionSerializer):
-    details = serializers.SerializerMethodField(read_only=True)
-
-    def get_details(self, bet_question: BetQuestion) -> dict:
-        details = {}
-        total_bet = bet_question.bet_set.all().aggregate(Sum('amount'))[f'amount__sum'] or 0
-        for option in bet_question.options.all():
-            details[f'{option.id}_bet'] = sum_filter_bet_set(bet_question, option, 'amount')
-            details[f'{option.id}_bet_count'] = count_filter_bet_set(bet_question, option)
-            details[f'{option.id}_benefit'] = total_bet - sum_filter_bet_set(bet_question, option)
-        return details
 
 
 # noinspection PyMethodMayBeStatic
@@ -136,7 +129,7 @@ class BetSerializer(serializers.ModelSerializer):
         model = Bet
         fields = ('answer', 'amount', 'bet_question', 'choice', 'id', 'match_start_time', 'match_name', 'question',
                   'win_rate', 'is_winner', 'user', 'your_answer', 'win_amount', 'status',
-                  'created_at', 'user_details', 'user_balance', 'useless', )
+                  'created_at', 'user_details', 'user_balance', 'useless',)
         read_only_fields = ('id', 'user', 'win_rate', 'is_winner')
         extra_kwargs = {
             'amount': {'validators': [MinMaxLimitValidator('bet')]},
@@ -225,7 +218,7 @@ class MatchSerializer(serializers.ModelSerializer):
 class MatchDetailsSerializer(MatchSerializer):
     def get_questions(self, match: Match) -> list:
         question_list = match.betquestion_set.all()
-        return BetQuestionDetailsSerializer(question_list, many=True).data
+        return BetQuestionSerializer(question_list, many=True).data
 
     class Meta:
         model = Match
