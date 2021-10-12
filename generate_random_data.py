@@ -1,11 +1,12 @@
 import string
-from random import choice, randint
+from random import choice, randint, random
 
 import requests
 from django.utils.crypto import get_random_string
 
 from api.serializers import jwt_from_user
-from betting.choices import DEPOSIT_CHOICES, A_DEPOSIT_CANCEL, A_DEPOSIT_ACCEPT, A_WITHDRAW_ACCEPT, A_WITHDRAW_CANCEL, A_TRANSFER_ACCEPT, A_TRANSFER_CANCEL
+from betting.choices import DEPOSIT_CHOICES, A_DEPOSIT_CANCEL, A_DEPOSIT_ACCEPT, A_WITHDRAW_ACCEPT, A_WITHDRAW_CANCEL, A_TRANSFER_ACCEPT, A_TRANSFER_CANCEL, GAME_CHOICES, MATCH_STATUS_CHOICES
+from betting.models import Match
 from users.models import Club, User
 
 
@@ -97,7 +98,8 @@ def add_transfer(how_many, base_url='http://127.0.0.1:8000'):
     for i in range(how_many):
         print('Executing', i)
         amount = randint(10, 100)
-        acceptable_users = User.objects.filter(balance__gt=amount + 50, user_club__isnull=False, user_club__admin__isnull=False)
+        acceptable_users = User.objects.filter(balance__gt=amount + 50, user_club__isnull=False,
+                                               user_club__admin__isnull=False)
         if acceptable_users.count() == 0:
             print('No user has enough balance')
             break
@@ -156,3 +158,40 @@ def add_deposit(how_many, base_url='http://127.0.0.1:8000'):
                                      json={'action_code': A_DEPOSIT_CANCEL, 'deposit_id': deposit_id},
                                      headers={'x-auth-token': super_jwt})
             print(response.status_code)
+
+
+def add_match(how_many, base_url='http://127.0.0.1:8000'):
+    super_jwt = jwt_from_user(User.objects.filter(is_superuser=True).first())
+    for i in range(how_many):
+        data = {
+            'game_name': choice([game[0] for game in GAME_CHOICES]),
+            'score': randint(1, 100),
+            'status': choice([s[0] for s in MATCH_STATUS_CHOICES]),
+            'team_a_name': get_random_string(3, string.ascii_uppercase),
+            'team_b_name': get_random_string(3, string.ascii_uppercase),
+            'team_a_color': get_random_string(3, string.ascii_uppercase),
+            'team_b_color': get_random_string(3, string.ascii_uppercase),
+        }
+        response = requests.post(base_url + '/api/match/', data=data, headers={'x-auth-token': super_jwt})
+        print(response.status_code)
+
+
+def add_question(how_many, base_url='http://127.0.0.1:8000'):
+    super_jwt = jwt_from_user(User.objects.filter(is_superuser=True).first())
+    matches = [match.id for match in Match.objects.all()]
+    for i in range(how_many):
+        options = [{
+            'option': get_random_string(3, string.ascii_uppercase),
+            'rate': random() + 0.5,
+            'hidden': choice([False, False, False, False, True]),
+            'limit': randint(100, 1000_000_00)
+
+        } for _ in range(randint(2, 4))]
+        data = {
+            'match': choice(matches),
+            'question': get_random_string(randint(10, 20), string.ascii_letters) + '?',
+            'status': choice([s[0] for s in MATCH_STATUS_CHOICES]),
+            'options': options,
+        }
+        response = requests.post(base_url + '/api/bet-question/', json=data, headers={'x-auth-token': super_jwt})
+        print(response.status_code)

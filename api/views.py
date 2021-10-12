@@ -4,7 +4,6 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, permissions, views, mixins
 from rest_framework.filters import SearchFilter
-from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from betting.actions import *
@@ -191,7 +190,7 @@ class BetViewSet(mixins.CreateModelMixin,
     """
     list:
     Returns list of bet of current user. User MUST bet logged in.\n
-    To get clubs bet list add ?club_id={{ club_id }} . User MUST be admin of that club.
+    To get clubs bet list add ?club=true . Club must be logged in.
     create:
     Create a bet instance. You can not bet if bet scope is locked or if you don't have enough balance
     retrieve:
@@ -199,23 +198,13 @@ class BetViewSet(mixins.CreateModelMixin,
     """
 
     def get_queryset(self):
-        club_id = self.request.GET.get('club_id')
-        if club_id:
-            club = get_object_or_404(Club, id=club_id)
-            if club.admin == self.request.user:
-                return Bet.objects.filter(user__user_club=club)
+        if self.request.GET.get('club'):
+            club = get_current_club(self.request)
+            return Bet.objects.filter(user__user_club=club)
         return Bet.objects.filter(user=self.request.user)
 
     serializer_class = BetSerializer
     permission_classes = [BetPermissionClass]
-
-
-class BetViewSetClub(viewsets.ReadOnlyModelViewSet):
-    def get_queryset(self):
-        club = get_current_club(self.request)
-        return Bet.objects.filter(user__user_club=club)
-
-    serializer_class = BetSerializer
 
 
 class QuestionOptionViewSet(mixins.RetrieveModelMixin,

@@ -15,7 +15,7 @@ default_configs = {
     'min_withdraw': 500,
     'max_withdraw': 25000,
     'limit_transfer': 2,
-    'min_transfer': 10,
+    'min_transfer': 100,
     'max_transfer': 25000,
     'limit_bet': 50,
     'min_bet': 10,
