@@ -110,6 +110,7 @@ class BetSerializer(serializers.ModelSerializer):
     question = serializers.SerializerMethodField(read_only=True)
     your_answer = serializers.SerializerMethodField(read_only=True)
     user_details = serializers.SerializerMethodField(read_only=True)
+    useless = serializers.SerializerMethodField(read_only=True)
 
     def get_answer(self, bet: Bet) -> str:
         return bet.bet_question.winner and bet.bet_question.winner.option
@@ -129,11 +130,14 @@ class BetSerializer(serializers.ModelSerializer):
     def get_your_answer(self, bet: Bet):
         return bet.choice.option
 
+    def get_useless(self, bet: Bet):
+        return bet.win_amount if bet.is_winner else bet.amount
+
     class Meta:
         model = Bet
         fields = ('answer', 'amount', 'bet_question', 'choice', 'id', 'match_start_time', 'match_name', 'question',
                   'win_rate', 'is_winner', 'user', 'your_answer', 'win_amount', 'status',
-                  'created_at', 'user_details', 'user_balance')
+                  'created_at', 'user_details', 'user_balance', 'useless', )
         read_only_fields = ('id', 'user', 'win_rate', 'is_winner')
         extra_kwargs = {
             'amount': {'validators': [MinMaxLimitValidator('bet')]},
