@@ -45,7 +45,7 @@ def failed_to_do(data):
 
 
 def completed_successfully(data):
-    return Response({'details': f'Failed to complete the action due to data.'}, status=200)
+    return Response({'details': f'Successfully completed action.'}, status=200)
 
 
 class ActionView(views.APIView):
